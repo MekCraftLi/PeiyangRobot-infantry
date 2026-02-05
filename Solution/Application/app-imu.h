@@ -71,6 +71,9 @@ public:
 
     void init() override;
 
+    void setIMUConfig(Bmi088AccRange, Bmi088AccODR, Bmi088AccWidth, Bmi088GyroRange, Bmi088GyroWidth);
+
+
     void run() override;
 
     uint8_t rxMsg(void* msg, uint16_t size = 0) override;
@@ -105,6 +108,7 @@ private:
     friend void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
     friend void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef* hspi);
     friend void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef* hspi);
+    friend void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
     friend bool waitForTransmit(uint32_t timeout);
     friend bool waitForReceive(uint32_t timeout);

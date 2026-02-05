@@ -33,8 +33,8 @@
 #include "gpio.h"
 #include "spi.h"
 
-#include <functional>
-#include <vector>
+#include "FreeRTOS.h"
+#include "semphr.h"
 
 
 
@@ -57,100 +57,89 @@ enum class BmiErr {
     ERROR,
 };
 
-class BmiRxOpt {
-
-  public:
-    BmiRxOpt(void* pData, const uint16_t len, const uint16_t offset) : _pData(pData), _len(len), _offset(offset) {};
-
-    /*********** setter & getter ***********/
-    [[nodiscard]] void* getPData() const { return _pData; }
-    [[nodiscard]] uint16_t getLen() const { return _len; }
-    [[nodiscard]] uint16_t getOffset() const { return _offset; }
-
-  private:
-    void* _pData     = nullptr;
-    uint16_t _len    = 0;
-    uint16_t _offset = 0;
-};
-
-enum class Bmi088Chip {
+enum class BmiState {
     NONE,
-    ACC,
-    GYRO,
+    IDLE,
+    READING_ACCEL,
+    READING_GYRO,
+    READING_TEMP,
 };
+
+typedef struct {
+    struct {
+        float x;
+        float y;
+        float z;
+    } rate;
+
+    struct {
+        float x;
+        float y;
+        float z;
+    } accel;
+
+    float temperature;
+    uint32_t timestamp;
+} ImuData;
 
 
 class Bmi088 {
   public:
-    using CommCompletion = std::function<bool(uint32_t timeout)>;
+    Bmi088(SPI_HandleTypeDef* spiHandle, GPIO_TypeDef* _accCsPort, GPIO_TypeDef* _gyroCsPort, uint16_t _accCsPin,
+           uint16_t _gyroCsPin, uint8_t* _pDmaTxBuf, uint8_t* _pDmaRxBuf);
+    BmiErr init(Bmi088AccRange, Bmi088AccODR, Bmi088AccWidth, Bmi088GyroRange, Bmi088GyroWidth);
 
-    Bmi088(SPI_HandleTypeDef* handle, void* pDmaTxBuf, void* pDmaRxBuf, CommCompletion waitForTransmit, CommCompletion waitForReceive,
-           CommCompletion waitForTransmitReceive, GPIO_TypeDef* ps1Port, uint16_t ps1Pin, GPIO_TypeDef* ps2Port,
-           uint16_t ps2Pin);
-
-    BmiErr init();
-    BmiErr readRegister(Bmi088Chip chip, uint8_t regAddr, uint16_t len, uint32_t timeout);
-    BmiErr readRegister(Bmi088Chip chip, uint8_t regAddr, void* pData, uint16_t len, uint32_t timeout);
-
-
-    BmiErr writeRegister(Bmi088Chip chip, uint8_t, uint16_t, uint16_t timeout);
-    BmiErr writeRegister(Bmi088Chip chip, uint8_t regAddr, void* pData, uint16_t len, uint16_t timeout);
-
-
-    BmiErr accSelfCheck();
-
-    BmiErr readAccIDAsync();
-    BmiErr readGyroIDAsync();
-
-    BmiErr updateGyroAndAccSync(uint16_t* avX, uint16_t* avY, uint16_t* avZ, uint16_t* aX, uint16_t* aY, uint16_t* aZ,
-                                uint32_t timeout);
-    BmiErr updateGyroAndAccSync(void* pData, uint32_t timeout);
-
-
-
-    BmiErr asyncRxCallback();
-    BmiErr asyncTxCallback();
+    uint8_t readAccRegister(Bmi088AccRegister);
+    uint8_t readGyroRegister(Bmi088GyroRegister);
+    void writeGyroRegister(Bmi088GyroRegister reg, uint8_t value);
+    void writeAccRegister(Bmi088AccRegister reg, uint8_t value);
+    static void waitingForData(TickType_t timeout);
+    void getImuData(ImuData& data);
+    void onExti();
+    void onTxComplete();
+    void onTransferComplete();
 
 
 
     /* setter & getter */
 
-    uint8_t* getDmaTxBuf() { return _dmaTxBuf; }
+    uint8_t* getDmaTxBuf() { return _pDmaTxBuf; }
 
-    uint8_t* getDmaRxBuf() { return _dmaRxBuf; }
+    uint8_t* getDmaRxBuf() { return _pDmaRxBuf; }
 
     struct __attribute__((packed)) AngularVelocity {
         int16_t x;
         int16_t y;
         int16_t z;
-    } _angularVelocity;
+    } _angularVelocity{};
 
     struct __attribute__((packed)) Acceleration {
         int16_t x;
         int16_t y;
         int16_t z;
-    } _acceleration;
+    } _acceleration{};
 
 
   private:
-    SPI_HandleTypeDef* _handle             = nullptr;
-    CommCompletion _waitForTransmit        = nullptr;
-    CommCompletion _waitForReceive         = nullptr;
-    CommCompletion _waitForTransmitReceive = nullptr;
-    uint16_t _accChipID                    = 0x00;
-    uint16_t _gyroChipID                   = 0x00;
-    uint8_t* _dmaTxBuf = nullptr;
-    uint8_t* _dmaRxBuf = nullptr;
-    size_t _bufLen = 0;
-    GPIO_TypeDef* _ps1Port;
-    GPIO_TypeDef* _ps2Port;
-    GPIO_TypeDef* _psCurrentPort;
-    uint16_t _ps1Pin;
-    uint16_t _ps2Pin;
-    uint16_t _psCurrentPin;
-
-
-    std::pmr::vector<BmiRxOpt> _opts;
+    SPI_HandleTypeDef* _handle                  = nullptr;
+    xSemaphoreHandle _afterTxCompleteSema       = nullptr;
+    xSemaphoreHandle _afterTransferCompleteSema = nullptr;
+    uint8_t* _pDmaTxBuf                         = nullptr;
+    uint8_t* _pDmaRxBuf                         = nullptr;
+    uint8_t _rawGyroData[6]                     = {0};
+    uint8_t _rawAccData[6]                      = {0};
+    uint8_t _rawTempData[6]                     = {0};
+    uint32_t _timestamp                         = 0;
+    uint16_t _accRange                          = 0;
+    uint16_t _gyroRange                         = 0;
+    GPIO_TypeDef* _accCsPort                    = nullptr;
+    GPIO_TypeDef* _gyroCsPort                   = nullptr;
+    GPIO_TypeDef* _psCurrentPort                = nullptr;
+    uint16_t _accCsPin                          = 0;
+    uint16_t _gyroCsPin                         = 0;
+    uint16_t _psCurrentPin                      = 0;
+    BmiState _state                             = BmiState::NONE;
+    TaskHandle_t _processTaskHandle             = nullptr;
 };
 
 

@@ -35,6 +35,58 @@
 
 /*-------- 2. enum and define ----------------------------------------------------------------------------------------*/
 
+enum class Bmi088Chip {
+    NONE,
+    ACC,
+    GYRO,
+};
+
+enum class Bmi088AccRange: uint8_t {
+    RANGE_3G = 0x00,
+    RANGE_6G = 0x01,
+    RANGE_12G = 0x02,
+    RANGE_24G = 0x03
+};
+
+enum class Bmi088AccODR: uint8_t {
+    ODR_12_5_HZ = 0x05,
+    ODR_25_HZ = 0x06,
+    ODR_50_HZ = 0x07,
+    ODR_100_HZ = 0x08,
+    ODR_200_HZ = 0x09,
+    ODR_400_HZ = 0x0A,
+    ODR_800_HZ = 0x0B,
+    ODR_1600_HZ = 0x0C,
+};
+
+enum class Bmi088AccWidth: uint8_t {
+    OSR4 = 0x08,
+    OSR2 = 0x09,
+    NORMAL = 0x0A,
+};
+
+enum class Bmi088GyroRange: uint8_t {
+    RANGE_2000_DPS = 0x00,
+    RANGE_1000_DPS = 0x01,
+    RANGE_500_DPS = 0x02,
+    RANGE_250_DPS = 0x03,
+    RANGE_125_DPS = 0x04,
+};
+
+enum class Bmi088GyroWidth: uint8_t {
+    ODR_2000HZ_BW_532HZ = 0x00,
+    ODR_2000HZ_BW_230HZ = 0x01,
+    ODR_1000HZ_BW_116HZ = 0x02,
+    ODR_400HZ_BW_47HZ = 0x03,
+    ODR_200HZ_BW_64HZ = 0x04,
+    ODR_100HZ_BW_32HZ = 0x05,
+    ODR_200HZ_BW_23HZ = 0x06,
+    ODR_100HZ_BW_12HZ = 0x07,
+};
+
+
+
+
 enum class Bmi160Cmd : uint8_t {
     CHIP_ID      = 0x00,
     ERR          = 0x02,
@@ -119,6 +171,8 @@ enum class Bmi088GyroRegister : uint8_t {
     FIFO_CONFIG_1     = 0x3E,
     FIFO_DATA         = 0x3F
 };
+
+
 
 
 /*-------- 3. interface ----------------------------------------------------------------------------------------------*/

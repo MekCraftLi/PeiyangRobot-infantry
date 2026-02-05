@@ -136,8 +136,13 @@ class StaticAppBase : public IApplication {
     static void startApplications() {
         for (auto& eachApp : _taskInfoRegistry) {
             if (eachApp.enable) {
-                *(eachApp.pTskHandle) = xTaskCreateStatic(_taskEntry, eachApp.name, eachApp.stackSize, eachApp.pThread,
-                                                          eachApp.priority, eachApp.stackBuf, eachApp.pxTask);
+                if (eachApp.periodMs) {
+                    *(eachApp.pTskHandle) = xTaskCreateStatic(_taskEntry, eachApp.name, eachApp.stackSize, eachApp.pThread,
+                                                              eachApp.priority, eachApp.stackBuf, eachApp.pxTask);
+                } else {
+                    *(eachApp.pTskHandle) = xTaskCreateStatic(_taskEntryWithoutDelay, eachApp.name, eachApp.stackSize, eachApp.pThread,
+                                                              eachApp.priority, eachApp.stackBuf, eachApp.pxTask);
+                }
             }
         }
     }
@@ -203,6 +208,18 @@ class StaticAppBase : public IApplication {
         for (;;) {
             threadObj->run();
             vTaskDelayUntil(&xLastExecutionTime, kPeriodTicks);
+        }
+    }
+
+    [[noreturn]] static void _taskEntryWithoutDelay(void* pvParameters) {
+        auto* threadObj               = static_cast<StaticAppBase*>(pvParameters);
+        const TickType_t kPeriodTicks = pdMS_TO_TICKS(threadObj->_taskInfo.periodMs);
+
+        threadObj->init();
+        threadObj->initEvent();
+        _inited = 1;
+        for (;;) {
+            threadObj->run();
         }
     }
 };

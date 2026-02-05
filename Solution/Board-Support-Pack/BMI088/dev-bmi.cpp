@@ -22,6 +22,7 @@
 
 /* ------- define ----------------------------------------------------------------------------------------------------*/
 
+#define GRAVITY_EARTH (9.80665f)
 
 
 
@@ -32,7 +33,15 @@
 
 #include "dev-bmi-def.h"
 
+#include "gpio.h"
+
+#include "tim.h"
+
 #include <cstring>
+
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 
 
 
@@ -45,13 +54,10 @@
 
 /* ------- macro -----------------------------------------------------------------------------------------------------*/
 
-#define __BMI_DELAY_MS(x)                                                                                              \
-    do {                                                                                                               \
-        uint32_t currentTimestamp = TIM24->CNT;                                                                        \
-        while (TIM24->CNT - currentTimestamp < x * 1000)                                                               \
-            ;                                                                                                          \
-    } while (0)
-
+#define __SELECT_ACC()    _accCsPort->BSRR = _accCsPin << 16
+#define __SELECT_GYRO()   _gyroCsPort->BSRR = _gyroCsPin << 16
+#define __UNSELECT_ACC()  _accCsPort->BSRR = _accCsPin
+#define __UNSELECT_GYRO() _gyroCsPort->BSRR = _gyroCsPin
 
 
 
@@ -73,421 +79,261 @@ static void memcpyReverseOrder(void* dest, const void* src, size_t len) {
     }
 }
 
+Bmi088::Bmi088(SPI_HandleTypeDef* spiHandle, GPIO_TypeDef* accCsPort, GPIO_TypeDef* gyroCsPort, uint16_t accCsPin,
+               uint16_t gyroCsPin, uint8_t* pDmaTxBuf, uint8_t* pDmaRxBuf)
+    : _handle(spiHandle), _pDmaTxBuf(pDmaTxBuf), _pDmaRxBuf(pDmaRxBuf), _accCsPort(accCsPort), _gyroCsPort(gyroCsPort),
+      _accCsPin(accCsPin), _gyroCsPin(gyroCsPin) {
 
-Bmi088::Bmi088(SPI_HandleTypeDef* handle, void* pDmaTxBuf, void* pDmaRxBuf, CommCompletion transmit,
-               CommCompletion receive, CommCompletion transmitReceive, GPIO_TypeDef* ps1Port, uint16_t ps1Pin,
-               GPIO_TypeDef* ps2Port, uint16_t ps2Pin)
-    : _handle(handle), _waitForTransmit(transmit), _waitForReceive(receive), _waitForTransmitReceive(transmitReceive),
-      _ps1Port(ps1Port), _ps1Pin(ps1Pin), _ps2Port(ps2Port), _ps2Pin(ps2Pin),
-      _dmaTxBuf(static_cast<uint8_t*>(pDmaTxBuf)), _dmaRxBuf(static_cast<uint8_t*>(pDmaRxBuf)) {
-    if (handle == nullptr) {
-        while (1)
-            ;
-    }
+    _afterTxCompleteSema       = xSemaphoreCreateBinary();
+    _afterTransferCompleteSema = xSemaphoreCreateBinary();
 }
 
-BmiErr Bmi088::init() {
-
-    // 通过一次读取加速度计ID的操作让PS1产生一次上升沿，将加速度计通信模式改为SPI
-
-    return readAccIDAsync();
-}
-
-/**
- * @brief 读取寄存器
- * @param chip 设备芯片，陀螺仪或加速度计\
- * @param regAddr 寄存器地址
- * @param len 数据长度
- * @param timeout 超时时间，设置为零则为异步读取
- * @return 错误码
- */
-BmiErr Bmi088::readRegister(Bmi088Chip chip, uint8_t regAddr, uint16_t len, uint32_t timeout) {
-
-    BmiErr err = BmiErr::SUCCESS;
-
-
-    switch (chip) {
-        case Bmi088Chip::ACC: {
-            _psCurrentPort = _ps1Port;
-            _psCurrentPin  = _ps1Pin;
-        } break;
-
-        case Bmi088Chip::GYRO: {
-            _psCurrentPort = _ps2Port;
-            _psCurrentPin  = _ps2Pin;
-        } break;
-
-        default: {
-            return BmiErr::PARAM_ERROR;
-        }
+BmiErr Bmi088::init(Bmi088AccRange accRange = Bmi088AccRange::RANGE_3G, Bmi088AccODR accODR = Bmi088AccODR::ODR_1600_HZ,
+                    Bmi088AccWidth accWidth   = Bmi088AccWidth::NORMAL,
+                    Bmi088GyroRange gyroRange = Bmi088GyroRange::RANGE_125_DPS,
+                    Bmi088GyroWidth gyroWidth = Bmi088GyroWidth::ODR_1000HZ_BW_116HZ) {
+    switch (accRange) {
+        case Bmi088AccRange::RANGE_3G:
+            _accRange = 3;
+            break;
+        case Bmi088AccRange::RANGE_6G:
+            _accRange = 6;
+            break;
+        case Bmi088AccRange::RANGE_12G:
+            _accRange = 12;
+            break;
+        case Bmi088AccRange::RANGE_24G:
+            _accRange = 24;
+            break;
     }
 
-
-    if (len == 0) {
-        return BmiErr::PARAM_ERROR;
+    switch (gyroRange) {
+        case Bmi088GyroRange::RANGE_125_DPS:
+            _gyroRange = 125;
+            break;
+        case Bmi088GyroRange::RANGE_250_DPS:
+            _gyroRange = 250;
+            break;
+        case Bmi088GyroRange::RANGE_500_DPS:
+            _gyroRange = 500;
+            break;
+        case Bmi088GyroRange::RANGE_1000_DPS:
+            _gyroRange = 1000;
+            break;
+        case Bmi088GyroRange::RANGE_2000_DPS:
+            _gyroRange = 2000;
+            break;
     }
 
-    _dmaTxBuf[0]         = regAddr | 0x80;
+    /* 1. 启用加速度计的SPI接口 */
+    __SELECT_ACC();
+    vTaskDelay(10);
+    __UNSELECT_ACC();
+    vTaskDelay(100);
 
-    _psCurrentPort->BSRR = _psCurrentPin << 16;
+    /* 2. 每次上电必须使能加速度计 */
 
-    if (HAL_SPI_TransmitReceive_DMA(_handle, _dmaTxBuf, _dmaRxBuf, len) != HAL_OK) {
-        return BmiErr::ERROR_IN_HAL;
+    writeGyroRegister(Bmi088GyroRegister::GYRO_SOFTRESET, 0xB6);
+    vTaskDelay(100);
+    writeAccRegister(Bmi088AccRegister::ACC_SOFTRESET, 0xB6);
+    vTaskDelay(100);
+    writeAccRegister(Bmi088AccRegister::ACC_PWR_CONF, 0x00);
+    vTaskDelay(100);
+    writeAccRegister(Bmi088AccRegister::ACC_PWR_CTRL, 0x04);
+    vTaskDelay(100);
+
+    /* 3. 读取ID验证 */
+    if (readAccRegister(Bmi088AccRegister::ACC_CHIP_ID) != 0x1E) {
+        return BmiErr::ERROR;
+    }
+    if (readGyroRegister(Bmi088GyroRegister::GYRO_CHIP_ID) != 0x0F) {
+        return BmiErr::ERROR;
     }
 
-    if (timeout) {
+    /* 4. 配置参数 */
+    writeAccRegister(Bmi088AccRegister::ACC_RANGE, (uint8_t)accRange);
+
+    writeAccRegister(Bmi088AccRegister::ACC_CONF, (uint8_t)accWidth << 4 | (uint8_t)accODR);
+
+    writeGyroRegister(Bmi088GyroRegister::GYRO_RANGE, (uint8_t)gyroRange);
+
+    writeGyroRegister(Bmi088GyroRegister::GYRO_BANDWIDTH, (uint8_t)gyroWidth);
 
 
-
-        if (!_waitForTransmitReceive(timeout)) {
-            return BmiErr::COMM_TIMEOUT;
-
-        }
-        _psCurrentPort->BSRR = _psCurrentPin;
-
-
+    /* 5. 读取验证参数 */
+    if (readAccRegister(Bmi088AccRegister::ACC_RANGE) != (uint8_t)accRange) {
+        return BmiErr::ERROR;
+    }
+    if (readAccRegister(Bmi088AccRegister::ACC_CONF) != ((uint8_t)accWidth << 4 | (uint8_t)accODR)) {
+        return BmiErr::ERROR;
+    }
+    if (readGyroRegister(Bmi088GyroRegister::GYRO_RANGE) != (uint8_t)gyroRange) {
+        return BmiErr::ERROR;
+    }
+    if (readGyroRegister(Bmi088GyroRegister::GYRO_BANDWIDTH) != ((uint8_t)gyroWidth | 0x80)) {
+        return BmiErr::ERROR;
     }
 
+    /* 6. 开启中断触发信号 */
+    writeAccRegister(Bmi088AccRegister::INT1_IO_CONF, 0x00);
 
-    return err;
-}
+    writeAccRegister(Bmi088AccRegister::INT1_INT2_MAP_DATA, 0x00);
 
+    writeGyroRegister(Bmi088GyroRegister::GYRO_INT_CTRL, 0x80);
 
-/**
- * @brief 寄存器写入, 用于驱动外的额外访问
- * @param chip 芯片片选
- * @param regAddr 寄存器地址
- * @param pData 数据地址
- * @param len 发送长度
- * @param timeout 超时，如果为零则是异步读取
- * @return 错误码
- */
-BmiErr Bmi088::readRegister(Bmi088Chip chip, uint8_t regAddr, void* pData, uint16_t len, uint32_t timeout) {
+    writeGyroRegister(Bmi088GyroRegister::INT3_INT4_IO_CONF, 0x01);
 
-    BmiErr err = BmiErr::SUCCESS;
+    writeGyroRegister(Bmi088GyroRegister::INT3_INT4_IO_MAP, 0x01);
 
+    _state             = BmiState::IDLE;
 
-    switch (chip) {
-        case Bmi088Chip::ACC: {
-            _psCurrentPort = _ps1Port;
-            _psCurrentPin  = _ps1Pin;
-        } break;
-
-        case Bmi088Chip::GYRO: {
-            _psCurrentPort = _ps2Port;
-            _psCurrentPin  = _ps2Pin;
-        } break;
-
-        default: {
-            return BmiErr::PARAM_ERROR;
-        }
-    }
-
-
-    if (len == 0) {
-        return BmiErr::PARAM_ERROR;
-    }
-
-
-    _dmaTxBuf[0]         = regAddr | 0x80;
-
-    _psCurrentPort->BSRR = _psCurrentPin << 16;
-
-    if (HAL_SPI_TransmitReceive_DMA(_handle, _dmaTxBuf, _dmaRxBuf, len) != HAL_OK) {
-        return BmiErr::ERROR_IN_HAL;
-    }
-
-    if (timeout) {
-
-
-        if (!_waitForTransmitReceive(timeout)) {
-            return BmiErr::COMM_TIMEOUT;
-        }
-
-        memcpy(pData, _dmaRxBuf, len);
-
-        return err;
-
-    }
-
-    const BmiRxOpt id(pData, len,  1);
-
-    _opts.push_back(id);
-
-
-    return err;
-}
-
-
-/**
- * @brief 写入寄存器
- * @param chip 芯片片选
- * @param regAddr 寄存器地址
- * @param pData 数据地址
- * @param len 发送长度
- * @param timeout 超时时间，如果为零为异步
- * @return 错误码
- */
-BmiErr Bmi088::writeRegister(Bmi088Chip chip, uint8_t regAddr, void* pData, uint16_t len, uint16_t timeout) {
-    BmiErr err = BmiErr::SUCCESS;
-    uint8_t* buf = reinterpret_cast<uint8_t*>(pData);
-
-
-    switch (chip) {
-        case Bmi088Chip::ACC: {
-            _psCurrentPort = _ps1Port;
-            _psCurrentPin  = _ps1Pin;
-        } break;
-
-        case Bmi088Chip::GYRO: {
-            _psCurrentPort = _ps2Port;
-            _psCurrentPin  = _ps2Pin;
-        } break;
-
-        default: {
-            return BmiErr::PARAM_ERROR;
-        }
-    }
-
-
-    if (len == 0) {
-        return BmiErr::PARAM_ERROR;
-    }
-
-    _dmaTxBuf[0]         = regAddr;
-    memcpy(&_dmaTxBuf[1], buf, len);
-
-
-    _psCurrentPort->BSRR = _psCurrentPin << 16;
-
-
-
-    if (HAL_SPI_Transmit_DMA(_handle, _dmaTxBuf, len + 1) != HAL_OK) {
-        return BmiErr::ERROR_IN_HAL;
-    };
-
-    if (timeout) {
-
-        if (!_waitForTransmit(timeout)) {
-            return BmiErr::COMM_TIMEOUT;
-        }
-
-    }
-
-    // 超时错误
-
-
-    return err;
-}
-
-/**
- * @brief 加速度计自检
- * @attention 未启用
- * @return
- */
-BmiErr Bmi088::accSelfCheck() {
-
-    _ps1Port->BSRR  = _psCurrentPin << 16;
-    _ps2Port->BSRR  = _psCurrentPin;
-
-    uint8_t txbuf[] = {0x41, 0x03, 0x40, 0xA7};
-    HAL_SPI_Transmit(_handle, txbuf, sizeof(txbuf), 0xFFFF);
-    _ps1Port->BSRR = _psCurrentPin;
-    __BMI_DELAY_MS(8);
-
-    txbuf[0] = 0x6D;
-    txbuf[1] = 0x0D;
-    HAL_SPI_Transmit(_handle, txbuf, 2, 0xFFFF);
-    _ps1Port->BSRR = _psCurrentPin;
-    __BMI_DELAY_MS(80);
-
-    uint16_t posX, posY, posZ, negX, negY, negZ;
-
-    for (uint8_t i = 0; i < 3; i++) {
-        txbuf[0] = static_cast<uint8_t>(Bmi088AccRegister::ACC_DATA) + i;
-        HAL_SPI_Transmit(_handle, txbuf, 1, 0xFFFF);
-    }
-
-    /* 不想写了 */
+    /* 7. 获取任务句柄 */
+    _processTaskHandle = xTaskGetCurrentTaskHandle();
 
     return BmiErr::SUCCESS;
 }
 
-/**
- * @brief 异步读取加速度计ID
- * @return
- */
-BmiErr Bmi088::readAccIDAsync() {
 
-    BmiErr err = BmiErr::SUCCESS;
 
-    err        = readRegister(Bmi088Chip::ACC, (uint8_t)Bmi088AccRegister::ACC_CHIP_ID, 3, 0);
 
-    if (err != BmiErr::SUCCESS) {
-        return err;
-    }
+uint8_t Bmi088::readAccRegister(Bmi088AccRegister reg) {
+    __SELECT_ACC();
+    _pDmaTxBuf[0] = static_cast<uint8_t>(reg) | 0x80;
+    HAL_SPI_TransmitReceive_DMA(_handle, _pDmaTxBuf, _pDmaRxBuf, 3);
+    xSemaphoreTake(_afterTransferCompleteSema, portMAX_DELAY);
+    __UNSELECT_ACC();
+    return _pDmaRxBuf[2];
+}
 
-    const BmiRxOpt id(&_accChipID, 1, 2);
-
-    _opts.push_back(id);
-
-    return err;
+uint8_t Bmi088::readGyroRegister(Bmi088GyroRegister reg) {
+    __SELECT_GYRO();
+    _pDmaTxBuf[0] = static_cast<uint8_t>(reg) | 0x80;
+    HAL_SPI_TransmitReceive_DMA(_handle, _pDmaTxBuf, _pDmaRxBuf, 2);
+    xSemaphoreTake(_afterTransferCompleteSema, portMAX_DELAY);
+    __UNSELECT_GYRO();
+    return _pDmaRxBuf[1];
+}
+void Bmi088::writeGyroRegister(Bmi088GyroRegister reg, uint8_t value) {
+    __SELECT_GYRO();
+    _pDmaTxBuf[0] = static_cast<uint8_t>(reg);
+    _pDmaTxBuf[1] = value;
+    HAL_SPI_Transmit_DMA(_handle, _pDmaTxBuf, 2);
+    xSemaphoreTake(_afterTxCompleteSema, portMAX_DELAY);
+    vTaskDelay(1); // 寄存器写入需要1us的延时，这里使用1ms
+    __UNSELECT_GYRO();
 }
 
 
-/**
- * @brief 异步读取陀螺仪数据
- * @return 错误码
- */
-BmiErr Bmi088::readGyroIDAsync() {
-    BmiErr err = BmiErr::SUCCESS;
+void Bmi088::writeAccRegister(Bmi088AccRegister reg, uint8_t value) {
+    __SELECT_ACC();
+    _pDmaTxBuf[0] = static_cast<uint8_t>(reg);
+    _pDmaTxBuf[1] = value;
+    HAL_SPI_Transmit_DMA(_handle, _pDmaTxBuf, 2);
+    xSemaphoreTake(_afterTxCompleteSema, portMAX_DELAY);
+    vTaskDelay(1); // 寄存器写入需要1us的延时，这里使用1ms
+    __UNSELECT_ACC();
+}
 
-    err        = readRegister(Bmi088Chip::GYRO, (uint8_t)Bmi088GyroRegister::GYRO_CHIP_ID, 2, 0);
+void Bmi088::waitingForData(TickType_t timeout) { ulTaskNotifyTake(pdTRUE, timeout); }
+void Bmi088::getImuData(ImuData& data) {
+    int16_t rawAccelx   = _rawAccData[1] << 8 | _rawAccData[0];
+    int16_t rawAccely   = _rawAccData[3] << 8 | _rawAccData[2];
+    int16_t rawAccelz   = _rawAccData[5] << 8 | _rawAccData[4];
 
-    if (err != BmiErr::SUCCESS) {
-        return err;
+
+    float factor        = (static_cast<float>(_accRange)) / 32768.0f * GRAVITY_EARTH;
+
+    data.accel.x        = factor * rawAccelx;
+    data.accel.y        = factor * rawAccely;
+    data.accel.z        = factor * rawAccelz;
+
+    int16_t rawGyrox    = _rawGyroData[1] << 8 | _rawGyroData[0];
+    int16_t rawGyroy    = _rawGyroData[3] << 8 | _rawGyroData[2];
+    int16_t rawGyroz    = _rawGyroData[5] << 8 | _rawGyroData[4];
+
+    factor              = static_cast<float>(_gyroRange) / 32767.0f;
+
+    data.rate.x         = factor * rawGyrox;
+    data.rate.y         = factor * rawGyroy;
+    data.rate.z         = factor * rawGyroz;
+
+    uint16_t tempUInt11 = (_rawTempData[0] << 3) | (_rawTempData[1] >> 5);
+
+    auto tempInt11      = static_cast<int16_t>(tempUInt11);
+    if (tempInt11 > 1023) {
+        tempInt11 -= 2048;
     }
 
-    const BmiRxOpt id(&_gyroChipID, 1, 1);
+    data.temperature = (static_cast<float>(tempInt11) * 0.125f) + 23.0f;
 
-    _opts.push_back(id);
-
-    return err;
+    data.timestamp   = _timestamp;
 }
 
 
-/**
- * @brief 同步读取六轴数据
- * @param avX X轴角速度变量地址
- * @param avY Y轴角速度变量地址
- * @param avZ Z轴角速度变量地址
- * @param aX X轴加速度变量地址
- * @param aY Y轴加速度变量地址
- * @param aZ Z轴加速度变量地址
- * @param timeout 超时时间，不得为零
- * @return 错误码
- */
-BmiErr Bmi088::updateGyroAndAccSync(uint16_t* avX, uint16_t* avY, uint16_t* avZ, uint16_t* aX, uint16_t* aY,
-                                    uint16_t* aZ, uint32_t timeout) {
-    BmiErr err = BmiErr::SUCCESS;
-
-    if (timeout == 0) {
-        return BmiErr::PARAM_ERROR;
-    }
-
-    uint8_t temp[12];
-    for (uint8_t i = 0; i < 6; i += 2) {
-        err = readRegister(Bmi088Chip::GYRO, (uint8_t)Bmi088GyroRegister::RATE_DATA + i, 2, timeout);
-        if (err != BmiErr::SUCCESS) {
-            return err;
-        }
-
-        temp[i] = _dmaRxBuf[0];
-
-        err     = readRegister(Bmi088Chip::ACC, (uint8_t)Bmi088AccRegister::ACC_DATA + i, 2, timeout);
-        if (err != BmiErr::SUCCESS) {
-            return err;
-        }
-
-        temp[i + 6] = _dmaRxBuf[0];
-    }
-
-    *avX               = temp[0] | temp[1] << 8;
-
-    _angularVelocity.x = *avX;
-
-    *avY               = temp[2] | temp[3] << 8;
-
-    _angularVelocity.y = *avY;
-
-    *avZ               = temp[4] | temp[5] << 8;
-
-    _angularVelocity.z = *avZ;
-
-    *aX                = temp[6] | temp[7] << 8;
-
-    _acceleration.x    = *aX;
-
-    *aY                = temp[8] | temp[9] << 8;
-
-    _acceleration.y    = *aY;
-
-    *aZ                = temp[10] | temp[11] << 8;
-
-    _acceleration.z    = *aZ;
-
-    return err;
+void Bmi088::onTxComplete() {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(_afterTxCompleteSema, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
+void Bmi088::onTransferComplete() {
 
-BmiErr Bmi088::updateGyroAndAccSync(void* pData, uint32_t timeout) {
-    BmiErr err = BmiErr::SUCCESS;
+    switch (_state) {
+        case BmiState::READING_GYRO: {
+            _state = BmiState::READING_ACCEL;
+            __UNSELECT_GYRO();
+            _rawGyroData[0] = _pDmaRxBuf[1];
+            _rawGyroData[1] = _pDmaRxBuf[2];
+            _rawGyroData[2] = _pDmaRxBuf[3];
+            _rawGyroData[3] = _pDmaRxBuf[4];
+            _rawGyroData[4] = _pDmaRxBuf[5];
+            _rawGyroData[5] = _pDmaRxBuf[6];
+            __SELECT_ACC();
+            _pDmaTxBuf[0] = static_cast<uint8_t>(Bmi088AccRegister::ACC_DATA) | 0x80;
+            HAL_SPI_TransmitReceive_DMA(_handle, _pDmaTxBuf, _pDmaRxBuf, 8);
+        } break;
 
-    if (timeout == 0) {
-        return BmiErr::PARAM_ERROR;
-    }
+        case BmiState::READING_ACCEL: {
+            _state = BmiState::READING_TEMP;
+            __UNSELECT_ACC();
+            _rawAccData[0] = _pDmaRxBuf[2];
+            _rawAccData[1] = _pDmaRxBuf[3];
+            _rawAccData[2] = _pDmaRxBuf[4];
+            _rawAccData[3] = _pDmaRxBuf[5];
+            _rawAccData[4] = _pDmaRxBuf[6];
+            _rawAccData[5] = _pDmaRxBuf[7];
+            __SELECT_ACC();
+            _pDmaTxBuf[0] = static_cast<uint8_t>(Bmi088AccRegister::TEMPERATURE_SENSOR_DATA) | 0x80;
+            HAL_SPI_TransmitReceive_DMA(_handle, _pDmaTxBuf, _pDmaRxBuf, 4);
+        } break;
 
-    if (pData == nullptr) {
-        return BmiErr::ADDR_NULL;
-    }
+        case BmiState::READING_TEMP: {
+            _state = BmiState::IDLE;
+            __UNSELECT_ACC();
+            _rawTempData[0]                     = _pDmaRxBuf[2];
+            _rawTempData[1]                     = _pDmaRxBuf[3];
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    uint8_t* temp = reinterpret_cast<uint8_t*>(pData);
-
-
-    err = readRegister(Bmi088Chip::GYRO, (uint8_t)Bmi088GyroRegister::RATE_DATA, 7, timeout);
-
-
-    if ( err != BmiErr::SUCCESS ) {
-        return err;
-    }
-    memcpy(temp, _dmaRxBuf + 1, 6);
-
-
-    err = readRegister(Bmi088Chip::ACC, (uint8_t)Bmi088AccRegister::ACC_DATA, 8, timeout);
-
-    if (err != BmiErr::SUCCESS) {
-        return err;
-    }
-
-    memcpy(temp + 6, _dmaRxBuf + 2, 6);
-
-    return err;
-}
+            vTaskNotifyGiveFromISR(_processTaskHandle, &xHigherPriorityTaskWoken);
 
 
+        } break;
 
-
-/**
- * @brief 异步读取回调
- * @return
- */
-BmiErr Bmi088::asyncRxCallback() {
-    BmiErr err           = BmiErr::SUCCESS;
-
-    _psCurrentPort->BSRR = _psCurrentPin;
-
-    uint8_t index        = 0;
-    uint16_t cnt = 0;
-    for (auto& eachOpt : _opts) {
-        memcpyReverseOrder(eachOpt.getPData(), index + _dmaRxBuf + eachOpt.getOffset(), eachOpt.getLen());
-        index += eachOpt.getLen();
-
-        if (cnt++ >= BMI_DMA_BUF_LEN) {
-            return BmiErr::PARAM_ERROR;
+        default: {
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xSemaphoreGiveFromISR(_afterTransferCompleteSema, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
     }
-
-    _opts.clear();
-
-    return err;
 }
 
-/**
- * @brief 异步写入回调
- * @return
- */
-BmiErr Bmi088::asyncTxCallback() {
-    _psCurrentPort->BSRR = _psCurrentPin;
+void Bmi088::onExti() {
 
-    return BmiErr::SUCCESS;
+    if (_state == BmiState::IDLE) {
+        __SELECT_GYRO();
+        _timestamp    = xTaskGetTickCountFromISR();
+        _pDmaTxBuf[0] = static_cast<uint8_t>(Bmi088GyroRegister::RATE_DATA) | 0x80;
+        HAL_SPI_TransmitReceive_DMA(_handle, _pDmaTxBuf, _pDmaRxBuf, 7);
+        _state = BmiState::READING_GYRO;
+    }
 }
