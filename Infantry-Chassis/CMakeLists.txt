@@ -50,8 +50,15 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
 
         "../Solution/main.cpp"
-
         "../Solution/Application/app-led.cpp"
+        "../Solution/Application/app-imu.cpp"
+
+        "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
+
+        # Third part sources
+
+            # PYRo
+
 
 )
 

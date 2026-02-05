@@ -315,7 +315,7 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>4</Optim>
+            <Optim>1</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
@@ -390,6 +390,21 @@
               <FileType>8</FileType>
               <FilePath>..\..\Solution\Application\app-led.cpp</FilePath>
             </File>
+            <File>
+              <FileName>app-imu.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\..\Solution\Application\app-imu.cpp</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Solution/Board-Support-Pack</GroupName>
+          <Files>
+            <File>
+              <FileName>dev-bmi.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\..\Solution\Board-Support-Pack\BMI088\dev-bmi.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -444,6 +459,16 @@
               <FileName>stm32h7xx_hal_timebase_tim.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32h7xx_hal_timebase_tim.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>tim.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\tim.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -539,6 +564,16 @@
               <FileName>stm32h7xx_hal_exti.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_exti.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32h7xx_hal_spi_ex.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_spi_ex.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32h7xx_hal_spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Drivers\STM32H7xx_HAL_Driver\Src\stm32h7xx_hal_spi.c</FilePath>
             </File>
           </Files>
         </Group>

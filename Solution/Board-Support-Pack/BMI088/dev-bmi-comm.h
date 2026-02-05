@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    datahub.h
+ * @file    dev-bmi-comm.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/4
+ * @date    2025/11/26
  * @version 1.0
  *******************************************************************************
  */
@@ -22,16 +22,12 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CHASSIS_DATAHUB_H
-#define INFANTRY_CHASSIS_DATAHUB_H
+#ifndef H723VG_BMI08X_DEV_BMI_COMM_H
+#define H723VG_BMI08X_DEV_BMI_COMM_H
 
 
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
-
-#include "subscriber.h"
-#include "messages.h"
-#include "../defs.h"
 
 
 
@@ -43,23 +39,7 @@
 
 /*-------- 3. interface ----------------------------------------------------------------------------------------------*/
 
-class DataHub {
-  public:
-    // 获取单例实例
-    static DataHub* Get() {
-        static DataHub instance;
-        return &instance;
-    }
 
-    // --- 定义所有的话题 ---
-    Topic<ImuData> IMU;
-    // Topic<MotorCmd> Motors;
-    // Topic<RemoteData> Remote; // 以后加...
-
-  private:
-    DataHub() = default; // 私有构造
-    DISALLOW_COPY_AND_ASSIGN(DataHub);
-};
 
 
 /*-------- 4. decorator ----------------------------------------------------------------------------------------------*/
@@ -73,4 +53,4 @@ class DataHub {
 
 
 
-#endif /*INFANTRY_CHASSIS_DATAHUB_H*/
+#endif /*H723VG_BMI08X_DEV_BMI_COMM_H*/

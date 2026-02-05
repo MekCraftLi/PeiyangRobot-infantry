@@ -177,6 +177,7 @@ class StaticAppBase : public IApplication {
     QueueHandle_t _commQueue;               // 进程通信队列句柄
     StaticQueue_t _staticQueue{};           // 静态队列空间
     float _runTime = 0;                     // 运行时间统计
+    inline static uint8_t _inited = 0;
 
 
 
@@ -198,6 +199,7 @@ class StaticAppBase : public IApplication {
 
         threadObj->init();
         threadObj->initEvent();
+        _inited = 1;
         for (;;) {
             threadObj->run();
             vTaskDelayUntil(&xLastExecutionTime, kPeriodTicks);
