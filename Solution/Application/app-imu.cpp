@@ -26,7 +26,7 @@
 
 #define IMU_SPI_HANDLE     hspi2
 
-// 定义片选引脚 (根据原理图)
+
 #define ACCEL_CS_GPIO_Port GPIOC
 #define ACCEL_CS_Pin       GPIO_PIN_0
 #define GYRO_CS_GPIO_Port  GPIOC
@@ -65,19 +65,9 @@
 
 static __attribute__((section(".dma_pool"))) uint8_t rxBuf[64];
 static __attribute__((section(".dma_pool"))) uint8_t txBuf[64];
-static __attribute__((section(".dma_pool"))) uint8_t range;
-static __attribute__((section(".dma_pool"))) uint16_t temp1;
-typedef union {
-    struct __attribute__((packed)) {
-        uint8_t lsb; // 最低的 8 bits
-        uint8_t msb; // 高 3 bits（位7~5）
-    };
-    struct __attribute__((packed)) {
-        int16_t temp11 : 11; // 11bit signed
-    };
-} temp_raw11_t;
 
-static __attribute__((section(".dma_pool"))) temp_raw11_t temp_raw11;
+ImuData data;
+uint32_t exeTimeUs;
 
 
 
@@ -109,9 +99,6 @@ static ImuApp imuApp;
 
 /* ------- function prototypes ---------------------------------------------------------------------------------------*/
 
-bool waitForReceive(uint32_t timeout);
-bool waitForTransmit(uint32_t timeout);
-bool waitForTransmitReceive(uint32_t timeout);
 
 
 
@@ -131,12 +118,11 @@ ImuApp& ImuApp::instance() { return imuApp; }
 
 void ImuApp::init() {
     HAL_TIM_Base_Start(&htim23);
-    _bmi088.init(Bmi088AccRange::RANGE_3G, Bmi088AccODR::ODR_200_HZ, Bmi088AccWidth::OSR2, Bmi088GyroRange::RANGE_125_DPS, Bmi088GyroWidth::ODR_1000HZ_BW_116HZ);
+    _bmi088.init(Bmi088AccRange::RANGE_3G, Bmi088AccODR::ODR_200_HZ, Bmi088AccWidth::OSR2,
+                 Bmi088GyroRange::RANGE_125_DPS, Bmi088GyroWidth::ODR_1000HZ_BW_116HZ);
 }
 
 
-ImuData data;
-uint32_t exeTimeUs;
 
 void ImuApp::run() {
     uint32_t lastTime = TIM23->CNT;
@@ -146,7 +132,7 @@ void ImuApp::run() {
 
 
 
-    exeTimeUs  = TIM23->CNT - lastTime;
+    exeTimeUs = TIM23->CNT - lastTime;
 }
 
 
@@ -183,12 +169,3 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         imuApp._bmi088.onExti();
     }
 }
-
-
-bool waitForReceive(uint32_t timeout) { return xSemaphoreTake(imuApp._waitForReceive, timeout); }
-
-bool waitForTransmit(uint32_t timeout) { return xSemaphoreTake(imuApp._waitForTransmit, timeout); }
-
-bool waitForTransmitReceive(uint32_t timeout) { return xSemaphoreTake(imuApp._waitForTransmitReceive, timeout); }
-
-

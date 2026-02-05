@@ -213,7 +213,6 @@ class StaticAppBase : public IApplication {
 
     [[noreturn]] static void _taskEntryWithoutDelay(void* pvParameters) {
         auto* threadObj               = static_cast<StaticAppBase*>(pvParameters);
-        const TickType_t kPeriodTicks = pdMS_TO_TICKS(threadObj->_taskInfo.periodMs);
 
         threadObj->init();
         threadObj->initEvent();
