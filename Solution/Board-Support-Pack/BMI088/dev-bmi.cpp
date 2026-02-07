@@ -70,15 +70,6 @@
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 
 
-static void memcpyReverseOrder(void* dest, const void* src, size_t len) {
-    auto d           = static_cast<uint8_t*>(dest);
-    const uint8_t* s = static_cast<const uint8_t*>(src) + len - 1;
-
-    while (len--) {
-        *d++ = *s--;
-    }
-}
-
 Bmi088::Bmi088(SPI_HandleTypeDef* spiHandle, GPIO_TypeDef* accCsPort, GPIO_TypeDef* gyroCsPort, uint16_t accCsPin,
                uint16_t gyroCsPin, uint8_t* pDmaTxBuf, uint8_t* pDmaRxBuf)
     : _handle(spiHandle), _pDmaTxBuf(pDmaTxBuf), _pDmaRxBuf(pDmaRxBuf), _accCsPort(accCsPort), _gyroCsPort(gyroCsPort),

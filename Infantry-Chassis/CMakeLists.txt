@@ -43,6 +43,7 @@ add_subdirectory(cmake/stm32cubemx)
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 
+
 )
 
 # Add sources to executable
@@ -52,8 +53,11 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/main.cpp"
         "../Solution/Application/app-led.cpp"
         "../Solution/Application/app-imu.cpp"
+        "../Solution/Application/app-host.cpp"
+        "../Solution/Application/app-can.cpp"
 
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
+        "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
 
         # Third part sources
 
@@ -65,6 +69,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
+    ${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/TinyUSB/src
 
 )
 
