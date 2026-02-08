@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    datahub.h
+ * @file    messages.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -22,17 +22,14 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CHASSIS_DATAHUB_H
-#define INFANTRY_CHASSIS_DATAHUB_H
+#ifndef INFANTRY_CHASSIS_MESSAGES_H
+#define INFANTRY_CHASSIS_MESSAGES_H
 
 
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
-#include "subscriber.h"
-#include "messages.h"
-#include "../defs.h"
-
+#include <cstdint>
 
 
 
@@ -40,26 +37,9 @@
 
 
 
-
 /*-------- 3. interface ----------------------------------------------------------------------------------------------*/
 
-class DataHub {
-  public:
-    // 获取单例实例
-    static DataHub* Get() {
-        static DataHub instance;
-        return &instance;
-    }
 
-    // --- 定义所有的话题 ---
-    Topic<ImuData> IMU;
-    // Topic<MotorCmd> Motors;
-    // Topic<RemoteData> Remote; // 以后加...
-
-  private:
-    DataHub() = default; // 私有构造
-    DISALLOW_COPY_AND_ASSIGN(DataHub);
-};
 
 
 /*-------- 4. decorator ----------------------------------------------------------------------------------------------*/
@@ -73,4 +53,4 @@ class DataHub {
 
 
 
-#endif /*INFANTRY_CHASSIS_DATAHUB_H*/
+#endif /*INFANTRY_CHASSIS_MESSAGES_H*/

@@ -80,14 +80,13 @@ public:
     }
 
     void PublishFromISR(const T& data) {
-        if (m_mutex) {
-            BaseType_t higher;
-            xSemaphoreTakeFromISR(m_mutex, &higher);
-            for (auto target_queue : m_subscribers) {
-                xQueueSendFromISR(target_queue, &data, 0);
-            }
-            xSemaphoreGiveFromISR(m_mutex, &higher);
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        for (auto q : m_subscribers) {
+            // 使用 FromISR 版本，且不阻塞
+            xQueueSendFromISR(q, &data, &xHigherPriorityTaskWoken);
         }
+        // 如果唤醒了高优先级任务，请求上下文切换
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
 
 private:
