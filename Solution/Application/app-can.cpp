@@ -57,6 +57,10 @@
 
 /* ------- variables -------------------------------------------------------------------------------------------------*/
 
+pyro::can_drv_t candrv1(&hfdcan1);
+pyro::can_drv_t candrv2(&hfdcan2);
+pyro::can_drv_t candrv3(&hfdcan3);
+
 
 
 
@@ -71,7 +75,7 @@
 
 #define APPLICATION_PRIORITY   4
 
-#define APPLICATION_PERIOD_MS  1
+#define APPLICATION_PERIOD_MS  100
 
 static StackType_t appStack[APPLICATION_STACK_SIZE];
 
@@ -108,10 +112,18 @@ CanApp& CanApp::instance() {
 
 void CanApp::init() {
     /* driver object initialize */
+
+    candrv1.init().start();
+    candrv2.init().start();
+    candrv3.init().start();
+
+
 }
 
-
+uint8_t can_data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 void CanApp::run() {
+
+    candrv1.send_msg(0x202, can_data);
  
 }
 

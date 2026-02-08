@@ -50,7 +50,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
 
-        "../Solution/main.cpp"
+        "../Solution/app-main.cpp"
         "../Solution/Application/app-led.cpp"
         "../Solution/Application/app-imu.cpp"
         "../Solution/Application/app-host.cpp"
@@ -62,6 +62,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         # Third part sources
 
             # PYRo
+        "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Peripheral/CAN/pyro_can_drv.cpp"
 
 
 )
@@ -69,7 +70,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-    ${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/TinyUSB/src
+    "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/TinyUSB/src"
+        "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo"
 
 )
 

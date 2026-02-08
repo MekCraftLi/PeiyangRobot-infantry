@@ -34,7 +34,7 @@
 
 /* I. interface */
 
-#include "application-base.h"
+#include "../System/RTOS/application-base.h"
 
 /* II. OS */
 
@@ -43,6 +43,8 @@
 
 
 /* IV. drivers */
+
+#include "Peripheral/CAN/pyro_can_drv.h"
 
 
 /* V. standard lib */
