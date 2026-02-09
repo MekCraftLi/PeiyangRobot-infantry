@@ -1,7 +1,7 @@
 /**
  *******************************************************************************
- * @file    iio-type.h
- * @brief   用于定义IIO设备的物理量
+ * @file    iio-device.h
+ * @brief   简要描述
  *******************************************************************************
  * @attention
  *
@@ -22,49 +22,45 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CHASSIS_IIO_TYPE_H
-#define INFANTRY_CHASSIS_IIO_TYPE_H
+#ifndef INFANTRY_CHASSIS_IIO_DEVICE_H
+#define INFANTRY_CHASSIS_IIO_DEVICE_H
 
 
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
-#include <cstdint>
+#include "iio-type.h"
 
 
 
 /*-------- 2. enum and define ----------------------------------------------------------------------------------------*/
 
-/**
- * @brief 物理量类型 (IIO Type)
- * 严格遵循 SI 国际单位制
- */
-enum class IIOType : uint8_t {
-    ACCEL,          // 加速度 (m/s^2)
-    ANGL_VEL,       // 角速度 (rad/s) - Gyro
-    MAGN,           // 磁场 (Gauss 或 Tesla，需统一)
-    TEMP,           // 温度 (°C)
-    VOLTAGE,        // 电压 (V)
-    CURRENT,        // 电流 (A)
-    TIMESTAMP       // 时间戳(ms)
-};
 
-/**
- * @brief 通道修饰符 (Channel Modifier)
- */
-enum class IIOChan : uint8_t {
-    X,
-    Y,
-    Z,
-    TOTAL,          // 模长 (sqrt(x^2+y^2+z^2))
-    CH_0,           // 通用通道 0
-    CH_1,           // 通用通道 1
-    NONE            // 无修饰符 (如温度)
-};
 
 
 /*-------- 3. interface ----------------------------------------------------------------------------------------------*/
 
+class IIODevice {
+public:
+    virtual ~IIODevice() = default;
+
+    /**
+     * @brief 核心读取接口
+     * @param type    物理量类型 (如 ACCEL)
+     * @param chan    通道 (如 Z)
+     * @param out_val 输出值 (必须是 SI 单位)
+     * @return true 读取成功, false 设备不支持该通道
+     */
+    virtual bool ReadChannel(IIOType type, IIOChan chan, float& out_val) = 0;
+
+    /**
+     * @brief 获取设备名称 (用于调试或注册表查找)
+     */
+    const char* GetName() const { return m_name; }
+
+protected:
+    const char* m_name = "unknown";
+};
 
 
 
@@ -79,4 +75,4 @@ enum class IIOChan : uint8_t {
 
 
 
-#endif /*INFANTRY_CHASSIS_IIO_TYPE_H*/
+#endif /*INFANTRY_CHASSIS_IIO_DEVICE_H*/
