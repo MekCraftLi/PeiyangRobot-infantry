@@ -34,7 +34,7 @@
 
 /* I. interface */
 
-#include "../System/RTOS/application-base.h"
+#include "../System/Thread/application-base.h"
 
 /* II. OS */
 

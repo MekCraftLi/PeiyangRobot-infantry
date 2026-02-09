@@ -52,12 +52,18 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
         "../Solution/app-main.cpp"
         "../Solution/Application/app-led.cpp"
-        "../Solution/Application/app-imu.cpp"
         "../Solution/Application/app-host.cpp"
         "../Solution/Application/app-can.cpp"
 
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
         "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
+        "../Solution/Board-Support-Pack/DR16/dr16.cpp"
+
+
+        "../Solution/System/Service/inputService.cpp"
+        "../Solution/System/Service/app-imu.cpp"
+
+
 
         # Third part sources
 

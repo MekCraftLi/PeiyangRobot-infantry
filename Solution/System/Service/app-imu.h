@@ -34,22 +34,22 @@
 
 /* I. interface */
 
-#include "../System/RTOS/application-base.h"
+#include "../Thread/application-base.h"
 
 /* II. OS */
 
 
 /* III. middlewares */
 
-#include "../System/IPC/messages.h"
+#include "../IPC/messages.h"
 #include "semphr.h"
 
 
 /* IV. drivers */
 
-#include "../Board-Support-Pack/BMI088/dev-bmi.h"
-#include "tim.h"
+#include "../../Board-Support-Pack/BMI088/dev-bmi.h"
 #include "spi.h"
+#include "tim.h"
 
 /* V. standard lib */
 

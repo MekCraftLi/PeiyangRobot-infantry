@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    app-led.h
+ * @file    app-cmd.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/4
+ * @date    2026/2/9
  * @version 1.0
  *******************************************************************************
  */
@@ -22,8 +22,8 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CHASSIS_APP_LED_H
-#define INFANTRY_CHASSIS_APP_LED_H
+#ifndef INFANTRY_CHASSIS_APP_CMD_H
+#define INFANTRY_CHASSIS_APP_CMD_H
 
 
 
@@ -34,15 +34,24 @@
 
 /* I. interface */
 
-#include "../System/Thread/application-base.h"
+#include "../Thread/application-base.h"
 
 /* II. OS */
 
 
 /* III. middlewares */
-
+#include "../../Board-Support-Pack/DR16/dr16.h"
+#include "../Input/ControlImpl/control-impl-axis.h"
+#include "../Input/ControlImpl/control-impl-switch.h"
+#include "../Input/TriggerImpl/trigger-impl-hold.h"
+#include "../Input/TriggerImpl/trigger-impl-linear.h"
+#include "../Input/TriggerImpl/trigger-impl-match.h"
+#include "../Input/TriggerImpl/trigger-impl-pulse.h"
+#include "../Input/action.h"
 
 /* IV. drivers */
+
+#include "usart.h"
 
 
 /* V. standard lib */
@@ -58,9 +67,9 @@
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
-class LedApp final : public StaticAppBase {
+class CmdApp final : public StaticAppBase {
   public:
-    LedApp();
+    CmdApp();
 
     void init() override;
 
@@ -71,7 +80,7 @@ class LedApp final : public StaticAppBase {
     uint8_t rxMsg(void *msg, uint16_t size, TickType_t timeout)  override;
 
     /************ setter & getter ***********/
-    static LedApp& instance();
+    static CmdApp& instance();
 
 
   private:

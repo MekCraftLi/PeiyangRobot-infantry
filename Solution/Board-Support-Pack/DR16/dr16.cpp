@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    main.cpp
+ * @file    dr16.cpp
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/4
+ * @date    2026/2/9
  * @version 1.0
  *******************************************************************************
  */
@@ -28,7 +28,8 @@
 
 /* ------- include ---------------------------------------------------------------------------------------------------*/
 
-#include "System/Thread/application-base.h"
+#include "dr16.h"
+#include <cstdint>
 
 
 
@@ -53,7 +54,32 @@
 
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 
-extern "C" void ApplicationEntry() {
-    StaticAppBase::startApplications();
 
+
+RemoteDR16::RemoteDR16() // --- A. 初始化摇杆 (插入控件) ---
+                         // 这里的参数对应 DR16 的硬件特性: Min=364, Max=1684, Center=1024, Deadzone=20
+    : _axislx({364, 1684, 1024, 20, false}), _axisly({364, 1684, 1024, 20, false}),
+      _axisrx({364, 1684, 1024, 20, false}), _axisry({364, 1684, 1024, 20, false})
+
+      // --- B. 初始化开关 (插入控件) ---
+      // 映射表: 硬件值 1->Up, 3->Mid, 2->Down
+      ,
+      _swleft({{1, 0}, {3, 1}, {2, 2}}, 2) // 默认 Dwn
+      ,
+      _swright({{1, 0}, {3, 1}, {2, 2}}, 1) // 默认 Mid
+{}
+
+void RemoteDR16::updateRaw(const Dr16Data& raw) {
+    _axislx.updateRaw(raw.ch2);
+    _axisly.updateRaw(raw.ch3);
+    _axisrx.updateRaw(raw.ch0);
+    _axisry.updateRaw(raw.ch1);
+    _swleft.updateRaw(raw.s2);
+    _swright.updateRaw(raw.s1);
 }
+
+RemoteDR16& RemoteDR16::instance() {
+    static RemoteDR16 instance;
+    return instance;
+}
+
