@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    app-led.h
+ * @file    movtion-ctrl-app.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/4
+ * @date    2026/2/27
  * @version 1.0
  *******************************************************************************
  */
@@ -22,8 +22,8 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CHASSIS_APP_LED_H
-#define INFANTRY_CHASSIS_APP_LED_H
+#ifndef INFANTRY_CHASSIS_MOVTION_CTRL_APP_H
+#define INFANTRY_CHASSIS_MOVTION_CTRL_APP_H
 
 
 
@@ -35,6 +35,7 @@
 /* I. interface */
 
 #include "../System/Thread/application-base.h"
+#include "../tools/crtp.h"
 
 /* II. OS */
 
@@ -58,20 +59,16 @@
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
-class LedApp final : public StaticAppBase {
+class MovtionCtrlApp final : public PeriodicApp, public Singleton<MovtionCtrlApp> {
   public:
-    LedApp();
+    MovtionCtrlApp();
 
     void init() override;
 
     void run() override;
 
-    uint8_t rxMsg(void* msg, uint16_t size = 0) override;
-
-    uint8_t rxMsg(void *msg, uint16_t size, TickType_t timeout)  override;
-
     /************ setter & getter ***********/
-    static LedApp& instance();
+    
 
 
   private:

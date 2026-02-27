@@ -35,6 +35,7 @@
 /* I. interface */
 
 #include "../Thread/application-base.h"
+#include "../crtp.h"
 
 /* II. OS */
 
@@ -65,7 +66,7 @@
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
 
-class ImuApp final : public StaticAppBase {
+class ImuApp final : public NotifyApp, public Singleton<ImuApp> {
 public:
     ImuApp();
 
@@ -76,12 +77,7 @@ public:
 
     void run() override;
 
-    uint8_t rxMsg(void* msg, uint16_t size = 0) override;
-
-    uint8_t rxMsg(void* msg, uint16_t size, TickType_t timeout) override;
-
     /************ setter & getter ***********/
-    static ImuApp& instance();
 
 
 private:

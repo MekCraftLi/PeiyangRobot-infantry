@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    app-cmd.cpp
+ * @file    input.cpp
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -8,13 +8,13 @@
  * none
  *
  *******************************************************************************
- * @noteshus
+ * @note
  *
  * none
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/9
+ * @date    2026/2/27
  * @version 1.0
  *******************************************************************************
  */
@@ -28,14 +28,13 @@
 
 
 
-
 /* ------- include ---------------------------------------------------------------------------------------------------*/
 
 
 
 /* I. header */
 
-#include "inputService.h"
+#include "input.h"
 
 /* II. other application */
 
@@ -58,6 +57,8 @@
 
 /* ------- variables -------------------------------------------------------------------------------------------------*/
 
+[[maybe_unused]] static auto& forceInit = InputApp::instance();
+
 __attribute__((section(".dma_pool"))) static uint8_t rxbuf[32] = {0};
 
 static Dr16Data dr16Data;
@@ -75,25 +76,17 @@ InputAction Action_ModeSwitch; // 稍微复杂一点，处理三种模式
 
 RemoteDR16& remote = RemoteDR16::instance();
 
-
-
-
 /* ------- application attribute -------------------------------------------------------------------------------------*/
 
 #define APPLICATION_ENABLE     true
 
-#define APPLICATION_NAME       "Cmd"
+#define APPLICATION_NAME       "Input"
 
 #define APPLICATION_STACK_SIZE 512
 
 #define APPLICATION_PRIORITY   4
 
-#define APPLICATION_PERIOD_MS  10
-
 static StackType_t appStack[APPLICATION_STACK_SIZE];
-
-static CmdApp cmdApp;
-
 
 
 
@@ -112,23 +105,21 @@ static CmdApp cmdApp;
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 
 
-CmdApp::CmdApp()
-    : StaticAppBase(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY,
-                    APPLICATION_PERIOD_MS, 0, nullptr) {}
+InputApp::InputApp()
+    : NotifyApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE,  appStack, APPLICATION_PRIORITY){
+}
 
 
-CmdApp& CmdApp::instance() { return cmdApp; }
-
-
-void CmdApp::init() {
+void InputApp::init() {
+    /* driver object initialize */
     /* driver object initialize */
 
     /* 设置触发条件 */
-    // 设置线性触发器
+    // 1.设置线性触发器
     static TriggerLinear trigLinear = TriggerLinear(0.01f);
 
-
     /* 将动作系统，控件以及触发器进行绑定 */
+    // 2.将线性触发器绑定到右摇杆的X轴控件
     Action_MoveX.Bind(RemoteDR16::instance().getRightX(), &trigLinear);
 
 
@@ -137,34 +128,27 @@ void CmdApp::init() {
 }
 
 
-float vx;
-
-void CmdApp::run() {
-
+void InputApp::run() {
     // 更新遥控器数据
     RemoteDR16::instance().updateRaw(dr16Data);
-
-
-
-
 }
 
-
-
-uint8_t CmdApp::rxMsg(void* msg, uint16_t size) { return 0; }
-
-uint8_t CmdApp::rxMsg(void* msg, uint16_t size, TickType_t timeout) { return 0; }
 
 extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size) {
 
     memcpy(&dr16Data, rxbuf, Size);
 
     HAL_UARTEx_ReceiveToIdle_DMA(&REMOTE_UART, rxbuf, sizeof(rxbuf));
+
+
+    BaseType_t higherPriorityTaskWoken = pdFALSE;
+    forceInit.notifyFromISR(&higherPriorityTaskWoken);
 }
 
 extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
     // 1. 禁用 UART DMA
     HAL_UART_DMAStop(huart);
+
 
     // 2. 清除 UART 错误标志
     __HAL_UART_CLEAR_FEFLAG(huart);  // 帧错误

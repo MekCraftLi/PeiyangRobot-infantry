@@ -33,8 +33,8 @@ build/
 cmake*
 !*/CMakeLists.txt
 !CMakeLists.txt
-./managed_components/
-./Solution/ThirdParty/
+/managed_components/
+/Solution/ThirdParty/
 
 
 

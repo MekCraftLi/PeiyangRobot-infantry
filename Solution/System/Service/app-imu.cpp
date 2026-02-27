@@ -69,6 +69,8 @@ static __attribute__((section(".dma_pool"))) uint8_t txBuf[64];
 ImuData data;
 uint32_t exeTimeUs;
 
+[[maybe_unused]] static auto& app = ImuApp::instance();
+
 
 
 
@@ -78,15 +80,13 @@ uint32_t exeTimeUs;
 
 #define APPLICATION_NAME       "Imu"
 
-#define APPLICATION_STACK_SIZE 512
+#define APPLICATION_STACK_SIZE 1024
 
 #define APPLICATION_PRIORITY   4
 
 #define APPLICATION_PERIOD_MS  0
 
 static StackType_t appStack[APPLICATION_STACK_SIZE];
-
-static ImuApp imuApp;
 
 
 
@@ -107,13 +107,8 @@ static ImuApp imuApp;
 
 
 ImuApp::ImuApp()
-    : StaticAppBase(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY,
-                    APPLICATION_PERIOD_MS, 0, nullptr),
+    : NotifyApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY),
       _bmi088(&IMU_SPI_HANDLE, ACCEL_CS_GPIO_Port, GYRO_CS_GPIO_Port, ACCEL_CS_Pin, GYRO_CS_Pin, txBuf, rxBuf) {}
-
-
-ImuApp& ImuApp::instance() { return imuApp; }
-
 
 
 void ImuApp::init() {
@@ -123,49 +118,41 @@ void ImuApp::init() {
 }
 
 
-
 void ImuApp::run() {
     uint32_t lastTime = TIM23->CNT;
 
-    _bmi088.waitingForData(portMAX_DELAY);
     _bmi088.getImuData(data);
-
-
 
     exeTimeUs = TIM23->CNT - lastTime;
 }
 
 
-
-uint8_t ImuApp::rxMsg(void* msg, uint16_t size) { return 0; }
-uint8_t ImuApp::rxMsg(void* msg, uint16_t size, TickType_t timeout) { return 0; }
-
-
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef* hspi) {
-    if (hspi == &hspi2 && imuApp._inited) {
+    if (hspi == &hspi2) {
         GPIOC->BSRR                         = (ACCEL_CS_Pin | GYRO_CS_Pin);
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xSemaphoreGiveFromISR(imuApp._waitForReceive, &xHigherPriorityTaskWoken);
+        xSemaphoreGiveFromISR(app._waitForReceive, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
 }
 
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef* hspi) {
-    if (hspi == &hspi2 && imuApp._inited) {
-        imuApp._bmi088.onTxComplete();
+    if (hspi == &hspi2) {
+        app._bmi088.onTxComplete();
     }
 }
 
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi) {
-    if (hspi == &hspi2 && imuApp._inited) {
-        imuApp._bmi088.onTransferComplete();
+    if (hspi == &hspi2) {
+        app._bmi088.onTransferComplete();
     }
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    if (GPIO_Pin == GPIO_PIN_12 && imuApp._inited) {
-        imuApp._bmi088.onExti();
+    if (GPIO_Pin == GPIO_PIN_12 && app._inited) {
+        BaseType_t pxHigherPriorityTaskWoken;
+        ImuApp::instance().notifyFromISR(&pxHigherPriorityTaskWoken);
     }
 }

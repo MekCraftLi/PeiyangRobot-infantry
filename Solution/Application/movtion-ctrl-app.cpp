@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    app-host.cpp
+ * @file    movtion-ctrl-app.cpp
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/6
+ * @date    2026/2/27
  * @version 1.0
  *******************************************************************************
  */
@@ -34,7 +34,7 @@
 
 /* I. header */
 
-#include "app-host.h"
+#include "movtion-ctrl-app.h"
 
 /* II. other application */
 
@@ -57,7 +57,7 @@
 
 /* ------- variables -------------------------------------------------------------------------------------------------*/
 
-
+[[maybe_unused]] static auto& forceInit = MovtionCtrlApp::instance();
 
 
 
@@ -65,18 +65,13 @@
 
 #define APPLICATION_ENABLE     true
 
-#define APPLICATION_NAME       "Host"
+#define APPLICATION_NAME       "MovtionCtrl"
 
 #define APPLICATION_STACK_SIZE 512
 
 #define APPLICATION_PRIORITY   4
 
-#define APPLICATION_PERIOD_MS  1
-
 static StackType_t appStack[APPLICATION_STACK_SIZE];
-
-static HostApp hostApp;
-
 
 
 
@@ -96,36 +91,16 @@ static HostApp hostApp;
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 
 
-HostApp::HostApp()
-    : StaticAppBase(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE,  appStack, APPLICATION_PRIORITY, APPLICATION_PERIOD_MS, 0, nullptr){
+MovtionCtrlApp::MovtionCtrlApp()
+    : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE,  appStack, APPLICATION_PRIORITY, 1){
 }
 
 
-HostApp& HostApp::instance() {
-    return hostApp;
-}
-
-
-void HostApp::init() {
+void MovtionCtrlApp::init() {
     /* driver object initialize */
 }
 
 
-void HostApp::run() {
+void MovtionCtrlApp::run() {
  
 }
-
-
-
-uint8_t HostApp::rxMsg(void* msg, uint16_t size) {
-
-    return 0;
-}
-
-uint8_t HostApp::rxMsg(void* msg, uint16_t size, TickType_t timeout) {
-
-    return 0;
-}
-
-
-

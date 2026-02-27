@@ -226,6 +226,8 @@ void Bmi088::writeAccRegister(Bmi088AccRegister reg, uint8_t value) {
 }
 
 void Bmi088::waitingForData(TickType_t timeout) { ulTaskNotifyTake(pdTRUE, timeout); }
+
+
 void Bmi088::getImuData(ImuData& data) {
     int16_t rawAccelx   = _rawAccData[1] << 8 | _rawAccData[0];
     int16_t rawAccely   = _rawAccData[3] << 8 | _rawAccData[2];

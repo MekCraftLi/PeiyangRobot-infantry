@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    app-cmd.h
+ * @file    input.h.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/9
+ * @date    2026/2/27
  * @version 1.0
  *******************************************************************************
  */
@@ -22,8 +22,8 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CHASSIS_APP_CMD_H
-#define INFANTRY_CHASSIS_APP_CMD_H
+#ifndef INFANTRY_CHASSIS_INPUT_H_H
+#define INFANTRY_CHASSIS_INPUT_H_H
 
 
 
@@ -34,25 +34,25 @@
 
 /* I. interface */
 
-#include "../Thread/application-base.h"
+#include "../../../正常运行/System/Thread/application-base.h"
+#include "../../../正常运行/tools/crtp.h"
 
 /* II. OS */
 
 
 /* III. middlewares */
-#include "../../Board-Support-Pack/DR16/dr16.h"
-#include "../Input/ControlImpl/control-impl-axis.h"
-#include "../Input/ControlImpl/control-impl-switch.h"
-#include "../Input/TriggerImpl/trigger-impl-hold.h"
-#include "../Input/TriggerImpl/trigger-impl-linear.h"
-#include "../Input/TriggerImpl/trigger-impl-match.h"
-#include "../Input/TriggerImpl/trigger-impl-pulse.h"
-#include "../Input/action.h"
+#include "../../../正常运行/Board-Support-Pack/DR16/dr16.h"
+#include "../../../正常运行/System/Input/ControlImpl/control-impl-axis.h"
+#include "../../../正常运行/System/Input/ControlImpl/control-impl-switch.h"
+#include "../../../正常运行/System/Input/TriggerImpl/trigger-impl-hold.h"
+#include "../../../正常运行/System/Input/TriggerImpl/trigger-impl-linear.h"
+#include "../../../正常运行/System/Input/TriggerImpl/trigger-impl-match.h"
+#include "../../../正常运行/System/Input/TriggerImpl/trigger-impl-pulse.h"
+#include "../../../正常运行/System/Input/action.h"
+
 
 /* IV. drivers */
-
 #include "usart.h"
-
 
 /* V. standard lib */
 
@@ -67,20 +67,17 @@
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
-class CmdApp final : public StaticAppBase {
+class InputApp final : public NotifyApp, public Singleton<InputApp> {
   public:
-    CmdApp();
+    InputApp();
 
     void init() override;
 
     void run() override;
 
-    uint8_t rxMsg(void* msg, uint16_t size = 0) override;
-
-    uint8_t rxMsg(void *msg, uint16_t size, TickType_t timeout)  override;
 
     /************ setter & getter ***********/
-    static CmdApp& instance();
+    
 
 
   private:

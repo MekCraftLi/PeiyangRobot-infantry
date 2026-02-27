@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    datahub.h
+ * @file    data-def.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/4
+ * @date    2026/2/27
  * @version 1.0
  *******************************************************************************
  */
@@ -22,28 +22,24 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CHASSIS_DATAHUB_H
-#define INFANTRY_CHASSIS_DATAHUB_H
+#ifndef INFANTRY_CHASSIS_DATA_DEF_H
+#define INFANTRY_CHASSIS_DATA_DEF_H
 
 
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
-#include "subscriber.h"
-#include "messages.h"
-#include "../defs.h"
 
-
+#include "Component/Motor/pyro_dji_motor_drv.h"
 
 
 /*-------- 2. enum and define ----------------------------------------------------------------------------------------*/
-
 
 // ==========================================
 // 1. 意图区数据 (外界输入)
 // ==========================================
 
-// 原始遥控器数据 (独立于具体协议，方便未来把 DR16 换成 ELRS 或航模控)
+// 原始遥控器数据 (独立于具体协议)
 struct RcRawData {
     float right_x, right_y; // 右摇杆 (-1.0 ~ 1.0)
     float left_x,  left_y;  // 左摇杆 (-1.0 ~ 1.0)
@@ -80,7 +76,7 @@ struct MotorState {
     float pos;        // 角度 (rad)
     float vel;        // 角速度 (rad/s)
     float torque;     // 真实反馈力矩 (N.m) 或 电流 (A)
-    int8_t temp_c;    // 温度 (°C)
+    int8_t temp;    // 温度 (°C)
 };
 
 // 舵轮模块组合状态
@@ -150,4 +146,4 @@ struct ChassisTelemetry {
 
 
 
-#endif /*INFANTRY_CHASSIS_DATAHUB_H*/
+#endif /*INFANTRY_CHASSIS_DATA_DEF_H*/

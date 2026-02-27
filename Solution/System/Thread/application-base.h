@@ -42,189 +42,233 @@
 
 
 
+/* ------- task strategy ---------------------------------------------------------------------------------------------*/
+
+
+
 
 /* ------- class prototypes-------------------------------------------------------------------------------------------*/
 
+/**
+ * @brief 顶层应用接口
+ */
 class IApplication {
-  public:
-    virtual ~IApplication() {};
+public:
+    virtual ~IApplication() = default;
 
-    /**
-     * @brief 初始化线程所需资源
-     */
-    virtual void init()                                          = 0;
+    virtual void init() = 0;
+    virtual void run()  = 0;
 
-    /**
-     * @brief 线程主循环函数，由FreeRTOS Task调用
-     */
-    virtual void run()                                           = 0;
+    // 供内部 Task Entry 调用的主循环
+    virtual void taskLoop() = 0;
 
-
-    /**
-     * @brief 获取线程信息
-     */
     [[nodiscard]] virtual const char* getName() const            = 0;
     [[nodiscard]] virtual float getRunTime() const               = 0;
     [[nodiscard]] virtual uint32_t getStackHighWaterMark() const = 0;
     [[nodiscard]] virtual TaskHandle_t getTaskHandle() const     = 0;
 
-    virtual void initEvent()                                     = 0;
-    virtual void waitInit()                                      = 0;
+    virtual void initEvent() = 0;
+    virtual void waitInit()  = 0;
+};
 
+/* ===================================================================================================================*/
+/* 1. 核心基类 (仅负责纯粹的 OS 任务资源分配与统一启动，无任何通信杂质)                                                 */
+/* ===================================================================================================================*/
+
+class StaticAppBase : public IApplication {
   protected:
-    EventGroupHandle_t _initEvent = nullptr;
-
     class TaskInfo {
       public:
         TaskInfo(bool enable, const char* name, uint16_t stackSize, IApplication* pThread, UBaseType_t priority,
-                 uint32_t periodMs, TaskHandle_t* pTskHandle, StackType_t* stackBuf, StaticTask_t* pxTask)
+                 TaskHandle_t* pTskHandle, StackType_t* stackBuf, StaticTask_t* pxTask)
             : enable(enable), name(name), stackSize(stackSize), pThread(pThread), priority(priority),
-              periodMs(periodMs), pTskHandle(pTskHandle), stackBuf(stackBuf), pxTask(pxTask) {}
-        bool enable              = false;
-        const char* name         = nullptr;
-        uint16_t stackSize       = 0;
-        IApplication* pThread    = nullptr;
-        UBaseType_t priority     = 0;
-        uint32_t periodMs        = 0;
-        TaskHandle_t* pTskHandle = nullptr;
-        StackType_t* stackBuf    = nullptr;
-        StaticTask_t* pxTask     = nullptr;
+              pTskHandle(pTskHandle), stackBuf(stackBuf), pxTask(pxTask) {}
+
+        bool enable;
+        const char* name;
+        uint16_t stackSize;
+        IApplication* pThread;
+        UBaseType_t priority;
+        TaskHandle_t* pTskHandle;
+        StackType_t* stackBuf;
+        StaticTask_t* pxTask;
     };
 
     inline static std::vector<TaskInfo> _taskInfoRegistry;
 
-    float _cpuUsage   = 0;
-    float _stackUsage = 0;
-    float _timeUsage  = 0;
+    EventGroupHandle_t _initEvent = nullptr;
+    StaticEventGroup_t _staticEventGroup{};
+    TaskHandle_t _tskHandle = nullptr;
+    StaticTask_t _staticTask;
+    float _runTime = 0;
+    TaskInfo _taskInfo;
+    inline static uint8_t _inited = 0;
+
+  public:
+    StaticAppBase(bool enable, const char* name, uint16_t stackSize, StackType_t* stackBuf, UBaseType_t priority)
+        : _taskInfo(enable, name, stackSize, this, priority, &_tskHandle, stackBuf, &_staticTask) {
+        _initEvent = xEventGroupCreateStatic(&_staticEventGroup);
+        _taskInfoRegistry.push_back(_taskInfo);
+    }
+
+    static void startApplications() {
+        for (auto& eachApp : _taskInfoRegistry) {
+            if (eachApp.enable) {
+                *(eachApp.pTskHandle) = xTaskCreateStatic(_taskEntry, eachApp.name, eachApp.stackSize, eachApp.pThread,
+                                                          eachApp.priority, eachApp.stackBuf, eachApp.pxTask);
+            }
+        }
+    }
+
+    void initEvent() override { xEventGroupSetBits(_initEvent, 0x01); }
+    void waitInit() override { xEventGroupWaitBits(_initEvent, 0x01, pdFALSE, pdFALSE, portMAX_DELAY); }
+
+    [[nodiscard]] const char* getName() const override { return _taskInfo.name; }
+    [[nodiscard]] uint32_t getStackHighWaterMark() const override { return uxTaskGetStackHighWaterMark(_tskHandle); }
+    [[nodiscard]] TaskHandle_t getTaskHandle() const override { return _tskHandle; }
+    [[nodiscard]] float getRunTime() const override { return _runTime; }
+
+  private:
+
+    [[noreturn]] static void _taskEntry(void* pvParameters) {
+        auto* threadObj = static_cast<IApplication*>(pvParameters);
+        threadObj->init();
+        threadObj->initEvent();
+        _inited = 1;
+
+        // 多态调用子类实现的具体调度循环
+        threadObj->taskLoop();
+
+        vTaskDelete(nullptr);
+        for(;;){}
+    }
 };
 
+/* ===================================================================================================================*/
+/* 2. 调度特化类 (定义了不同任务的行为，并暴露出相应的外部接口)                                                          */
+/* ===================================================================================================================*/
 
 /**
- * 所有静态任务的基类
+ * @brief 周期任务 (无对外暴露接口)
  */
-class StaticAppBase : public IApplication {
+class PeriodicApp : public StaticAppBase {
+  protected:
+    uint32_t _periodMs;
+
+    void taskLoop() override {
+        TickType_t xLastExecutionTime = xTaskGetTickCount();
+        const TickType_t kPeriodTicks = pdMS_TO_TICKS(_periodMs);
+        for (;;) {
+            run();
+            vTaskDelayUntil(&xLastExecutionTime, kPeriodTicks);
+        }
+    }
+
+  public:
+    PeriodicApp(bool enable, const char* name, uint16_t stackSize, StackType_t* stackBuf, UBaseType_t priority, uint32_t periodMs)
+        : StaticAppBase(enable, name, stackSize, stackBuf, priority), _periodMs(periodMs) {}
+};
+
+/**
+ * @brief 连续任务 (无对外暴露接口)
+ */
+class ContinuousApp : public StaticAppBase {
+  protected:
+    void taskLoop() override {
+        for (;;) {
+            run();
+        }
+    }
+
+  public:
+    using StaticAppBase::StaticAppBase; // 继承构造函数
+};
+
+/**
+ * @brief 通知任务 (专有接口：notify, notifyFromISR)
+ */
+class NotifyApp : public StaticAppBase {
+  protected:
+    TickType_t _timeoutTicks;
+
+    void taskLoop() override {
+        for (;;) {
+            ulTaskNotifyTake(pdTRUE, _timeoutTicks);
+            run();
+        }
+    }
+
+  public:
+    NotifyApp(bool enable, const char* name, uint16_t stackSize, StackType_t* stackBuf, UBaseType_t priority, TickType_t timeoutTicks = portMAX_DELAY)
+        : StaticAppBase(enable, name, stackSize, stackBuf, priority), _timeoutTicks(timeoutTicks) {}
+
+    // --- 专有接口：仅通知任务拥有 ---
+    void notify() {
+        if (_tskHandle) xTaskNotifyGive(_tskHandle);
+    }
+
+    void notifyFromISR(BaseType_t* pxHigherPriorityTaskWoken) {
+        if (_tskHandle) vTaskNotifyGiveFromISR(_tskHandle, pxHigherPriorityTaskWoken);
+    }
+};
+
+/**
+ * @brief 队列任务 (专有接口：sendMsg, sendMsgFromISR，并独占队列资源)
+ */
+class QueueApp : public StaticAppBase {
   public:
     class IPCMsg {
       public:
-        IPCMsg() {};
+        IPCMsg() : pMsg(nullptr), msgLen(0) {}
         IPCMsg(void* pMsg, const uint16_t msgLen) : pMsg(pMsg), msgLen(msgLen) {}
         void* pMsg;
         uint16_t msgLen;
     };
 
+  protected:
+    QueueHandle_t _commQueue = nullptr;
+    StaticQueue_t _staticQueue{};
+    TickType_t _timeoutTicks;
+    IPCMsg _currentMsg; // 存放当前收到的消息供 run() 读取
 
-    /* 应用创建 */
-    StaticAppBase(bool enable, const char* name, uint16_t stackSize, StackType_t* stackBuf, UBaseType_t priority,
-                  uint32_t periodMs, uint16_t msgQueueSize, uint8_t* queueBuf)
-        : _taskInfo(enable, name, stackSize, this, priority, periodMs, &_tskHandle, stackBuf, &_staticTask),
-          _staticTask() {
-        /* event */
-        _initEvent = xEventGroupCreateStatic(&_staticEventGroup);
-
-        /* queue */
-        if (queueBuf != nullptr || msgQueueSize != 0) {
-            _commQueue = xQueueCreateStatic(msgQueueSize, sizeof(IPCMsg), queueBuf, &_staticQueue);
-        }
-
-        /* task */
-        _registerThread(_taskInfo);
-    }
-
-    /**
-     * @brief start all applications initialized.
-     */
-    static void startApplications() {
-        for (auto& eachApp : _taskInfoRegistry) {
-            if (eachApp.enable) {
-                if (eachApp.periodMs) {
-                    *(eachApp.pTskHandle) = xTaskCreateStatic(_taskEntry, eachApp.name, eachApp.stackSize, eachApp.pThread,
-                                                              eachApp.priority, eachApp.stackBuf, eachApp.pxTask);
-                } else {
-                    *(eachApp.pTskHandle) = xTaskCreateStatic(_taskEntryWithoutDelay, eachApp.name, eachApp.stackSize, eachApp.pThread,
-                                                              eachApp.priority, eachApp.stackBuf, eachApp.pxTask);
-                }
+    void taskLoop() override {
+        for (;;) {
+            if (xQueueReceive(_commQueue, &_currentMsg, _timeoutTicks) == pdTRUE) {
+                run();
+            } else {
+                _currentMsg.pMsg = nullptr;
+                _currentMsg.msgLen = 0;
+                run(); // 超时也会触发 run()，业务层通过 pMsg 是否为空判断
             }
         }
     }
 
-    /**
-     * @brief set the initialization event
-     */
-    void initEvent() override { xEventGroupSetBits(_initEvent, 0x01); }
-
-    /**
-     * @brief waiting for the initialization event of application
-     */
-    void waitInit() override { xEventGroupWaitBits(_initEvent, 0x01, pdFALSE, pdFALSE, portMAX_DELAY); }
-
-
-    virtual uint8_t rxMsg(void* msg, uint16_t size = 0) { return 0; }
-
-    virtual uint8_t rxMsg(void* msg, uint16_t size, TickType_t timeout) { return 0; }
-
-
-
-
-    /************* setter & getter **************/
-    [[nodiscard]] const char* getName() const override { return _taskInfo.name; }
-
-    [[nodiscard]] uint32_t getStackHighWaterMark() const override { return uxTaskGetStackHighWaterMark(_tskHandle); }
-
-    [[nodiscard]] TaskHandle_t getTaskHandle() const override { return _tskHandle; }
-
-    [[nodiscard]] float getRunTime() const override { return _runTime; }
-
-  protected:
-    TaskInfo _taskInfo;                     // 创建任务时候注册的任务信息
-    StaticEventGroup_t _staticEventGroup{}; // 静态事件组
-    TaskHandle_t _tskHandle = nullptr;      // 任务句柄
-    StaticTask_t _staticTask;               // 静态任务空间
-    QueueHandle_t _commQueue;               // 进程通信队列句柄
-    StaticQueue_t _staticQueue{};           // 静态队列空间
-    float _runTime = 0;                     // 运行时间统计
-    inline static uint8_t _inited = 0;
-
-
-
-  private:
-    /**
-     * @brief 注册任务
-     * @param taskInfo 任务信息
-     */
-    static void _registerThread(const TaskInfo& taskInfo) { _taskInfoRegistry.push_back(taskInfo); }
-
-    /**
-     * @brief 所有的任务的入口函数
-     * @param pvParameters 参数指针
-     */
-    [[noreturn]] static void _taskEntry(void* pvParameters) {
-        auto* threadObj               = static_cast<StaticAppBase*>(pvParameters);
-        TickType_t xLastExecutionTime = xTaskGetTickCount();
-        const TickType_t kPeriodTicks = pdMS_TO_TICKS(threadObj->_taskInfo.periodMs);
-
-        threadObj->init();
-        threadObj->initEvent();
-        _inited = 1;
-        for (;;) {
-            threadObj->run();
-            vTaskDelayUntil(&xLastExecutionTime, kPeriodTicks);
+  public:
+    QueueApp(bool enable, const char* name, uint16_t stackSize, StackType_t* stackBuf, UBaseType_t priority,
+             uint16_t msgQueueSize, uint8_t* queueBuf, TickType_t timeoutTicks = portMAX_DELAY)
+        : StaticAppBase(enable, name, stackSize, stackBuf, priority), _timeoutTicks(timeoutTicks) {
+        // 只有队列任务才会在构造时申请队列内存
+        if (queueBuf != nullptr && msgQueueSize != 0) {
+            _commQueue = xQueueCreateStatic(msgQueueSize, sizeof(IPCMsg), queueBuf, &_staticQueue);
         }
     }
 
-    [[noreturn]] static void _taskEntryWithoutDelay(void* pvParameters) {
-        auto* threadObj               = static_cast<StaticAppBase*>(pvParameters);
-
-        threadObj->init();
-        threadObj->initEvent();
-        _inited = 1;
-        for (;;) {
-            threadObj->run();
-        }
+    // --- 专有接口：仅队列任务拥有 ---
+    BaseType_t sendMsg(void* pMsg, uint16_t msgLen, TickType_t ticksToWait = 0) {
+        if (!_commQueue) return pdFAIL;
+        IPCMsg msg(pMsg, msgLen);
+        return xQueueSend(_commQueue, &msg, ticksToWait);
     }
+
+    BaseType_t sendMsgFromISR(void* pMsg, uint16_t msgLen, BaseType_t* pxHigherPriorityTaskWoken) {
+        if (!_commQueue) return pdFAIL;
+        IPCMsg msg(pMsg, msgLen);
+        return xQueueSendFromISR(_commQueue, &msg, pxHigherPriorityTaskWoken);
+    }
+
+    // 获取当前消息的便捷方法
+    const IPCMsg& getCurrentMsg() const { return _currentMsg; }
 };
-
-
-
 /* ------- macro -----------------------------------------------------------------------------------------------------*/
 
 
