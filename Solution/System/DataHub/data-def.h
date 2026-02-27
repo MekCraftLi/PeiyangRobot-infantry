@@ -123,8 +123,8 @@ struct GimbalState {
 // ==========================================
 
 struct ChassisOutput {
-    float drive_current[4]; // 4个动力轮目标电流 (A)
-    float steer_current[4]; // 4个航向舵目标电流 (A)
+    float driveCurrent[4]; // 4个动力轮目标电流 (A)
+    float steerCurrent[4]; // 4个航向舵目标电流 (A)
 };
 
 struct GimbalOutput {
@@ -142,8 +142,8 @@ struct ChassisTelemetry {
     float real_vx, real_vy, real_vw;
 
     // 运动学逆解 (Inverse Kinematics)：算出的 4个轮子预期打角和转速
-    float target_steer_angle[4];
-    float target_drive_spd[4];
+    float targetSteerAngle[4];
+    float targetDriveSpd[4];
 
     // 底盘功率观测器
     float estimated_power_w;     // 预估底盘总消耗功率 (Watt)

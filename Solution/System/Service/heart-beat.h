@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    app-imu.h
+ * @file    heart-beat.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/5
+ * @date    2026/2/28
  * @version 1.0
  *******************************************************************************
  */
@@ -22,8 +22,8 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CHASSIS_APP_IMU_H
-#define INFANTRY_CHASSIS_APP_IMU_H
+#ifndef INFANTRY_CHASSIS_HEART_BEAT_H
+#define INFANTRY_CHASSIS_HEART_BEAT_H
 
 
 
@@ -35,20 +35,16 @@
 /* I. interface */
 
 #include "../Thread/application-base.h"
-#include "../crtp.h"
+#include "../../tools/crtp.h"
 
 /* II. OS */
 
 
 /* III. middlewares */
-#include "semphr.h"
 
 
 /* IV. drivers */
 
-#include "../../Board-Support-Pack/BMI088/dev-bmi.h"
-#include "spi.h"
-#include "tim.h"
 
 /* V. standard lib */
 
@@ -63,50 +59,32 @@
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
-
-class ImuApp final : public NotifyApp, public Singleton<ImuApp> {
-public:
-    ImuApp();
+class HeartBeatApp final : public PeriodicApp, public Singleton<HeartBeatApp> {
+  public:
+    HeartBeatApp();
 
     void init() override;
-
-    void setIMUConfig(Bmi088AccRange, Bmi088AccODR, Bmi088AccWidth, Bmi088GyroRange, Bmi088GyroWidth);
-
 
     void run() override;
 
     /************ setter & getter ***********/
+    
 
 
-private:
+  private:
     /* message interface */
-
+    
     // 1. message queue
-
+    
     // 2. mutex
-
+    
     // 3. semphr
-    xSemaphoreHandle _waitForTransmit;
-    xSemaphoreHandle _waitForReceive;
-    xSemaphoreHandle _waitForTransmitReceive;
-
+    
     // 4. notify
-
+    
     // 5. stream or message
-
+    
     // 6. event group
-
-    /* drivers */
-    Bmi088 _bmi088;
-
-    friend void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
-    friend void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef* hspi);
-    friend void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef* hspi);
-    friend void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
-
-    friend bool waitForTransmit(uint32_t timeout);
-    friend bool waitForReceive(uint32_t timeout);
-    friend bool waitForTransmitReceive(uint32_t timeout );
 
 };
 #endif
@@ -117,15 +95,10 @@ extern "C" {
 #endif
 
     /* C Interface */
-    void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
-    void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef* hspi);
-    void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
 
 #ifdef __cplusplus
 }
 #endif
-
-
 
 
 

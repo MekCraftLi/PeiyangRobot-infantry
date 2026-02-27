@@ -36,6 +36,7 @@
 
 #include "../System/Thread/application-base.h"
 #include "../tools/crtp.h"
+#include "pyro_algo_pid.h"
 
 /* II. OS */
 
@@ -54,6 +55,13 @@
 
 /*-------- 2. enum ---------------------------------------------------------------------------------------------------*/
 
+struct PIDParam {
+    float kp;
+    float ki;
+    float kd;
+    float integralLimit;
+    float outputLimit;
+};
 
 
 
@@ -68,7 +76,18 @@ class MovtionCtrlApp final : public PeriodicApp, public Singleton<MovtionCtrlApp
     void run() override;
 
     /************ setter & getter ***********/
-    
+
+
+
+    pyro::pid_t* drive_spd_pid[4];
+    pyro::pid_t* steer_pos_pid[4];
+    pyro::pid_t* steer_spd_pid[4];
+
+    PIDParam drivePidParam[12];
+    PIDParam steerPosPidParam[12];
+    PIDParam steerSpdPidParam[12];
+
+
 
 
   private:

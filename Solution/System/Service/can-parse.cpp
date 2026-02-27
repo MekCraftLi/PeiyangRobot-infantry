@@ -153,5 +153,5 @@ void CanParseApp::run() {
 
     }
 
-    Blackboard::instance().chassis_state.Write(state);
+    Blackboard::instance().chassisState.Write(state);
 }

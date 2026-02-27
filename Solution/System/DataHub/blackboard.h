@@ -55,26 +55,26 @@ public:
     SeqVariable<RcRawData>    rc_other; // 其他输入源（如第二遥控器、上位机、图传链路等）
 
 
-    SeqVariable<ChassisCmd>   chassis_cmd;
+    SeqVariable<ChassisCmd>   chassisCmd;
     SeqVariable<GimbalCmd>    gimbal_cmd;
 
     // ----------------------------------------
     // [状态区] (主要由 CAN 接收任务 / SPI 中断 写入)
     // ----------------------------------------
     SeqVariable<ImuState>     imu_state;
-    SeqVariable<ChassisState> chassis_state;
+    SeqVariable<ChassisState> chassisState;
     SeqVariable<GimbalState>  gimbal_state;
 
     // ----------------------------------------
     // [输出区] (主要由 核心控制算法任务 写入)
     // ----------------------------------------
-    SeqVariable<ChassisOutput> chassis_out;
+    SeqVariable<ChassisOutput> chassisOut;
     SeqVariable<GimbalOutput>  gimbal_out;
 
     // ----------------------------------------
     // [中间区] (主要由 核心控制算法任务 同步写入)
     // ----------------------------------------
-    SeqVariable<ChassisTelemetry> chassis_telem;
+    SeqVariable<ChassisTelemetry> chassisTelem;
 
 private:
 

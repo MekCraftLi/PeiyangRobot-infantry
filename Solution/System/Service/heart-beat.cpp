@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    motor-tx.cpp
+ * @file    heart-beat.cpp
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/27
+ * @date    2026/2/28
  * @version 1.0
  *******************************************************************************
  */
@@ -34,12 +34,11 @@
 
 /* I. header */
 
-#include "motor-tx.h"
-#include "../DataHub/blackboard.h"
+#include "heart-beat.h"
+
+#include "pyro_dwt_drv.h"
 
 /* II. other application */
-
-#include "can-parse.h"
 
 
 /* III. standard lib */
@@ -60,7 +59,7 @@
 
 /* ------- variables -------------------------------------------------------------------------------------------------*/
 
-[[maybe_unused]] static auto& forceInit = MotorTxApp::instance();
+[[maybe_unused]] static auto& forceInit = HeartBeatApp::instance();
 
 
 
@@ -68,7 +67,7 @@
 
 #define APPLICATION_ENABLE     true
 
-#define APPLICATION_NAME       "MotorTx"
+#define APPLICATION_NAME       "HeartBeat"
 
 #define APPLICATION_STACK_SIZE 512
 
@@ -94,39 +93,17 @@ static StackType_t appStack[APPLICATION_STACK_SIZE];
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 
 
-MotorTxApp::MotorTxApp()
-    : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE,  appStack, APPLICATION_PRIORITY, 1){
+HeartBeatApp::HeartBeatApp()
+    : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE,  appStack, APPLICATION_PRIORITY, 1000){
 }
 
 
-void MotorTxApp::init() {
+void HeartBeatApp::init() {
     /* driver object initialize */
+    pyro::dwt_drv_t::init(550);
 }
 
 
-void MotorTxApp::run() {
-    // 1. 无锁极速读取黑板上的最新输出快照
-    ChassisOutput chas_out;
-    Blackboard::instance().chassisOut.Read(chas_out);
-
-    // 2. 直接调用 PYRo 框架提供的方法，下发物理期望值 (float)
-    for (int i = 0; i < 4; i++) {
-        if (CanParseApp::instance().drive[i]) {
-            // send_torque 内部会自动根据 20.0f 和 16384 的比例进行换算并限幅
-            //CanParseApp::instance().drive[i]->send_torque(chas_out.drive_current[i]);
-            CanParseApp::instance().drive[i]->send_torque(0);
-        }
-
-        if (CanParseApp::instance().steer[i]) {
-            // send_torque 内部会自动根据 3.0f 和 16384 的比例进行换算并限幅
-            //CanParseApp::instance().steer[i]->send_torque(chas_out.steer_current[i]);
-            CanParseApp::instance().steer[i]->send_torque(0);
-        }
-    }
-
-    // 循环结束时：
-    // PYRo 的 dji_motor_tx_frame_t 会自动检测到所有的 _update_list 均已就绪
-    // 并自动通过 CAN1/CAN2 将打包好的 0x200 (或者 GM6020的 0x1fe) 发送出去！
-
- 
+void HeartBeatApp::run() {
+ pyro::dwt_drv_t::get_timeline();
 }

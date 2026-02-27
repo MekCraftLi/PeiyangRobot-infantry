@@ -223,7 +223,7 @@ void CommanderApp::run() {
 
     // 【关键】先从黑板中 Read 出上一帧的历史指令。
     // 如果后续不修改它，写回的就是历史值，天然实现“状态无缝保留”。
-    Blackboard::instance().chassis_cmd.Read(final_chassis_cmd);
+    Blackboard::instance().chassisCmd.Read(final_chassis_cmd);
     Blackboard::instance().gimbal_cmd.Read(final_gimbal_cmd);
 
     switch (current_source) {
@@ -264,7 +264,7 @@ void CommanderApp::run() {
     /* ========================================================
      * 5. 发布层：将仲裁后的最终真理写入黑板
      * ======================================================== */
-    Blackboard::instance().chassis_cmd.Write(final_chassis_cmd);
+    Blackboard::instance().chassisCmd.Write(final_chassis_cmd);
     Blackboard::instance().gimbal_cmd.Write(final_gimbal_cmd);
 }
 extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size) {
