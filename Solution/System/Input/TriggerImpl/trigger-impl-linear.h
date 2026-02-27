@@ -49,7 +49,7 @@ public:
 
     TriggerState update(float value, float dt) override {
         if (std::abs(value) > _threshold) {
-            return TriggerState::None;
+            return TriggerState::Triggered;
         }
 
         return TriggerState::None;

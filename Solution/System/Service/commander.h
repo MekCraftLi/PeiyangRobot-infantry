@@ -34,21 +34,21 @@
 
 /* I. interface */
 
-#include "../../../正常运行/System/Thread/application-base.h"
-#include "../../../正常运行/tools/crtp.h"
-
+#include "../../../System/Thread/application-base.h"
+#include "../../../tools/crtp.h"
+#include "../DataHub/blackboard.h"
 /* II. OS */
 
 
 /* III. middlewares */
-#include "../../../正常运行/Board-Support-Pack/DR16/dr16.h"
-#include "../../../正常运行/System/Input/ControlImpl/control-impl-axis.h"
-#include "../../../正常运行/System/Input/ControlImpl/control-impl-switch.h"
-#include "../../../正常运行/System/Input/TriggerImpl/trigger-impl-hold.h"
-#include "../../../正常运行/System/Input/TriggerImpl/trigger-impl-linear.h"
-#include "../../../正常运行/System/Input/TriggerImpl/trigger-impl-match.h"
-#include "../../../正常运行/System/Input/TriggerImpl/trigger-impl-pulse.h"
-#include "../../../正常运行/System/Input/action.h"
+#include "../../../Board-Support-Pack/DR16/dr16.h"
+#include "../../../System/Input/ControlImpl/control-impl-axis.h"
+#include "../../../System/Input/ControlImpl/control-impl-switch.h"
+#include "../../../System/Input/TriggerImpl/trigger-impl-hold.h"
+#include "../../../System/Input/TriggerImpl/trigger-impl-linear.h"
+#include "../../../System/Input/TriggerImpl/trigger-impl-match.h"
+#include "../../../System/Input/TriggerImpl/trigger-impl-pulse.h"
+#include "../../../System/Input/action.h"
 
 
 /* IV. drivers */
@@ -67,9 +67,9 @@
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
-class InputApp final : public NotifyApp, public Singleton<InputApp> {
+class CommanderApp final : public PeriodicApp, public Singleton<CommanderApp> {
   public:
-    InputApp();
+    CommanderApp();
 
     void init() override;
 
@@ -95,6 +95,8 @@ class InputApp final : public NotifyApp, public Singleton<InputApp> {
     
     // 6. event group
 
+
+    TriggerLinear _joystickDeadzone; // 摇杆死区触发器
 };
 #endif
 

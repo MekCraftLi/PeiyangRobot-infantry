@@ -69,9 +69,7 @@ pyro::can_drv_t candrv2(&hfdcan2);
 pyro::can_drv_t candrv3(&hfdcan3);
 
 // 改为指针声明
-static pyro::dji_m3508_motor_drv_t* drive[4];
 
-static pyro::dji_gm_6020_motor_drv_t* steer[4];
 
 static uint8_t motorsIdx[4] = {3, 2, 4, 1};
 static pyro::can_hub_t::which_can motorsCan[4] = {pyro::can_hub_t::can2, pyro::can_hub_t::can1, pyro::can_hub_t::can2, pyro::can_hub_t::can1};
@@ -133,70 +131,6 @@ void CanParseApp::init() {
         steer[i] = new pyro::dji_gm_6020_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i, motorsCan[i]);
     }
 
-    //
-    // rud_cfg.pid.wheel_pid[0] =
-    //     new pid_t(20.0f, 0.1f, 0.00f, 1.00f, 20.0f);
-    // rud_cfg.pid.wheel_pid[1] =
-    //     new pid_t(20.0f, 0.1f, 0.00f, 1.00f, 20.0f);
-    // rud_cfg.pid.wheel_pid[2] =
-    //     new pid_t(20.0f, 0.1f, 0.00f, 1.00f, 20.0f);
-    // rud_cfg.pid.wheel_pid[3] =
-    //     new pid_t(20.0f, 0.1f, 0.00f, 1.00f, 20.0f);
-    //
-    // rud_cfg.pid.rud_pos_pid[0] =
-    //     new pid_t(15.0f, 0.0f, 0.00f, 0.0f, 10.0f);
-    // rud_cfg.pid.rud_pos_pid[1] =
-    //     new pid_t(15.0f, 0.0f, 0.00f, 0.0f, 10.0f);
-    // rud_cfg.pid.rud_pos_pid[2] =
-    //     new pid_t(15.0f, 0.0f, 0.00f, 0.0f, 10.0f);
-    // rud_cfg.pid.rud_pos_pid[3] =
-    //     new pid_t(15.0f, 0.0f, 0.00f, 0.0f, 10.0f);
-    //
-    // rud_cfg.pid.rud_spd_pid[0] =
-    //     new pid_t(0.3f, 0.0f, 0.00f, 0.0f, 3.0f);
-    // rud_cfg.pid.rud_spd_pid[1] =
-    //     new pid_t(0.3f, 0.0f, 0.00f, 0.0f, 3.0f);
-    // rud_cfg.pid.rud_spd_pid[2] =
-    //     new pid_t(0.3f, 0.0f, 0.00f, 0.0f, 3.0f);
-    // rud_cfg.pid.rud_spd_pid[3] =
-    //     new pid_t(0.3f, 0.0f, 0.00f, 0.0f, 3.0f);
-    //
-    // rud_cfg.pid.follow_yaw_pid =
-    //     new pid_t(3.6f, 0.01f, 0.003f, 0.1f, 5.0f);
-    //
-    // rud_cfg.rud_pos_moving_offset[0] = 1.01472831f;
-    // rud_cfg.rud_pos_moving_offset[1] = -0.29145637f;
-    // rud_cfg.rud_pos_moving_offset[2] = -1.87299052f;
-    // rud_cfg.rud_pos_moving_offset[3] = -1.04003897f;
-    //
-    // power_control_drv_t &power_controller = power_control_drv_t::get_instance(4);
-    // power_control_drv_t::motor_coefficient_t coef1;
-    // coef1.k1 = 0;
-    // coef1.k2 = 0;
-    // coef1.k3 = 0;
-    // coef1.k4 = 0;
-    // power_controller.set_motor_coefficient(1, coef1);
-    //
-    // power_control_drv_t::motor_coefficient_t coef2;
-    // coef2.k1 = 0;
-    // coef2.k2 = 0;
-    // coef2.k3 = 0;
-    // coef2.k4 = 0;
-    // power_controller.set_motor_coefficient(2, coef2);
-    //
-    // power_control_drv_t::motor_coefficient_t coef3;
-    // coef3.k1 = 0;
-    // coef3.k2 = 0;
-    // coef3.k3 = 0;
-    // coef3.k4 = 0;
-    // power_controller.set_motor_coefficient(3, coef3);
-    //
-    // power_control_drv_t::motor_coefficient_t coef4;
-    // coef4.k1 = 0;
-    // coef4.k2 = 0;
-    // coef4.k3 = 0;
-    // coef4.k4 = 0;
-    // power_controller.set_motor_coefficient(4, coef4);
 }
 
 

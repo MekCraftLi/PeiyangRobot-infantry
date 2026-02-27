@@ -49,6 +49,28 @@ struct RcRawData {
     uint32_t timestamp;
 };
 
+enum class ControlSource : uint8_t {
+    SAFE_STOP = 0, // 急停/无力 (最高优先级)
+    REMOTE    = 1, // 遥控器主导
+    VISION    = 2, // 视觉主导
+    KEYMOUSE  = 3  // 键鼠主导
+};
+
+// ==========================================
+// [新增] 模式枚举定义
+// ==========================================
+enum ChassisMode : uint8_t {
+    CHASSIS_RELAX = 0,       // 无力/急停模式
+    CHASSIS_RC    = 1,       // 遥控器手动控制模式 (速度环)
+    CHASSIS_AUTO  = 2,       // 自动/视觉/状态保留模式
+};
+
+enum GimbalMode : uint8_t {
+    GIMBAL_RELAX = 0,        // 无力模式
+    GIMBAL_RC    = 1,        // 遥控器控制模式 (速度环)
+    GIMBAL_AUTO  = 2,        // 视觉自瞄/绝对角度模式 (位置-速度串级环)
+};
+
 // 底盘与云台的宏观期望指令
 struct ChassisCmd {
     float vx, vy, vw;       // 期望速度 (m/s, rad/s)

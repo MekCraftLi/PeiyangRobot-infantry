@@ -74,8 +74,8 @@ void RemoteDR16::updateRaw(const Dr16Data& raw) {
     _axisly.updateRaw(raw.ch3);
     _axisrx.updateRaw(raw.ch0);
     _axisry.updateRaw(raw.ch1);
-    _swleft.updateRaw(raw.s2);
-    _swright.updateRaw(raw.s1);
+    _swleft.updateRaw(raw.s1);
+    _swright.updateRaw(raw.s2);
 }
 
 RemoteDR16& RemoteDR16::instance() {

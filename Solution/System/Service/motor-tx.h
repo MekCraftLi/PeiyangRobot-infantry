@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    can-parse.h
+ * @file    motor-tx.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -22,8 +22,8 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CAN_PARSE_H
-#define INFANTRY_CAN_PARSE_H
+#ifndef INFANTRY_CHASSIS_MOTOR_TX_H
+#define INFANTRY_CHASSIS_MOTOR_TX_H
 
 
 
@@ -34,9 +34,8 @@
 
 /* I. interface */
 
-#include "../../tools/crtp.h"
 #include "../Thread/application-base.h"
-#include "pyro_dji_motor_drv.h"
+#include "../../tools/crtp.h"
 
 /* II. OS */
 
@@ -60,9 +59,9 @@
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
-class CanParseApp final : public PeriodicApp, public Singleton<CanParseApp> {
+class MotorTxApp final : public PeriodicApp, public Singleton<MotorTxApp> {
   public:
-    CanParseApp();
+    MotorTxApp();
 
     void init() override;
 
@@ -70,13 +69,6 @@ class CanParseApp final : public PeriodicApp, public Singleton<CanParseApp> {
 
     /************ setter & getter ***********/
     
-
-
-
-
-    pyro::dji_m3508_motor_drv_t* drive[4];
-
-    pyro::dji_gm_6020_motor_drv_t* steer[4];
 
 
   private:

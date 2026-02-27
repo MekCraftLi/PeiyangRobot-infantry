@@ -52,39 +52,52 @@ public:
     InputAction() : m_state(TriggerState::None){}
 
     // 绑定物理输入源，并挂载触发器
-    void Bind(IInputControl* input_source, InputTrigger* trigger = nullptr) {
+    void bind(IInputControl* input_source, InputTrigger* trigger = nullptr) {
         m_bindings.push_back({input_source, trigger});
     }
 
     // 更新所有绑定 (由 Input_Task 调用)
-    void Update(float dt) {
-        float max_val = 0.0f;
+    void update(float dt) {
+        float final_output = 0.0f; // 最终要输出的值
         TriggerState combined_state = TriggerState::None;
 
         for (auto& bind : m_bindings) {
-            // 获取物理值 (Level 1)
             float raw_val = bind.control->get();
+            float processed_val = raw_val; // 经过修饰器/触发器处理后的值
+            TriggerState state = TriggerState::None;
 
-            // 计算触发状态 (Level 3)
-            TriggerState state = bind.trigger->update(raw_val, dt);
+            if (bind.trigger != nullptr) {
+                // 1. 假设你的 Trigger 以后支持修改数值（比如死区把小数值改为 0）
+                // processed_val = bind.trigger->process(raw_val);
 
-            // 仲裁逻辑：
-            // A. 状态优先级：Triggered > Ongoing > Started > None
+                // 2. 更新状态
+                state = bind.trigger->update(processed_val, dt);
+
+                // 【特别修复】如果你没写 process 函数，至少在这里做个强制屏蔽：
+                if (state == TriggerState::None) {
+                    processed_val = 0.0f; // 触发器认为没触发（比如在死区内），强制归零！
+                }
+            } else {
+                if (std::abs(raw_val) > 1e-5f) {
+                    state = TriggerState::Triggered;
+                }
+            }
+
             if (state > combined_state) {
                 combined_state = state;
             }
 
-            // B. 数值优先级：取绝对值最大者 (Winner takes all)
-            if (std::abs(raw_val) > std::abs(max_val)) {
-                max_val = raw_val;
+            // 【重要修复】比较的是经过处理后的值，而不是 raw_val
+            if (std::abs(processed_val) > std::abs(final_output)) {
+                final_output = processed_val;
             }
         }
 
         m_state = combined_state;
-        m_value = max_val;
+        m_value = final_output; // 输出干净的数据
     }
 
-    bool IsTriggered() const { return m_state == TriggerState::Triggered; }
+    bool isTriggered() const { return m_state == TriggerState::Triggered; }
     float GetValue() const { return m_value; }
 
 private:
@@ -99,7 +112,18 @@ private:
 };
 
 
+// --- 模式切换意图 ---
+extern InputAction Action_CtrlMode;   // 决定系统控制权 (映射到右侧开关)
+extern InputAction Action_FuncMode;   // 决定附加功能 (映射到左侧开关)
 
+// --- 底盘运动意图 ---
+extern InputAction Action_MoveX;      // 前后移动
+extern InputAction Action_MoveY;      // 左右移动
+extern InputAction Action_Spin;       // 底盘自旋
+
+// --- 云台/发射意图 ---
+extern InputAction Action_GimbalYaw;
+extern InputAction Action_GimbalPitch;
 
 /*-------- 4. decorator ----------------------------------------------------------------------------------------------*/
 

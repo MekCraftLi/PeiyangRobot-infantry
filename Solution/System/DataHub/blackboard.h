@@ -52,6 +52,9 @@ public:
     // [意图区] (主要由 DR16 任务 / ROS 通信任务 写入)
     // ----------------------------------------
     SeqVariable<RcRawData>    rc_raw;
+    SeqVariable<RcRawData>    rc_other; // 其他输入源（如第二遥控器、上位机、图传链路等）
+
+
     SeqVariable<ChassisCmd>   chassis_cmd;
     SeqVariable<GimbalCmd>    gimbal_cmd;
 
