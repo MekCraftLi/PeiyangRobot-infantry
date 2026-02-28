@@ -67,9 +67,9 @@
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
-class CommanderApp final : public PeriodicApp, public Singleton<CommanderApp> {
+class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> {
   public:
-    CommanderApp();
+    CommanderSrvc();
 
     void init() override;
 

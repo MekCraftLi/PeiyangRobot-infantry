@@ -79,7 +79,7 @@ struct ChassisCmd {
 };
 
 struct GimbalCmd {
-    float yaw_rad, pitch_rad; // 期望绝对角度 (rad)
+    float yawRad, pitchRad; // 期望绝对角度 (rad)
     uint8_t mode;
     uint32_t timestamp;
 };
