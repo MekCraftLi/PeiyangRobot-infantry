@@ -39,7 +39,7 @@
 #include "pyro_dwt_drv.h"
 
 /* II. other application */
-
+#include "../DataHub/blackboard.h"
 
 /* III. standard lib */
 
@@ -58,6 +58,8 @@
 
 
 /* ------- variables -------------------------------------------------------------------------------------------------*/
+
+
 
 [[maybe_unused]] static auto& forceInit = HeartBeatApp::instance();
 
@@ -88,7 +90,7 @@ static StackType_t appStack[APPLICATION_STACK_SIZE];
 
 
 
-
+Blackboard* bb = &Blackboard::instance();
 
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 

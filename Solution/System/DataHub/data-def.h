@@ -143,6 +143,7 @@ struct ChassisTelemetry {
 
     // 运动学逆解 (Inverse Kinematics)：算出的 4个轮子预期打角和转速
     float targetSteerAngle[4];
+    float targetSteerVelocity[4];
     float targetDriveSpd[4];
 
     // 底盘功率观测器

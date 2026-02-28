@@ -106,21 +106,21 @@ void MotorTxApp::init() {
 
 void MotorTxApp::run() {
     // 1. 无锁极速读取黑板上的最新输出快照
-    ChassisOutput chas_out;
-    Blackboard::instance().chassisOut.Read(chas_out);
+    ChassisOutput chasOut;
+    Blackboard::instance().chassisOut.read(chasOut);
 
     // 2. 直接调用 PYRo 框架提供的方法，下发物理期望值 (float)
     for (int i = 0; i < 4; i++) {
         if (CanParseApp::instance().drive[i]) {
             // send_torque 内部会自动根据 20.0f 和 16384 的比例进行换算并限幅
             //CanParseApp::instance().drive[i]->send_torque(chas_out.drive_current[i]);
-            CanParseApp::instance().drive[i]->send_torque(0);
+            CanParseApp::instance().drive[i]->send_torque(chasOut.driveCurrent[i]);
         }
 
         if (CanParseApp::instance().steer[i]) {
             // send_torque 内部会自动根据 3.0f 和 16384 的比例进行换算并限幅
             //CanParseApp::instance().steer[i]->send_torque(chas_out.steer_current[i]);
-            CanParseApp::instance().steer[i]->send_torque(0);
+            CanParseApp::instance().steer[i]->send_torque(chasOut.steerCurrent[i]);
         }
     }
 

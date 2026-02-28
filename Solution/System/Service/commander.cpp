@@ -200,10 +200,10 @@ void CommanderApp::run() {
 
     if (RemoteDR16::instance().isConnected()) {
         // 读取完美归一化后的浮点数：-1.0f(上), 0.0f(中), 1.0f(下)
-        float sw_state = Actions::CtrlMode.GetValue();
+        float sw_state = Actions::CtrlMode.getValue();
 
         // 浮点数区间判断，具有极高的鲁棒性
-        if (sw_state > 0.5f) {
+        if (sw_state > 0.25f) {
             // 接近 1.0f -> 拨杆在下 -> 需求：所有电机无力
             current_source = ControlSource::SAFE_STOP;
         } else if (sw_state > -0.5f) {
@@ -218,36 +218,36 @@ void CommanderApp::run() {
     /* ========================================================
      * 4. 仲裁层 第二阶：根据控制源填充控制指令
      * ======================================================== */
-    ChassisCmd final_chassis_cmd;
+    ChassisCmd finalChassisCmd;
     GimbalCmd  final_gimbal_cmd;
+
 
     // 【关键】先从黑板中 Read 出上一帧的历史指令。
     // 如果后续不修改它，写回的就是历史值，天然实现“状态无缝保留”。
-    Blackboard::instance().chassisCmd.Read(final_chassis_cmd);
-    Blackboard::instance().gimbal_cmd.Read(final_gimbal_cmd);
+    Blackboard::instance().chassisCmd.read(finalChassisCmd);
+
+    Blackboard::instance().gimbal_cmd.read(final_gimbal_cmd);
 
     switch (current_source) {
         case ControlSource::SAFE_STOP:
             // 彻底切断底层动力
-            final_chassis_cmd.mode = CHASSIS_RELAX;
-            final_chassis_cmd.vx = 0.0f;
-            final_chassis_cmd.vy = 0.0f;
-            final_chassis_cmd.vw = 0.0f;
+            finalChassisCmd.mode = CHASSIS_RELAX;
             final_gimbal_cmd.mode  = GIMBAL_RELAX;
             break;
 
         case ControlSource::REMOTE:
             // 遥控器映射
-            final_chassis_cmd.mode = CHASSIS_RC;
-            final_chassis_cmd.vx = Actions::MoveX.GetValue() * MAX_VX;
-            final_chassis_cmd.vy = Actions::MoveY.GetValue() * MAX_VY;
-            final_chassis_cmd.vw = Actions::Spin.GetValue()  * MAX_VW;
+            finalChassisCmd.mode = CHASSIS_RC;
+            finalChassisCmd.vx = Actions::MoveX.getValue() * MAX_VX;
+            // 运动计算坐标系和遥控器方向相反
+            finalChassisCmd.vy = -Actions::MoveY.getValue() * MAX_VY;
+            finalChassisCmd.vw = -Actions::Spin.getValue()  * MAX_VW;
             final_gimbal_cmd.mode  = GIMBAL_RC;
             break;
 
         case ControlSource::VISION:
             // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            final_chassis_cmd.mode = CHASSIS_AUTO;
+            finalChassisCmd.mode = CHASSIS_AUTO;
             final_gimbal_cmd.mode  = GIMBAL_AUTO;
 
             // 可以在此处从 Vision 接收缓冲中提取数据并覆盖目标值
@@ -258,13 +258,13 @@ void CommanderApp::run() {
             break;
     }
 
-    final_chassis_cmd.timestamp = current_tick;
+    finalChassisCmd.timestamp = current_tick;
     final_gimbal_cmd.timestamp  = current_tick;
 
     /* ========================================================
      * 5. 发布层：将仲裁后的最终真理写入黑板
      * ======================================================== */
-    Blackboard::instance().chassisCmd.Write(final_chassis_cmd);
+    Blackboard::instance().chassisCmd.Write(finalChassisCmd);
     Blackboard::instance().gimbal_cmd.Write(final_gimbal_cmd);
 }
 extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size) {

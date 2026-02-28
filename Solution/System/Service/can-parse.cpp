@@ -71,7 +71,7 @@ pyro::can_drv_t candrv3(&hfdcan3);
 // 改为指针声明
 
 
-static uint8_t motorsIdx[4] = {3, 2, 4, 1};
+
 static pyro::can_hub_t::which_can motorsCan[4] = {pyro::can_hub_t::can2, pyro::can_hub_t::can1, pyro::can_hub_t::can2, pyro::can_hub_t::can1};
 
 
@@ -126,9 +126,8 @@ void CanParseApp::init() {
 
 
     for (uint8_t i = 0; i < 4; i++) {
-        motorsIdx[i] -= 1;
         drive[i] = new pyro::dji_m3508_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i, motorsCan[i]);
-        steer[i] = new pyro::dji_gm_6020_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i, motorsCan[i]);
+        steer[i] = new pyro::dji_gm_6020_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i, motorsCan[i], steerEcdOffset[i]);
     }
 
 }
@@ -141,15 +140,15 @@ void CanParseApp::run() {
     for (uint8_t i = 0; i < 4; i++) {
         drive[i]->update_feedback();
         steer[i]->update_feedback();
-        state.modules[motorsIdx[i]].drive.pos = drive[i]->get_current_position();
-        state.modules[motorsIdx[i]].drive.temp = drive[i]->get_temperature();
-        state.modules[motorsIdx[i]].drive.torque = drive[i]->get_current_torque();
-        state.modules[motorsIdx[i]].drive.vel = drive[i]->get_current_rotate();
+        state.modules[i].drive.pos = drive[i]->get_current_position();
+        state.modules[i].drive.temp = drive[i]->get_temperature();
+        state.modules[i].drive.torque = drive[i]->get_current_torque();
+        state.modules[i].drive.vel = drive[i]->get_current_rotate();
 
-        state.modules[motorsIdx[i]].steer.pos = steer[i]->get_current_position();
-        state.modules[motorsIdx[i]].steer.temp = steer[i]->get_temperature();
-        state.modules[motorsIdx[i]].steer.torque = steer[i]->get_current_torque();
-        state.modules[motorsIdx[i]].steer.vel = steer[i]->get_current_rotate();
+        state.modules[i].steer.pos = steer[i]->get_current_position();
+        state.modules[i].steer.temp = steer[i]->get_temperature();
+        state.modules[i].steer.torque = steer[i]->get_current_torque();
+        state.modules[i].steer.vel = steer[i]->get_current_rotate();
 
     }
 

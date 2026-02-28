@@ -66,7 +66,7 @@ RemoteDR16::RemoteDR16() // --- A. 初始化摇杆 (插入控件) ---
       ,
       _swleft({{1, 0}, {3, 1}, {2, 2}}, 2) // 默认 Dwn
       ,
-      _swright({{1, 0}, {3, 1}, {2, 2}}, 1) // 默认 Mid
+      _swright({{1, 0}, {3, 1}, {0, 2}, {2, 2}}, 2) // 默认Dwn
 {}
 
 void RemoteDR16::updateRaw(const Dr16Data& raw) {

@@ -78,6 +78,8 @@ class CanParseApp final : public PeriodicApp, public Singleton<CanParseApp> {
 
     pyro::dji_gm_6020_motor_drv_t* steer[4];
 
+    uint16_t steerEcdOffset[4] = {1122, 7202, 4052, 2474};
+
 
   private:
     /* message interface */

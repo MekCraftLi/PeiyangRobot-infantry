@@ -79,14 +79,30 @@ class MovtionCtrlApp final : public PeriodicApp, public Singleton<MovtionCtrlApp
 
 
 
-    pyro::pid_t* drive_spd_pid[4];
-    pyro::pid_t* steer_pos_pid[4];
-    pyro::pid_t* steer_spd_pid[4];
+    pyro::pid_t driveSpdPid[4] = {
+        pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
+        pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
+        pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
+        pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
+    };
+    pyro::pid_t steerPosPid[4] = {
+        pyro::pid_t(58.0f,  5.0f, 0.0f, 10.0f, 50.0f),
+        pyro::pid_t(58.0f,  5.0f, 0.0f, 10.0f, 50.0f),
+        pyro::pid_t(58.0f,  5.0f, 0.0f, 10.0f, 50.0f),
+        pyro::pid_t(58.0f,  5.0f, 0.0f, 10.0f, 50.0f),
+    };
+    pyro::pid_t steerSpdPid[4] = {
+        pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f),
+        pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f),
+        pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f),
+        pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f)
+    };
 
     PIDParam drivePidParam[12];
     PIDParam steerPosPidParam[12];
     PIDParam steerSpdPidParam[12];
 
+    uint8_t motorsIdx[4] = {1, 3, 2, 4};
 
 
 

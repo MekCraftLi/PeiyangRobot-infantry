@@ -76,7 +76,7 @@ public:
      * @brief 读者接口 (消费者如控制任务调用)
      * @note 绝对无锁，绝对不阻塞，通过自旋重试保证数据完整
      */
-    void Read(T& out_data) const {
+    void read(T& out_data) const {
         uint32_t seq_before;
         do {
             seq_before = m_seq;
