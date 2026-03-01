@@ -15,8 +15,6 @@ set(BUILD_TARGET "CHASSIS" CACHE STRING "Select target to build: CHASSIS, GIMBAL
 set_property(CACHE BUILD_TARGET PROPERTY STRINGS "CHASSIS" "GIMBAL" "BOTH")
 
 
-
-
 message(STATUS "============= Current Build Target: ${BUILD_TARGET} =============")
 
 # 2. 根据选择，按需添加子目录

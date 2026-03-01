@@ -31,6 +31,7 @@
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
 #include "pyro_can_drv.h"
+#include "pyro_dji_motor_drv.h"
 
 
 
@@ -45,35 +46,24 @@ constexpr uint32_t SYSTEM_CLOCK_HZ = 550000000;
 // ========================================
 // 1. 底盘机械参数 (单位: 米/弧度)
 // ========================================
-namespace Chassis {
-constexpr float WHEEL_BASE       = 0.36f;  // 前后轴距
-constexpr float TRACK_WIDTH      = 0.33f;  // 左右轮距
-constexpr float WHEEL_RADIUS     = 0.06f;  // 轮子半径
-constexpr float DRIVE_GEAR_RATIO = 19.2f;  // 动力轮减速比 (M3508)
-}
 
 // ========================================
 // 2. 电机 CAN 总线拓扑映射
 // ========================================
 namespace MotorTopo {
-// 定义四个舵轮底盘的电机 ID [右前, 左前, 左后, 右后]
-// 注意：底层驱动通常从 0 开始算，所以如果是大疆电调上的 1~4 号，这里可以写 0~3
-constexpr uint8_t DRIVE_MOTOR_IDS[4] = {1, 3, 2, 4}; // 对应大疆的 3, 2, 4, 1
+constexpr pyro::can_hub_t::which_can FRIC_LEFT_CAN = pyro::can_hub_t::can1;
+constexpr pyro::can_hub_t::which_can FRIC_RIGHT_CAN = pyro::can_hub_t::can1;
+constexpr pyro::can_hub_t::which_can PITCH_CAN = pyro::can_hub_t::can1;
+constexpr pyro::can_hub_t::which_can YAW_CAN = pyro::can_hub_t::can2;
+constexpr pyro::can_hub_t::which_can TRIGGER_CAN = pyro::can_hub_t::can2;
 
-// 动力轮挂载的 CAN 总线
-constexpr pyro::can_hub_t::which_can DRIVE_MOTOR_CANS[4] = {
-    pyro::can_hub_t::can2, pyro::can_hub_t::can1,
-    pyro::can_hub_t::can2, pyro::can_hub_t::can1
-};
-
-// 航向舵挂载的 CAN 总线 (假设与动力轮一致)
-constexpr pyro::can_hub_t::which_can STEER_MOTOR_CANS[4] = {
-    pyro::can_hub_t::can2, pyro::can_hub_t::can1,
-    pyro::can_hub_t::can2, pyro::can_hub_t::can1
-};
-
-constexpr uint16_t STEER_ECD_OFFSET[4] = {1122, 7202, 4052, 2474};
+constexpr pyro::dji_motor_tx_frame_t::register_id_t FRIC_LEFT_ID = pyro::dji_motor_tx_frame_t::id_1;
+constexpr pyro::dji_motor_tx_frame_t::register_id_t FRIC_RIGHT_ID = pyro::dji_motor_tx_frame_t::id_2;
+constexpr pyro::dji_motor_tx_frame_t::register_id_t YAW_ID = pyro::dji_motor_tx_frame_t::id_5;
+constexpr pyro::dji_motor_tx_frame_t::register_id_t TRIGGER_ID = pyro::dji_motor_tx_frame_t::id_3;
+constexpr pyro::dji_motor_tx_frame_t::register_id_t PITCH = pyro::dji_motor_tx_frame_t::id_5;
 }
+
 
 // ========================================
 // 3. 核心外设映射

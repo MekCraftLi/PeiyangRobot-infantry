@@ -33,8 +33,8 @@
 #include "Chassis/algo-config.h"
 #include "Chassis/hw-config.h"
 #elifdef GIMBAL
-#include "Gimble/algo-config.h"
-#include "Gimble/hw-config.h"
+#include "Gimbal/algo-config.h"
+#include "Gimbal/hw-config.h"
 #endif
 
 

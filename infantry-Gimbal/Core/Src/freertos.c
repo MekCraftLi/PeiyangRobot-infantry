@@ -57,6 +57,7 @@ const osThreadAttr_t defaultTask_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
+extern void ApplicationEntry();
 
 /* USER CODE END FunctionPrototypes */
 
@@ -135,7 +136,7 @@ void vApplicationDaemonTaskStartupHook(void)
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-
+    ApplicationEntry();
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */

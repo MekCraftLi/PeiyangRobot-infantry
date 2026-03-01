@@ -244,7 +244,7 @@ void Bmi088::getImuData(ImuData& data) {
     int16_t rawGyroy    = _rawGyroData[3] << 8 | _rawGyroData[2];
     int16_t rawGyroz    = _rawGyroData[5] << 8 | _rawGyroData[4];
 
-    factor              = static_cast<float>(_gyroRange) / 32767.0f;
+    factor              = M_PI * static_cast<float>(_gyroRange) / 32767.0f / 180.0f;
 
     data.rate.x         = factor * rawGyrox;
     data.rate.y         = factor * rawGyroy;

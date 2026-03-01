@@ -33,6 +33,7 @@
 #include "seq-variable.h"
 
 #include "Component/Motor/pyro_dji_motor_drv.h"
+#include "tools/crtp.h"
 
 
 
@@ -43,6 +44,8 @@
 
 /*-------- 3. interface ----------------------------------------------------------------------------------------------*/
 
+
+#ifdef CHASSIS
 class Blackboard: public Singleton<Blackboard> {
 public:
 
@@ -81,7 +84,43 @@ private:
 };
 
 
+#elifdef GIMBAL
+class Blackboard: public Singleton<Blackboard> {
+public:
 
+    Blackboard() = default;
+
+    // ----------------------------------------
+    // [意图区] (主要由 DR16 任务 / ROS 通信任务 写入)
+    // ----------------------------------------
+    SeqVariable<RcRawData>    rc_raw;
+    SeqVariable<RcRawData>    rc_other; // 其他输入源（如第二遥控器、上位机、图传链路等）
+
+
+    SeqVariable<ChassisCmd>   chassisCmd;
+    SeqVariable<GimbalCmd>    gimbal_cmd;
+
+    // ----------------------------------------
+    // [状态区] (主要由 CAN 接收任务 / SPI 中断 写入)
+    // ----------------------------------------
+    SeqVariable<ImuState>     imuState;
+    SeqVariable<GimbalState>  gimbalState;
+
+    // ----------------------------------------
+    // [输出区] (主要由 核心控制算法任务 写入)
+    // ----------------------------------------
+    SeqVariable<GimbalOutput>  gimbalOut;
+
+    // ----------------------------------------
+    // [中间区] (主要由 核心控制算法任务 同步写入)
+    // ----------------------------------------
+
+private:
+
+};
+
+
+#endif
 
 /*-------- 4. decorator ----------------------------------------------------------------------------------------------*/
 

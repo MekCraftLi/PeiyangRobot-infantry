@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    can-parse.h
+ * @file    motor-actuator.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -37,6 +37,7 @@
 #include "../../tools/crtp.h"
 #include "../Thread/application-base.h"
 #include "pyro_dji_motor_drv.h"
+#include "pyro_dm_motor_drv.h"
 
 /* II. OS */
 
@@ -60,9 +61,9 @@
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
-class MotorActuatorSrvc final : public PeriodicApp, public Singleton<MotorActuatorSrvc> {
+class MotActSrvc final : public PeriodicApp, public Singleton<MotActSrvc> {
   public:
-    MotorActuatorSrvc();
+    MotActSrvc();
 
     void init() override;
 
@@ -75,8 +76,15 @@ class MotorActuatorSrvc final : public PeriodicApp, public Singleton<MotorActuat
 
 
     // 2. 建立一个全局引用，将其重解释为电机数组。这满足了你不想用指针的需求！
+#ifdef CHASSIS
     pyro::dji_m3508_motor_drv_t (&drive)[4] = reinterpret_cast<pyro::dji_m3508_motor_drv_t(&)[4]>(_driveMem);
     pyro::dji_gm_6020_motor_drv_t (&steer)[4] = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t(&)[4]>(_steerMem);
+#elifdef GIMBAL
+    pyro::dji_gm_6020_motor_drv_t (&yaw) = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t(&)>( _yawMem);
+    pyro::dji_m2006_motor_drv_t (&trigger) = reinterpret_cast<pyro::dji_m2006_motor_drv_t(&)>( _triggerMem);
+    pyro::dji_m3508_motor_drv_t (&firc)[2] = reinterpret_cast<pyro::dji_m3508_motor_drv_t(&)[2]>( _fircMem);
+    pyro::dm_motor_drv_t (&pitch) = reinterpret_cast<pyro::dm_motor_drv_t(&)>( _pitchMem);
+#endif
 
   private:
     /* message interface */
@@ -92,9 +100,15 @@ class MotorActuatorSrvc final : public PeriodicApp, public Singleton<MotorActuat
     // 5. stream or message
     
     // 6. event group
-
+#ifdef CHASSIS
     alignas(pyro::dji_m3508_motor_drv_t) uint8_t _driveMem[sizeof(pyro::dji_m3508_motor_drv_t) * 4];
     alignas(pyro::dji_gm_6020_motor_drv_t) uint8_t _steerMem[sizeof(pyro::dji_m3508_motor_drv_t) * 4];
+#elifdef GIMBAL
+    alignas(pyro::dji_gm_6020_motor_drv_t) uint8_t _yawMem[sizeof(pyro::dji_gm_6020_motor_drv_t)];
+    alignas(pyro::dm_motor_drv_t) uint8_t _pitchMem[sizeof(pyro::dm_motor_drv_t)];
+    alignas(pyro::dji_m3508_motor_drv_t) uint8_t _fircMem[sizeof(pyro::dji_m3508_motor_drv_t) * 2];
+    alignas(pyro::dji_m2006_motor_drv_t) uint8_t _triggerMem[sizeof(pyro::dji_m2006_motor_drv_t)];
+#endif
 };
 #endif
 

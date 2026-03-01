@@ -45,7 +45,7 @@
 
 
 /* IV. drivers */
-
+#include "Component/INS/pyro_ins.h"
 #include "../../Board-Support-Pack/BMI088/dev-bmi.h"
 #include "spi.h"
 #include "tim.h"
@@ -74,6 +74,8 @@ public:
 
 
     void run() override;
+
+    ImuData data;
 
     /************ setter & getter ***********/
 

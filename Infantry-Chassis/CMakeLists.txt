@@ -63,7 +63,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
 
         "../Solution/System/Service/commander.cpp"
-        "../Solution/System/Service/app-imu.cpp"
+        "../Solution/System/Service/state-estimator.cpp"
         "../Solution/System/Service/motor-actuator.cpp"
         "../Solution/System/Service/heart-beat.cpp"
 

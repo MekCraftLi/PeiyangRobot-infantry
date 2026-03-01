@@ -108,7 +108,7 @@ void MovtionCtrlApp::init() {
 
 }
 
-
+#ifdef CHASSIS
 void MovtionCtrlApp::run() {
 // 1. 无锁极速读取意图和状态 (注意调用的是大写的 Read)
         static ChassisCmd cmd;
@@ -205,3 +205,9 @@ void MovtionCtrlApp::run() {
         Blackboard::instance().chassisOut.Write(output);
         Blackboard::instance().chassisTelem.Write(telem);
 }
+#elifdef GIMBAL
+
+void MovtionCtrlApp::run() {
+
+}
+#endif
