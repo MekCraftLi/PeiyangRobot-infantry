@@ -126,9 +126,12 @@ void ImuApp::init() {
 }
 
 
+uint32_t exeTime = 0;
 void ImuApp::run() {
     static uint32_t dwtCnt;
+
     float dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
+
 
     _bmi088.getImuData(data);
 
@@ -141,8 +144,10 @@ void ImuApp::run() {
     float input_ax = data.accel.x, input_ay = -data.accel.y, input_az = -data.accel.z;
 
     // 3. 执行 EKF 更新 (纯数学运算，几微秒跑完)
+    uint32_t startTime = pyro::dwt_drv_t::get_current_ticks();
     IMU_QuaternionEKF_Update(input_gx, input_gy, input_gz,
                              input_ax, input_ay, input_az, dt);
+    exeTime = pyro::dwt_drv_t::get_current_ticks() - startTime;
 
     // 4. 从全局的 QEKF_INS 结构体中提取解算好的欧拉角
     // (QEKF_INS 是 QuaternionEKF.h 中定义好的全局结构体，算完后自动更新)
@@ -163,7 +168,8 @@ void ImuApp::run() {
     state.timestamp = xTaskGetTickCount();
 
     // 5. 写入你自己的黑板
-    Blackboard::instance().imuState.Write(state);
+    Blackboard::instance().imuState.write(state);
+
 
 }
 

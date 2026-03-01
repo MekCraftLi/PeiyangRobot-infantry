@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    input.h.h
+ * @file    commander.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -34,21 +34,21 @@
 
 /* I. interface */
 
-#include "../../../System/Thread/application-base.h"
-#include "../../../tools/crtp.h"
+#include "System/Thread/application-base.h"
+#include "tools/crtp.h"
 #include "../DataHub/blackboard.h"
 /* II. OS */
 
 
 /* III. middlewares */
-#include "../../../Board-Support-Pack/DR16/dr16.h"
-#include "../../../System/Input/ControlImpl/control-impl-axis.h"
-#include "../../../System/Input/ControlImpl/control-impl-switch.h"
-#include "../../../System/Input/TriggerImpl/trigger-impl-hold.h"
-#include "../../../System/Input/TriggerImpl/trigger-impl-linear.h"
-#include "../../../System/Input/TriggerImpl/trigger-impl-match.h"
-#include "../../../System/Input/TriggerImpl/trigger-impl-pulse.h"
-#include "../../../System/Input/action.h"
+#include "Board-Support-Pack/DR16/dr16.h"
+#include "System/Input/ControlImpl/control-impl-axis.h"
+#include "System/Input/ControlImpl/control-impl-switch.h"
+#include "System/Input/TriggerImpl/trigger-impl-hold.h"
+#include "System/Input/TriggerImpl/trigger-impl-linear.h"
+#include "System/Input/TriggerImpl/trigger-impl-match.h"
+#include "System/Input/TriggerImpl/trigger-impl-pulse.h"
+#include "System/Input/action.h"
 
 
 /* IV. drivers */
@@ -97,6 +97,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
 
 
     TriggerLinear _joystickDeadzone; // 摇杆死区触发器
+    TriggerHold _work;
 };
 #endif
 

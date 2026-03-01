@@ -78,7 +78,7 @@ class MovtionCtrlApp final : public PeriodicApp, public Singleton<MovtionCtrlApp
     /************ setter & getter ***********/
 
 
-
+#ifdef CHASSIS
     pyro::pid_t driveSpdPid[4] = {
         pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
         pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
@@ -98,11 +98,13 @@ class MovtionCtrlApp final : public PeriodicApp, public Singleton<MovtionCtrlApp
         pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f)
     };
 
-    PIDParam drivePidParam[12];
-    PIDParam steerPosPidParam[12];
-    PIDParam steerSpdPidParam[12];
 
-    uint8_t motorsIdx[4] = {1, 3, 2, 4};
+#elifdef GIMBAL
+
+    pyro::pid_t yawPosPid = pyro::pid_t(60.0f, 3.0f, 0.0f, 10.0f, 500.0f);
+    pyro::pid_t yawSpdPid = pyro::pid_t(10.0f, 0.0f, 0.0f, 1.0f, 24.0f);
+
+#endif
 
 
 

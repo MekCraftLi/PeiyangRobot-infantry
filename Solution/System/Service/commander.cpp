@@ -139,7 +139,7 @@ InputAction FireSingle;
 
 CommanderSrvc::CommanderSrvc()
     : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY, 1),
-      _joystickDeadzone(0.02f) // 设定 2% 的死区，防止摇杆不回中导致漂移
+      _joystickDeadzone(0.02f), _work(-0.25f, 1.0f, false, HoldCondition::LessOrEqual) // 设定 2% 的死区，防止摇杆不回中导致漂移
 {}
 
 void CommanderSrvc::init() {
@@ -159,7 +159,7 @@ void CommanderSrvc::init() {
     Actions::GimbalPitch.bind(RemoteDR16::instance().getRightY(), &_joystickDeadzone);
 
     // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
-    Actions::CtrlMode.bind(RemoteDR16::instance().getSwRight(), nullptr);
+    Actions::CtrlMode.bind(RemoteDR16::instance().getSwRight(), &_work);
 
     /* ========================================================
      * 2. 初始化硬件通信
@@ -171,9 +171,10 @@ void CommanderSrvc::run() {
 /* ========================================================
      * 0. 计算时间步长 (dt)，用于动作系统内部的积分或时长判定
      * ======================================================== */
+
     static uint32_t last_tick = xTaskGetTickCount();
     uint32_t current_tick = xTaskGetTickCount();
-    float dt = (current_tick - last_tick) / 1000.0f;
+    float dt = (float)(current_tick - last_tick) / 1000.0f;
 
     if (dt <= 0.0f) dt = 0.001f; // 防止极高频或同Tick调用导致 dt 为 0
     last_tick = current_tick;
@@ -197,23 +198,24 @@ void CommanderSrvc::run() {
      * ======================================================== */
     // 默认最高安全等级，除非确认遥控器在线且给出运行指令
     /* 3. 第一阶仲裁：决断控制权 */
-    ControlSource current_source = ControlSource::SAFE_STOP;
+    ControlSource currentSource = ControlSource::SAFE_STOP;
 
     if (RemoteDR16::instance().isConnected()) {
         // 读取完美归一化后的浮点数：-1.0f(上), 0.0f(中), 1.0f(下)
-        float sw_state = Actions::CtrlMode.getValue();
+        float swState = Actions::CtrlMode.getValue();
 
-        // 浮点数区间判断，具有极高的鲁棒性
-        if (sw_state > 0.25f) {
-            // 接近 1.0f -> 拨杆在下 -> 需求：所有电机无力
-            current_source = ControlSource::SAFE_STOP;
-        } else if (sw_state > -0.5f) {
-            // 接近 0.0f -> 拨杆在中 -> 需求：接收遥控器控制
-            current_source = ControlSource::REMOTE;
+        if (Actions::CtrlMode.isTriggered()) {
+            if (swState > -0.5f) {
+                currentSource = ControlSource::REMOTE;
+            } else {
+                currentSource = ControlSource::VISION;
+            }
         } else {
-            // 接近 -1.0f -> 拨杆在上 -> 需求：状态保留/其它输入源
-            current_source = ControlSource::VISION;
+            currentSource = ControlSource::SAFE_STOP;
         }
+
+    } else {
+        currentSource = ControlSource::SAFE_STOP;
     }
 
     /* ========================================================
@@ -222,6 +224,10 @@ void CommanderSrvc::run() {
     ChassisCmd finalChassisCmd;
     GimbalCmd  finalGimbalCmd;
 
+#ifdef GIMBAL
+    ImuState imuState;
+#endif
+
     static float targetYawRad = 0.0f;
     static float targetPitchRad = 0.0f;
 
@@ -229,14 +235,18 @@ void CommanderSrvc::run() {
     // 【关键】先从黑板中 Read 出上一帧的历史指令。
     // 如果后续不修改它，写回的就是历史值，天然实现“状态无缝保留”。
     Blackboard::instance().chassisCmd.read(finalChassisCmd);
+    Blackboard::instance().gimbalCmd.read(finalGimbalCmd);
+    Blackboard::instance().imuState.read(imuState);
 
-    Blackboard::instance().gimbal_cmd.read(finalGimbalCmd);
-
-    switch (current_source) {
+    switch (currentSource) {
         case ControlSource::SAFE_STOP: {
             // 彻底切断底层动力
             finalChassisCmd.mode = CHASSIS_RELAX;
             finalGimbalCmd.mode  = GIMBAL_RELAX;
+
+#ifdef GIMBAL
+            finalGimbalCmd.yawRad = imuState.yaw;
+#endif
         }break;
 
         case ControlSource::REMOTE: {
@@ -289,14 +299,15 @@ void CommanderSrvc::run() {
     /* ========================================================
      * 5. 发布层：将仲裁后的最终真理写入黑板
      * ======================================================== */
-    Blackboard::instance().chassisCmd.Write(finalChassisCmd);
-    Blackboard::instance().gimbal_cmd.Write(finalGimbalCmd);
+    Blackboard::instance().chassisCmd.write(finalChassisCmd);
+    Blackboard::instance().gimbalCmd.write(finalGimbalCmd);
 }
 extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size) {
 
     memcpy(&dr16Data, rxbuf, Size);
 
     HAL_UARTEx_ReceiveToIdle_DMA(&REMOTE_UART, rxbuf, sizeof(rxbuf));
+    RemoteDR16::instance().onDataReceived();
 }
 
 
@@ -309,4 +320,5 @@ extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
     __HAL_UART_CLEAR_NEFLAG(huart);  // 噪声错误
     __HAL_UART_CLEAR_OREFLAG(huart); // 溢出错误
     HAL_UARTEx_ReceiveToIdle_DMA(&REMOTE_UART, rxbuf, sizeof(rxbuf));
+
 }

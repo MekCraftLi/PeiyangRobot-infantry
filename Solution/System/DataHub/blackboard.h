@@ -98,22 +98,25 @@ public:
 
 
     SeqVariable<ChassisCmd>   chassisCmd;
-    SeqVariable<GimbalCmd>    gimbal_cmd;
+    SeqVariable<GimbalCmd>    gimbalCmd;
 
     // ----------------------------------------
     // [状态区] (主要由 CAN 接收任务 / SPI 中断 写入)
     // ----------------------------------------
     SeqVariable<ImuState>     imuState;
     SeqVariable<GimbalState>  gimbalState;
+    SeqVariable<BooterState>  booterState;
 
     // ----------------------------------------
     // [输出区] (主要由 核心控制算法任务 写入)
     // ----------------------------------------
     SeqVariable<GimbalOutput>  gimbalOut;
+    SeqVariable<BooterOutput> booterOut;
 
     // ----------------------------------------
     // [中间区] (主要由 核心控制算法任务 同步写入)
     // ----------------------------------------
+    SeqVariable<GimbalTelemetry> telem;
 
 private:
 

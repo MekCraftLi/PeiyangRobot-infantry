@@ -118,18 +118,31 @@ struct GimbalState {
     uint32_t timestamp;
 };
 
+struct BooterState {
+    MotorState fric[2];
+    MotorState trigger;
+    uint32_t timestamp;
+};
+
 // ==========================================
 // 3. 输出区数据 (执行器控制量)
 // ==========================================
 
 struct ChassisOutput {
     float driveCurrent[4]; // 4个动力轮目标电流 (A)
-    float steerCurrent[4]; // 4个航向舵目标电流 (A)
+    float steerVoltage[4]; // 4个航向舵目标电压 (V)
 };
 
 struct GimbalOutput {
-    float yaw_current;
-    float pitch_current;
+    float yawVoltage;
+    float pitchCurrent;
+
+};
+
+struct BooterOutput {
+    float fricLeftCurrent;
+    float fricRightCurrent;
+    float triggerCurrent;
 };
 
 // ==========================================
@@ -152,6 +165,10 @@ struct ChassisTelemetry {
     uint32_t timestamp;
 };
 
+struct GimbalTelemetry {
+    float targetYawRotate;
+    float targetPitchRotate;
+};
 
 /*-------- 3. interface ----------------------------------------------------------------------------------------------*/
 

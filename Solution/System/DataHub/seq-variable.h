@@ -57,7 +57,7 @@ public:
      * @brief 写者接口 (生产者如 ISR 或解析任务调用)
      * @note 会短暂关闭中断以保证结构体拷贝时不被更高优先级抢占
      */
-    void Write(const T& new_data) {
+    void write(const T& new_data) {
         // 屏蔽操作系统的任务调度和普通中断，耗时仅几十纳秒
         taskENTER_CRITICAL();
 

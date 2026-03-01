@@ -29,6 +29,9 @@
 /* ------- include ---------------------------------------------------------------------------------------------------*/
 
 #include "dr16.h"
+
+#include "task.h"
+
 #include <cstdint>
 
 
@@ -79,7 +82,15 @@ void RemoteDR16::updateRaw(const Dr16Data& raw) {
 }
 
 RemoteDR16& RemoteDR16::instance() {
-    static RemoteDR16 instance;
-    return instance;
+    static RemoteDR16 _instance;
+    return _instance;
+}
+
+bool RemoteDR16::isConnected() const {
+    return (xTaskGetTickCount() - _lastUpdateTick) <= pdMS_TO_TICKS(50);
+}
+
+void RemoteDR16::onDataReceived() {
+    _lastUpdateTick = xTaskGetTickCount();
 }
 

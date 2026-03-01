@@ -98,7 +98,7 @@ MovtionCtrlApp::MovtionCtrlApp()
     : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE,  appStack, APPLICATION_PRIORITY, 1){
 }
 
-
+#ifdef CHASSIS
 void MovtionCtrlApp::init() {
     /* driver object initialize */
 
@@ -108,7 +108,7 @@ void MovtionCtrlApp::init() {
 
 }
 
-#ifdef CHASSIS
+
 void MovtionCtrlApp::run() {
 // 1. 无锁极速读取意图和状态 (注意调用的是大写的 Read)
         static ChassisCmd cmd;
@@ -195,7 +195,7 @@ void MovtionCtrlApp::run() {
             telem.targetSteerVelocity[i] = tgtSteerSpd;
 
             // 内环：输入目标角速度，反馈真实角速度，输出电流指令
-            output.steerCurrent[motorsIdx[i]] = steerSpdPid[motorsIdx[i]].calculate(tgtSteerSpd, state.modules[motorsIdx[i]].steer.vel);
+            output.steerVoltage[motorsIdx[i]] = steerSpdPid[motorsIdx[i]].calculate(tgtSteerSpd, state.modules[motorsIdx[i]].steer.vel);
 
             // (5) 动力轮：单环速度 PID 控制
             output.driveCurrent[motorsIdx[i]] = driveSpdPid[motorsIdx[i]].calculate(tgtSpeed, state.modules[motorsIdx[i]].drive.vel);
@@ -207,7 +207,52 @@ void MovtionCtrlApp::run() {
 }
 #elifdef GIMBAL
 
+void MovtionCtrlApp::init() {
+    /* driver object initialize */
+
+}
+
 void MovtionCtrlApp::run() {
+    GimbalCmd cmd;
+    ImuState imuState;
+    GimbalTelemetry telem;
+
+    // 准备输入的数据
+    Blackboard::instance().gimbalCmd.read(cmd);
+    Blackboard::instance().imuState.read(imuState);
+    GimbalOutput output = {0};       // 物理电流输出
+
+    // 2. 状态机：处理急停/无力模式
+    if (cmd.mode == GIMBAL_RELAX) {
+        // RELAX 模式下，直接输出全 0，底层 CAN 会发送 0 电流，电机软掉
+        Blackboard::instance().gimbalOut.write(output);
+        return;
+    }
+
+    // 外环：输入目标角度，反馈真实角度，输出目标角速度
+
+    float err = cmd.yawRad - imuState.yaw;
+
+    while (err > M_PI) {
+        err -= 2.0 * M_PI;
+    }
+    while (err < -M_PI) {
+        err += 2.0 * M_PI;
+    }
+
+    float alignedTgtYaw = imuState.yaw + err;
+
+    float tgtYawSpd = -yawPosPid.calculate(alignedTgtYaw, imuState.yaw);
+
+    // 内环：输入目标角速度，反馈真实角速度，输出电流指令
+    telem.targetYawRotate = tgtYawSpd;
+    output.yawVoltage = -yawSpdPid.calculate(tgtYawSpd, imuState.gyro[2]);
+
+
+    // 数据输出
+    Blackboard::instance().gimbalOut.write(output);
+    Blackboard::instance().telem.write(telem);
+
 
 }
 #endif

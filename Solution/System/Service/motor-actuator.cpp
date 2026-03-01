@@ -130,8 +130,8 @@ void MotActSrvc::init() {
 
 #elifdef GIMBAL
 
-    new (&firc[0]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_LEFT_ID, Config::Hardware::MotorTopo::FRIC_LEFT_CAN);
-    new (&firc[1]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_RIGHT_ID, Config::Hardware::MotorTopo::FRIC_RIGHT_CAN);
+    new (&fric[0]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_LEFT_ID, Config::Hardware::MotorTopo::FRIC_LEFT_CAN);
+    new (&fric[1]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_RIGHT_ID, Config::Hardware::MotorTopo::FRIC_RIGHT_CAN);
     new (&trigger) pyro::dji_m2006_motor_drv_t(Config::Hardware::MotorTopo::TRIGGER_ID, Config::Hardware::MotorTopo::TRIGGER_CAN);
     new (&yaw) pyro::dji_gm_6020_motor_drv_t(Config::Hardware::MotorTopo::YAW_ID, Config::Hardware::MotorTopo::YAW_CAN);
     new (&pitch) pyro::dm_motor_drv_t(0x00, 0x00, Config::Hardware::MotorTopo::PITCH_CAN);
@@ -160,7 +160,7 @@ void MotActSrvc::run() {
         state.modules[i].steer.temp = steer[i].get_temperature();
         state.modules[i].steer.torque = steer[i].get_current_torque();
         state.modules[i].steer.vel = steer[i].get_current_rotate();
-        steer[i].send_torque(chasOut.steerCurrent[i]);
+        steer[i].send_torque(chasOut.steerVoltage[i]);
         drive[i].send_torque(chasOut.driveCurrent[i]);
 
     }
@@ -170,6 +170,45 @@ void MotActSrvc::run() {
 #elifdef GIMBAL
 
 void MotActSrvc::run() {
+
+    GimbalState gstate{.timestamp = xTaskGetTickCount()};
+    BooterState bstate {.timestamp = gstate.timestamp};
+    GimbalOutput gout{};
+    BooterOutput bout{};
+
+    yaw.update_feedback();
+    fric[0].update_feedback();
+    fric[1].update_feedback();
+    trigger.update_feedback();
+
+    gstate.yaw.pos = yaw.get_current_position();
+    gstate.yaw.temp = yaw.get_temperature();
+    gstate.yaw.torque = yaw.get_current_torque();
+    gstate.yaw.vel = yaw.get_current_rotate();
+
+    for (uint8_t i = 0; i < 2; i++) {
+        bstate.fric[i].pos = fric[i].get_current_position();
+        bstate.fric[i].temp = fric[i].get_temperature();
+        bstate.fric[i].torque = fric[i].get_current_torque();
+        bstate.fric[i].vel = fric[i].get_current_rotate();
+    }
+
+    bstate.trigger.pos = trigger.get_current_position();
+    bstate.trigger.temp = trigger.get_temperature();
+    bstate.trigger.torque = trigger.get_current_torque();
+    bstate.trigger.vel = trigger.get_current_rotate();
+
+
+    Blackboard::instance().gimbalState.write(gstate);
+    Blackboard::instance().booterState.write(bstate);
+
+    Blackboard::instance().booterOut.read(bout);
+    Blackboard::instance().gimbalOut.read(gout);
+
+    yaw.send_torque(gout.yawVoltage);
+    trigger.send_torque(bout.triggerCurrent);
+    fric[0].send_torque(bout.fricLeftCurrent);
+    fric[1].send_torque(bout.fricRightCurrent);
 
 }
 

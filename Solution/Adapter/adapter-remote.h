@@ -30,8 +30,8 @@
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
 #include "../System/Input/Control.h"
-#include <vector>
 #include <string>
+#include <vector>
 
 
 
@@ -43,11 +43,11 @@
  * 参考文档: "定义机器人支持的所有语义功能" [cite: 30]
  */
 enum class AxisID {
-    MoveX,      // 底盘左右平移
-    MoveY,      // 底盘前后平移
-    ViewYaw,    // 云台左右旋转
-    ViewPitch,  // 云台俯仰
-    Aux1,       // 辅助轴 (如拨轮)
+    MoveX,     // 底盘左右平移
+    MoveY,     // 底盘前后平移
+    ViewYaw,   // 云台左右旋转
+    ViewPitch, // 云台俯仰
+    Aux1,      // 辅助轴 (如拨轮)
     MAX_AXIS
 };
 
@@ -77,8 +77,8 @@ enum class ButtonID {
  * 3. 所有的具体遥控器 (Remote_DR16, Remote_Xbox) 必须继承此类
  */
 class RemoteBase {
-public:
-    virtual ~RemoteBase() = default;
+  public:
+    virtual ~RemoteBase()                         = default;
 
     // =============================================================
     // 核心接口：获取原子控件 (Accessors)
@@ -89,7 +89,7 @@ public:
      * @brief 获取指定语义的轴控件
      * @return IInputControl* (可能为空，需检查)
      */
-    virtual IInputControl* getAxis(AxisID id) = 0;
+    virtual IInputControl* getAxis(AxisID id)     = 0;
 
     /**
      * @brief 获取指定语义的按键/开关控件
@@ -102,8 +102,8 @@ public:
     // =============================================================
 
     // 是否连接 (看门狗状态)
-    virtual bool isConnected() const = 0;
-
+    virtual bool isConnected() const              = 0;
+    virtual void onDataReceived()                 = 0;
 };
 
 

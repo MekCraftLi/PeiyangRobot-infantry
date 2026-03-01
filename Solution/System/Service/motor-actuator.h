@@ -82,7 +82,7 @@ class MotActSrvc final : public PeriodicApp, public Singleton<MotActSrvc> {
 #elifdef GIMBAL
     pyro::dji_gm_6020_motor_drv_t (&yaw) = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t(&)>( _yawMem);
     pyro::dji_m2006_motor_drv_t (&trigger) = reinterpret_cast<pyro::dji_m2006_motor_drv_t(&)>( _triggerMem);
-    pyro::dji_m3508_motor_drv_t (&firc)[2] = reinterpret_cast<pyro::dji_m3508_motor_drv_t(&)[2]>( _fircMem);
+    pyro::dji_m3508_motor_drv_t (&fric)[2] = reinterpret_cast<pyro::dji_m3508_motor_drv_t(&)[2]>( _fircMem);
     pyro::dm_motor_drv_t (&pitch) = reinterpret_cast<pyro::dm_motor_drv_t(&)>( _pitchMem);
 #endif
 
