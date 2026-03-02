@@ -71,7 +71,18 @@ public:
 
         taskEXIT_CRITICAL(); // 恢复中断
     }
+    void writeFromISR(const T& data) {
+        // 中断级关中断（保存当前中断状态掩码）
+        uint32_t ulSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
+        m_seq++; // 奇数：标记“正在写入脏数据”
+        MEMORY_BARRIER();
+        m_data = data; // 执行数据拷贝
+        MEMORY_BARRIER();
+        m_seq++; // 偶数：标记“写入完成，数据干净”
 
+        // 恢复中断状态掩码
+        taskEXIT_CRITICAL_FROM_ISR(ulSavedInterruptStatus);
+    }
     /**
      * @brief 读者接口 (消费者如控制任务调用)
      * @note 绝对无锁，绝对不阻塞，通过自旋重试保证数据完整

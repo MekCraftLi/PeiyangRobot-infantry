@@ -129,9 +129,9 @@ void RealTimeCommApp::run() {
     };
 #ifdef GIMBAL
     Blackboard::instance().g2cOutput.read(output);
-    taskENTER_CRITICAL();
+
     HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, output.buffer);
-    taskEXIT_CRITICAL();
+
 #elifdef CHSSIS
 
 #endif
@@ -143,7 +143,7 @@ extern "C" void getBoardCommFromISR(uint8_t* pData) {
 
     static GimbalToChassisComm comm{};
     memcpy(comm.buffer, pData, 8);
-    Blackboard::instance().rComm.write(comm);
+    Blackboard::instance().rComm.writeFromISR(comm);
 
 }
 #elifdef GIMBAL
@@ -153,3 +153,6 @@ extern "C" void getBoardCommFromISR(uint8_t* pData) {
 
 }
 #endif
+
+static FDCAN_RxHeaderTypeDef rx_header;
+

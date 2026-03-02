@@ -248,9 +248,9 @@ void CommanderSrvc::run() {
         case ControlSource::REMOTE: {
             // 遥控器映射
             g2cComm.msg.mode = CHASSIS_RC;
-            g2cComm.msg.vx = Actions::MoveX.getValue() * Config::Algorithm::Chassis::MAX_VX * 5;
+            g2cComm.msg.vx = Actions::MoveX.getValue() * Config::Algorithm::Chassis::MAX_VX * 10;
             // 运动计算坐标系和遥控器方向相反
-            g2cComm.msg.vy = -Actions::MoveY.getValue() * Config::Algorithm::Chassis::MAX_VY * 5;
+            g2cComm.msg.vy = -Actions::MoveY.getValue() * Config::Algorithm::Chassis::MAX_VY * 10;
 
 
             finalGimbalCmd.mode  = GIMBAL_RC;
@@ -284,9 +284,13 @@ void CommanderSrvc::run() {
     Blackboard::instance().g2cOutput.write(g2cComm);
     Blackboard::instance().gimbalCmd.write(finalGimbalCmd);
 #elifdef CHASSIS
-
-
-
+    GimbalToChassisComm g2cComm{};
+    ChassisCmd cmd{};
+    Blackboard::instance().rComm.read(g2cComm);
+    cmd.mode = g2cComm.msg.mode;
+    cmd.vx = (float)g2cComm.msg.vx / 10;
+    cmd.vy = (float)g2cComm.msg.vy / 10;
+    Blackboard::instance().chassisCmd.write(cmd);
 
 #endif
 }

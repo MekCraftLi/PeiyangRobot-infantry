@@ -152,8 +152,8 @@ struct BooterOutput {
 union GimbalToChassisComm {
 
     __attribute__((packed)) struct {
-        uint32_t vx   : 6; //  正方向： 向前
-        uint32_t vy   : 6; // 正方向： 向左
+        int32_t vx   : 6; //  正方向： 向前
+        int32_t vy   : 6; // 正方向： 向左
         uint32_t mode : 2;
     } msg;
 
