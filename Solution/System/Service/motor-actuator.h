@@ -80,11 +80,11 @@ class MotActSrvc final : public PeriodicApp, public Singleton<MotActSrvc> {
     pyro::dji_m3508_motor_drv_t (&drive)[4] = reinterpret_cast<pyro::dji_m3508_motor_drv_t(&)[4]>(_driveMem);
     pyro::dji_gm_6020_motor_drv_t (&steer)[4] = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t(&)[4]>(_steerMem);
 #elifdef GIMBAL
-    pyro::dji_gm_6020_motor_drv_t (&yaw) = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t(&)>( _yawMem);
-    pyro::dji_m2006_motor_drv_t (&trigger) = reinterpret_cast<pyro::dji_m2006_motor_drv_t(&)>( _triggerMem);
     pyro::dji_m3508_motor_drv_t (&fric)[2] = reinterpret_cast<pyro::dji_m3508_motor_drv_t(&)[2]>( _fircMem);
     pyro::dm_motor_drv_t (&pitch) = reinterpret_cast<pyro::dm_motor_drv_t(&)>( _pitchMem);
 #endif
+    pyro::dji_gm_6020_motor_drv_t &yaw = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t(&)>( _yawMem);
+    [[maybe_unused]]pyro::dji_m2006_motor_drv_t &trigger = reinterpret_cast<pyro::dji_m2006_motor_drv_t(&)>( _triggerMem);
 
   private:
     /* message interface */
@@ -104,11 +104,11 @@ class MotActSrvc final : public PeriodicApp, public Singleton<MotActSrvc> {
     alignas(pyro::dji_m3508_motor_drv_t) uint8_t _driveMem[sizeof(pyro::dji_m3508_motor_drv_t) * 4];
     alignas(pyro::dji_gm_6020_motor_drv_t) uint8_t _steerMem[sizeof(pyro::dji_m3508_motor_drv_t) * 4];
 #elifdef GIMBAL
-    alignas(pyro::dji_gm_6020_motor_drv_t) uint8_t _yawMem[sizeof(pyro::dji_gm_6020_motor_drv_t)];
     alignas(pyro::dm_motor_drv_t) uint8_t _pitchMem[sizeof(pyro::dm_motor_drv_t)];
     alignas(pyro::dji_m3508_motor_drv_t) uint8_t _fircMem[sizeof(pyro::dji_m3508_motor_drv_t) * 2];
-    alignas(pyro::dji_m2006_motor_drv_t) uint8_t _triggerMem[sizeof(pyro::dji_m2006_motor_drv_t)];
 #endif
+    alignas(pyro::dji_gm_6020_motor_drv_t) uint8_t _yawMem[sizeof(pyro::dji_gm_6020_motor_drv_t)];
+    alignas(pyro::dji_m2006_motor_drv_t) uint8_t _triggerMem[sizeof(pyro::dji_m2006_motor_drv_t)];
 };
 #endif
 

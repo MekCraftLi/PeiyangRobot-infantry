@@ -42,7 +42,7 @@
 // 原始遥控器数据 (独立于具体协议)
 struct RcRawData {
     float right_x, right_y; // 右摇杆 (-1.0 ~ 1.0)
-    float left_x,  left_y;  // 左摇杆 (-1.0 ~ 1.0)
+    float left_x, left_y;   // 左摇杆 (-1.0 ~ 1.0)
     float dial;             // 拨轮   (-1.0 ~ 1.0)
     uint8_t sw_left;        // 左开关 (1:上, 2:中, 3:下)
     uint8_t sw_right;       // 右开关 (1:上, 2:中, 3:下)
@@ -60,21 +60,21 @@ enum class ControlSource : uint8_t {
 // [新增] 模式枚举定义
 // ==========================================
 enum ChassisMode : uint8_t {
-    CHASSIS_RELAX = 0,       // 无力/急停模式
-    CHASSIS_RC    = 1,       // 遥控器手动控制模式 (速度环)
-    CHASSIS_AUTO  = 2,       // 自动/视觉/状态保留模式
+    CHASSIS_RELAX = 0, // 无力/急停模式
+    CHASSIS_RC    = 1, // 遥控器手动控制模式 (速度环)
+    CHASSIS_AUTO  = 2, // 自动/视觉/状态保留模式
 };
 
 enum GimbalMode : uint8_t {
-    GIMBAL_RELAX = 0,        // 无力模式
-    GIMBAL_RC    = 1,        // 遥控器控制模式 (速度环)
-    GIMBAL_AUTO  = 2,        // 视觉自瞄/绝对角度模式 (位置-速度串级环)
+    GIMBAL_RELAX = 0, // 无力模式
+    GIMBAL_RC    = 1, // 遥控器控制模式 (速度环)
+    GIMBAL_AUTO  = 2, // 视觉自瞄/绝对角度模式 (位置-速度串级环)
 };
 
 // 底盘与云台的宏观期望指令
 struct ChassisCmd {
-    float vx, vy, vw;       // 期望速度 (m/s, rad/s)
-    uint8_t mode;           // 模式控制
+    float vx, vy, vw; // 期望速度 (m/s, rad/s)
+    uint8_t mode;     // 模式控制
     uint32_t timestamp;
 };
 
@@ -97,10 +97,10 @@ struct ImuState {
 };
 
 struct MotorState {
-    float pos;        // 角度 (rad)
-    float vel;        // 角速度 (rad/s)
-    float torque;     // 真实反馈力矩 (N.m) 或 电流 (A)
-    int8_t temp;    // 温度 (°C)
+    float pos;    // 角度 (rad)
+    float vel;    // 角速度 (rad/s)
+    float torque; // 真实反馈力矩 (N.m) 或 电流 (A)
+    int8_t temp;  // 温度 (°C)
 };
 
 // 舵轮模块组合状态
@@ -111,6 +111,7 @@ struct SwerveModuleState {
 
 struct ChassisState {
     SwerveModuleState modules[4]; // 4个舵轮
+    MotorState yaw;
     uint32_t timestamp;
 };
 
@@ -139,13 +140,24 @@ struct GimbalOutput {
     float yawVoltage;
     float targetPitchPos;
     float pitchFeedforwardTorque;
-
+    bool pitchEn;
 };
 
 struct BooterOutput {
     float fricLeftCurrent;
     float fricRightCurrent;
     float triggerCurrent;
+};
+
+union GimbalToChassisComm {
+
+    __attribute__((packed)) struct {
+        uint32_t vx   : 6; //  正方向： 向前
+        uint32_t vy   : 6; // 正方向： 向左
+        uint32_t mode : 2;
+    } msg;
+
+    uint8_t buffer[8];
 };
 
 // ==========================================
@@ -163,7 +175,7 @@ struct ChassisTelemetry {
     float targetDriveSpd[4];
 
     // 底盘功率观测器
-    float estimated_power_w;     // 预估底盘总消耗功率 (Watt)
+    float estimated_power_w; // 预估底盘总消耗功率 (Watt)
 
     uint32_t timestamp;
 };

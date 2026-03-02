@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    movtion-ctrl-app.h
+ * @file    real-time-comm.h
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/27
+ * @date    2026/3/3
  * @version 1.0
  *******************************************************************************
  */
@@ -22,8 +22,8 @@
 
 /* Define to prevent recursive inclusion -----------------------------------------------------------------------------*/
 
-#ifndef INFANTRY_CHASSIS_MOVTION_CTRL_APP_H
-#define INFANTRY_CHASSIS_MOVTION_CTRL_APP_H
+#ifndef INFANTRY_REAL_TIME_COMM_H
+#define INFANTRY_REAL_TIME_COMM_H
 
 
 
@@ -34,11 +34,8 @@
 
 /* I. interface */
 
-#include "../System/Thread/application-base.h"
-#include "../tools/crtp.h"
-#include "Config/Chassis/hw-config.h"
-#include "Config/Gimbal/algo-config.h"
-#include "pyro_algo_pid.h"
+#include "System/Thread/application-base.h"
+#include "tools/crtp.h"
 
 /* II. OS */
 
@@ -57,60 +54,21 @@
 
 /*-------- 2. enum ---------------------------------------------------------------------------------------------------*/
 
-struct PIDParam {
-    float kp;
-    float ki;
-    float kd;
-    float integralLimit;
-    float outputLimit;
-};
 
 
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
-class MovtionCtrlApp final : public PeriodicApp, public Singleton<MovtionCtrlApp> {
-public:
-    MovtionCtrlApp();
+class RealTimeCommApp final : public PeriodicApp, public Singleton<RealTimeCommApp> {
+  public:
+    RealTimeCommApp();
 
     void init() override;
 
     void run() override;
 
     /************ setter & getter ***********/
-
-
-#ifdef CHASSIS
-    pyro::pid_t driveSpdPid[4] = {
-        pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
-        pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
-        pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
-        pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
-    };
-    pyro::pid_t steerPosPid[4] = {
-        pyro::pid_t(58.0f,  5.0f, 0.0f, 10.0f, 50.0f),
-        pyro::pid_t(58.0f,  5.0f, 0.0f, 10.0f, 50.0f),
-        pyro::pid_t(58.0f,  5.0f, 0.0f, 10.0f, 50.0f),
-        pyro::pid_t(58.0f,  5.0f, 0.0f, 10.0f, 50.0f),
-    };
-    pyro::pid_t steerSpdPid[4] = {
-        pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f),
-        pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f),
-        pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f),
-        pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f)
-    };
-    uint8_t motorIdx[4] = {0};
-
-
-
-#elifdef GIMBAL
-
-    pyro::pid_t yawPosPid = pyro::pid_t(80.0f, 3.0f, 0.0f, 100.0f, 500.0f);
-    pyro::pid_t yawSpdPid = pyro::pid_t(10.0f, 0.0f, 0.0f, 0.0f, 24.0f);
-    pyro::pid_t pitchPosPid = pyro::pid_t(0.0f, Config::Algorithm::Chassis::DM_MOTOR_KI, 0.0f, 12.0f, 12.0f);
-
-#endif
-
+    
 
 
   private:

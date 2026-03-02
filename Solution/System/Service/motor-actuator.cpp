@@ -127,13 +127,14 @@ void MotActSrvc::init() {
         new (&drive[i]) pyro::dji_m3508_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i, Config::Hardware::MotorTopo::DRIVE_MOTOR_CANS[i]);
         new (&steer[i]) pyro::dji_gm_6020_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i, Config::Hardware::MotorTopo::STEER_MOTOR_CANS[i], Config::Hardware::MotorTopo::STEER_ECD_OFFSET[i]);
     }
-
+    new (&trigger) pyro::dji_m2006_motor_drv_t(Config::Hardware::MotorTopo::TRIGGER_ID, Config::Hardware::MotorTopo::COMM_CAN);
+    new (&yaw) pyro::dji_gm_6020_motor_drv_t(Config::Hardware::MotorTopo::YAW_ID, Config::Hardware::MotorTopo::COMM_CAN, Config::Hardware::MotorTopo::YAW_OFFSET);
 #elifdef GIMBAL
 
     new (&fric[0]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_LEFT_ID, Config::Hardware::MotorTopo::FRIC_LEFT_CAN);
     new (&fric[1]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_RIGHT_ID, Config::Hardware::MotorTopo::FRIC_RIGHT_CAN);
     new (&trigger) pyro::dji_m2006_motor_drv_t(Config::Hardware::MotorTopo::TRIGGER_ID, Config::Hardware::MotorTopo::TRIGGER_CAN);
-    new (&yaw) pyro::dji_gm_6020_motor_drv_t(Config::Hardware::MotorTopo::YAW_ID, Config::Hardware::MotorTopo::YAW_CAN);
+    new (&yaw) pyro::dji_gm_6020_motor_drv_t(Config::Hardware::MotorTopo::YAW_ID, Config::Hardware::MotorTopo::YAW_CAN, Config::Hardware::MotorTopo::YAW_OFFSET);
     new (&pitch) pyro::dm_motor_drv_t(0x01, 0x00, Config::Hardware::MotorTopo::PITCH_CAN);
 
     // ==========================================
@@ -164,6 +165,16 @@ void MotActSrvc::run() {
     Blackboard::instance().chassisOut.read(chasOut);
 
     // 更新数据与发送数据
+    yaw.update_feedback();
+    // yaw向左为正
+    state.yaw.pos = -yaw.get_current_position();
+    state.yaw.torque = -yaw.get_current_torque();
+    state.yaw.vel = -yaw.get_current_rotate();
+    state.yaw.temp = yaw.get_temperature();
+
+
+
+
     for (uint8_t i = 0; i < 4; i++) {
         drive[i].update_feedback();
         steer[i].update_feedback();
@@ -181,7 +192,9 @@ void MotActSrvc::run() {
 
     }
 
-    Blackboard::instance().chassisState.Write(state);
+
+
+    Blackboard::instance().chassisState.write(state);
 }
 #elifdef GIMBAL
 
@@ -241,6 +254,7 @@ void MotActSrvc::run() {
     // 提示：如果你上一轮修改了 dm_motor_drv_t 并增加了 send_mit_ctrl(pos, vel, t_ff)
     // 并且希望使用满血的电机内部阻抗控制，这里可以改为：
      pitch.send_mit_ctrl(gout.targetPitchPos, 0.0f, gout.pitchFeedforwardTorque);
+
 
 }
 

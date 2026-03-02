@@ -62,6 +62,8 @@ constexpr pyro::dji_motor_tx_frame_t::register_id_t FRIC_RIGHT_ID = pyro::dji_mo
 constexpr pyro::dji_motor_tx_frame_t::register_id_t YAW_ID = pyro::dji_motor_tx_frame_t::id_5;
 constexpr pyro::dji_motor_tx_frame_t::register_id_t TRIGGER_ID = pyro::dji_motor_tx_frame_t::id_3;
 constexpr pyro::dji_motor_tx_frame_t::register_id_t PITCH = pyro::dji_motor_tx_frame_t::id_5;
+
+constexpr uint16_t YAW_OFFSET = 1526;
 }
 
 

@@ -196,6 +196,7 @@ void CommanderSrvc::run() {
     /* ========================================================
      * 3. 仲裁层 第一阶：决断控制源 (Control Source)
      * ======================================================== */
+#ifdef GIMBAL
     // 默认最高安全等级，除非确认遥控器在线且给出运行指令
     /* 3. 第一阶仲裁：决断控制权 */
     ControlSource currentSource = ControlSource::SAFE_STOP;
@@ -221,17 +222,15 @@ void CommanderSrvc::run() {
     /* ========================================================
      * 4. 仲裁层 第二阶：根据控制源填充控制指令
      * ======================================================== */
-    ChassisCmd finalChassisCmd;
-    GimbalCmd  finalGimbalCmd;
 
-#ifdef GIMBAL
-    ImuState imuState;
-#endif
+    GimbalCmd  finalGimbalCmd{};
+    GimbalToChassisComm g2cComm{};
+    ImuState imuState{};
 
 
     // 【关键】先从黑板中 Read 出上一帧的历史指令。
     // 如果后续不修改它，写回的就是历史值，天然实现“状态无缝保留”。
-    Blackboard::instance().chassisCmd.read(finalChassisCmd);
+
     Blackboard::instance().gimbalCmd.read(finalGimbalCmd);
     Blackboard::instance().imuState.read(imuState);
 
@@ -239,21 +238,20 @@ void CommanderSrvc::run() {
     switch (currentSource) {
         case ControlSource::SAFE_STOP: {
             // 彻底切断底层动力
-            finalChassisCmd.mode = CHASSIS_RELAX;
+            g2cComm.msg.mode = (uint8_t) CHASSIS_RELAX;
             finalGimbalCmd.mode  = GIMBAL_RELAX;
 
-#ifdef GIMBAL
             finalGimbalCmd.yawVel = 0;
-#endif
+
         }break;
 
         case ControlSource::REMOTE: {
             // 遥控器映射
-            finalChassisCmd.mode = CHASSIS_RC;
-            finalChassisCmd.vx = Actions::MoveX.getValue() * Config::Algorithm::Chassis::MAX_VX;
+            g2cComm.msg.mode = CHASSIS_RC;
+            g2cComm.msg.vx = Actions::MoveX.getValue() * Config::Algorithm::Chassis::MAX_VX * 5;
             // 运动计算坐标系和遥控器方向相反
-            finalChassisCmd.vy = -Actions::MoveY.getValue() * Config::Algorithm::Chassis::MAX_VY;
-            finalChassisCmd.vw = -Actions::Spin.getValue()  * Config::Algorithm::Chassis::MAX_VW;
+            g2cComm.msg.vy = -Actions::MoveY.getValue() * Config::Algorithm::Chassis::MAX_VY * 5;
+
 
             finalGimbalCmd.mode  = GIMBAL_RC;
             float yawInput = Actions::GimbalYaw.getValue();
@@ -268,7 +266,7 @@ void CommanderSrvc::run() {
 
         case ControlSource::VISION: {
             // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            finalChassisCmd.mode = CHASSIS_AUTO;
+            g2cComm.msg.mode = CHASSIS_AUTO;
             finalGimbalCmd.mode  = GIMBAL_AUTO;
 
             // 可以在此处从 Vision 接收缓冲中提取数据并覆盖目标值
@@ -278,15 +276,19 @@ void CommanderSrvc::run() {
         default:
             break;
     }
-
-    finalChassisCmd.timestamp = current_tick;
     finalGimbalCmd.timestamp  = current_tick;
 
     /* ========================================================
      * 5. 发布层：将仲裁后的最终真理写入黑板
      * ======================================================== */
-    Blackboard::instance().chassisCmd.write(finalChassisCmd);
+    Blackboard::instance().g2cOutput.write(g2cComm);
     Blackboard::instance().gimbalCmd.write(finalGimbalCmd);
+#elifdef CHASSIS
+
+
+
+
+#endif
 }
 extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size) {
 

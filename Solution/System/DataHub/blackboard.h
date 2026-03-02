@@ -51,6 +51,8 @@ public:
 
     Blackboard() = default;
 
+    SeqVariable<GimbalToChassisComm>  rComm;
+
     // ----------------------------------------
     // [意图区] (主要由 DR16 任务 / ROS 通信任务 写入)
     // ----------------------------------------
@@ -64,9 +66,8 @@ public:
     // ----------------------------------------
     // [状态区] (主要由 CAN 接收任务 / SPI 中断 写入)
     // ----------------------------------------
-    SeqVariable<ImuState>     imu_state;
+    SeqVariable<ImuState>     imuState;
     SeqVariable<ChassisState> chassisState;
-    SeqVariable<GimbalState>  gimbal_state;
 
     // ----------------------------------------
     // [输出区] (主要由 核心控制算法任务 写入)
@@ -112,6 +113,7 @@ public:
     // ----------------------------------------
     SeqVariable<GimbalOutput>  gimbalOut;
     SeqVariable<BooterOutput> booterOut;
+    SeqVariable<GimbalToChassisComm> g2cOutput;
 
     // ----------------------------------------
     // [中间区] (主要由 核心控制算法任务 同步写入)

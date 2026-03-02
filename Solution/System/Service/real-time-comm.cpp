@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    heart-beat.cpp
+ * @file    real-time-comm.cpp
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -14,7 +14,7 @@
  *
  *******************************************************************************
  * @author  MekLi
- * @date    2026/2/28
+ * @date    2026/3/3
  * @version 1.0
  *******************************************************************************
  */
@@ -34,13 +34,14 @@
 
 /* I. header */
 
-#include "heart-beat.h"
+#include "real-time-comm.h"
 
-#include "pyro_dwt_drv.h"
+#include "System/DataHub/blackboard.h"
+#include "System/DataHub/data-def.h"
+#include "motor-actuator.h"
 
 /* II. other application */
-#include "../DataHub/blackboard.h"
-#include "motor-actuator.h"
+
 
 /* III. standard lib */
 
@@ -60,9 +61,7 @@
 
 /* ------- variables -------------------------------------------------------------------------------------------------*/
 
-
-
-[[maybe_unused]] static auto& forceInit = HeartBeatApp::instance();
+[[maybe_unused]] static auto& forceInit = RealTimeCommApp::instance();
 
 
 
@@ -70,7 +69,7 @@
 
 #define APPLICATION_ENABLE     true
 
-#define APPLICATION_NAME       "HeartBeat"
+#define APPLICATION_NAME       "RealTimeComm"
 
 #define APPLICATION_STACK_SIZE 512
 
@@ -91,34 +90,66 @@ static StackType_t appStack[APPLICATION_STACK_SIZE];
 
 
 
-Blackboard* bb = &Blackboard::instance();
+
 
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 
 
-HeartBeatApp::HeartBeatApp()
-    : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE,  appStack, APPLICATION_PRIORITY, 1000){
+RealTimeCommApp::RealTimeCommApp()
+    : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE,  appStack, APPLICATION_PRIORITY, 10){
 }
 
 
-void HeartBeatApp::init() {
+void RealTimeCommApp::init() {
     /* driver object initialize */
-    pyro::dwt_drv_t::init(550);
+    MotActSrvc::instance().waitInit();
 }
 
 
-void HeartBeatApp::run() {
- pyro::dwt_drv_t::get_timeline();
-
+void RealTimeCommApp::run() {
 #ifdef GIMBAL
-    GimbalOutput out{};
-    Blackboard::instance().gimbalOut.read(out);
-    if (out.pitchEn) {
-        MotActSrvc::instance().pitch.enable();
-    } else {
-        MotActSrvc::instance().pitch.disable();
-    }
+    static GimbalToChassisComm output;
+#elifdef CHASSIS
 #endif
 
+    [[maybe_unused]]static FDCAN_TxHeaderTypeDef txHeader = {
+#ifdef GIMBAL
+        .Identifier = 0x0D000721,
+#elifdef CHASSIS
+        .Identifier = 0x0D000722,
+#endif
+        .IdType = FDCAN_EXTENDED_ID,
+        .TxFrameType = FDCAN_DATA_FRAME,
+        .DataLength = FDCAN_DLC_BYTES_8,
+        .ErrorStateIndicator = FDCAN_ESI_ACTIVE,
+        .BitRateSwitch = FDCAN_BRS_OFF,
+        .FDFormat = FDCAN_CLASSIC_CAN,
+        .TxEventFifoControl = FDCAN_NO_TX_EVENTS,
+        .MessageMarker = 0,
+    };
+#ifdef GIMBAL
+    Blackboard::instance().g2cOutput.read(output);
+    taskENTER_CRITICAL();
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, output.buffer);
+    taskEXIT_CRITICAL();
+#elifdef CHSSIS
+
+#endif
 
 }
+
+#ifdef CHASSIS
+extern "C" void getBoardCommFromISR(uint8_t* pData) {
+
+    static GimbalToChassisComm comm{};
+    memcpy(comm.buffer, pData, 8);
+    Blackboard::instance().rComm.write(comm);
+
+}
+#elifdef GIMBAL
+
+extern "C" void getBoardCommFromISR(uint8_t* pData) {
+
+
+}
+#endif

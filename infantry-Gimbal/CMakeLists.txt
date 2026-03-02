@@ -130,6 +130,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/System/Service/state-estimator.cpp"
         "../Solution/System/Service/motor-actuator.cpp"
         "../Solution/System/Service/heart-beat.cpp"
+        "../SOlution/System/Service/real-time-comm.cpp"
 
 
 
@@ -201,9 +202,6 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
         "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/Ported_third_lib/CMSIS-DSP/Include"
 )
-
-# 3. 将 DSP 的源码文件收集起来
-file(GLOB_RECURSE DSP_SOURCES "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/Ported_third_lib/CMSIS-DSP/Source/*.c")
 
 
 
