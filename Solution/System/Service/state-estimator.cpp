@@ -10,7 +10,23 @@
  *******************************************************************************
  * @note
  *
- * none
+ * 进行数学解算的时候严格遵循右手系
+ * 坐标轴正方向：
+ * X->前
+ * Y->左
+ * Z->上
+ * 旋转正方向
+ * Roll - x - 向右
+ * Pitch - y - 向下
+ * Yaw - z - 向左
+ *
+ * 开发板BMI088获取的加速度，角速度正方向以及顺序：
+ * x -> 向后
+ * y -> 向右
+ * z -> 向上
+ * roll -> 向左
+ * pitch -> 向上
+ * yaw -> 向左
  *
  *******************************************************************************
  * @author  MekLi
@@ -140,8 +156,8 @@ void ImuApp::run() {
     // 在这里，你必须根据你的板子安装方向，手动凑出“右手直角坐标系” (前X, 左Y, 上Z)。
     // 比如，如果你的板子 Y 轴是向后的，你得传 -gy 和 -ay。
     // -------------------------------------------------------------
-    float input_gx = data.rate.x, input_gy = -data.rate.y, input_gz = -data.rate.z;
-    float input_ax = data.accel.x, input_ay = -data.accel.y, input_az = -data.accel.z;
+    float input_gx = -data.rate.x, input_gy = -data.rate.y, input_gz = data.rate.z;
+    float input_ax = -data.accel.x, input_ay = -data.accel.y, input_az = data.accel.z;
 
     // 3. 执行 EKF 更新 (纯数学运算，几微秒跑完)
     uint32_t startTime = pyro::dwt_drv_t::get_current_ticks();

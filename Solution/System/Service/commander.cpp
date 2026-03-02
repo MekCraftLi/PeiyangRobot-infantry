@@ -139,7 +139,7 @@ InputAction FireSingle;
 
 CommanderSrvc::CommanderSrvc()
     : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY, 1),
-      _joystickDeadzone(0.02f), _work(-0.25f, 1.0f, false, HoldCondition::LessOrEqual) // 设定 2% 的死区，防止摇杆不回中导致漂移
+      _joystickDeadzone(0.02f), _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual) // 设定 2% 的死区，防止摇杆不回中导致漂移
 {}
 
 void CommanderSrvc::init() {
@@ -228,15 +228,13 @@ void CommanderSrvc::run() {
     ImuState imuState;
 #endif
 
-    static float targetYawRad = 0.0f;
-    static float targetPitchRad = 0.0f;
-
 
     // 【关键】先从黑板中 Read 出上一帧的历史指令。
     // 如果后续不修改它，写回的就是历史值，天然实现“状态无缝保留”。
     Blackboard::instance().chassisCmd.read(finalChassisCmd);
     Blackboard::instance().gimbalCmd.read(finalGimbalCmd);
     Blackboard::instance().imuState.read(imuState);
+
 
     switch (currentSource) {
         case ControlSource::SAFE_STOP: {
@@ -245,7 +243,7 @@ void CommanderSrvc::run() {
             finalGimbalCmd.mode  = GIMBAL_RELAX;
 
 #ifdef GIMBAL
-            finalGimbalCmd.yawRad = imuState.yaw;
+            finalGimbalCmd.yawVel = 0;
 #endif
         }break;
 
@@ -261,23 +259,11 @@ void CommanderSrvc::run() {
             float yawInput = Actions::GimbalYaw.getValue();
             float pitchInput = Actions::GimbalPitch.getValue();
 
-            float deltaYaw = yawInput * Config::Algorithm::Gimbal::MAX_YAW_SPEED * dt;
-            float deltaPitch = pitchInput * Config::Algorithm::Gimbal::MAX_PITCH_SPEED * dt;
+            // 遥控器的Y轴与标准正方向（左）相反, X轴与标准正方向(下)相反
+            finalGimbalCmd.yawVel = -yawInput * Config::Algorithm::Gimbal::MAX_YAW_SPEED;
+            finalGimbalCmd.pitchVel = -pitchInput * Config::Algorithm::Gimbal::MAX_PITCH_SPEED;
 
-            targetYawRad += deltaYaw;
-            targetPitchRad += deltaPitch;
 
-            if (targetPitchRad > Config::Algorithm::Gimbal::MAX_PITCH_ANGLE) {
-                targetPitchRad = Config::Algorithm::Gimbal::MAX_PITCH_ANGLE;
-            } else if (targetPitchRad < Config::Algorithm::Gimbal::MIN_PITCH_ANGLE) {
-                targetPitchRad = Config::Algorithm::Gimbal::MIN_PITCH_ANGLE;
-            }
-
-            while (targetYawRad > pyro::PI) targetYawRad -= 2.0f * pyro::PI;
-            while (targetYawRad < -pyro::PI) targetYawRad += 2.0f * pyro::PI;
-
-            finalGimbalCmd.yawRad = targetYawRad;
-            finalGimbalCmd.pitchRad = targetPitchRad;
         }break;
 
         case ControlSource::VISION: {

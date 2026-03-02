@@ -36,6 +36,7 @@
 
 #include "../System/Thread/application-base.h"
 #include "../tools/crtp.h"
+#include "Config/Gimbal/algo-config.h"
 #include "pyro_algo_pid.h"
 
 /* II. OS */
@@ -101,8 +102,9 @@ class MovtionCtrlApp final : public PeriodicApp, public Singleton<MovtionCtrlApp
 
 #elifdef GIMBAL
 
-    pyro::pid_t yawPosPid = pyro::pid_t(60.0f, 3.0f, 0.0f, 10.0f, 500.0f);
-    pyro::pid_t yawSpdPid = pyro::pid_t(10.0f, 0.0f, 0.0f, 1.0f, 24.0f);
+    pyro::pid_t yawPosPid = pyro::pid_t(80.0f, 3.0f, 0.0f, 100.0f, 500.0f);
+    pyro::pid_t yawSpdPid = pyro::pid_t(10.0f, 0.0f, 0.0f, 0.0f, 24.0f);
+    pyro::pid_t pitchPosPid = pyro::pid_t(0.0f, Config::Algorithm::Chassis::DM_MOTOR_KI, 0.0f, 12.0f, 12.0f);
 
 #endif
 

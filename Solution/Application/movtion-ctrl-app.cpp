@@ -37,7 +37,10 @@
 /* I. header */
 
 #include "movtion-ctrl-app.h"
+
 #include "../System/DataHub/blackboard.h"
+#include "Config/Gimbal/algo-config.h"
+#include "pyro_dwt_drv.h"
 
 /* II. other application */
 
@@ -215,23 +218,41 @@ void MovtionCtrlApp::init() {
 void MovtionCtrlApp::run() {
     GimbalCmd cmd;
     ImuState imuState;
+    GimbalState gimbalState;
     GimbalTelemetry telem;
+    static uint32_t dwtCnt;
+    float dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
 
     // 准备输入的数据
     Blackboard::instance().gimbalCmd.read(cmd);
     Blackboard::instance().imuState.read(imuState);
+    Blackboard::instance().gimbalState.read(gimbalState);
+    Blackboard::instance().telem.read(telem);
     GimbalOutput output = {0};       // 物理电流输出
 
     // 2. 状态机：处理急停/无力模式
     if (cmd.mode == GIMBAL_RELAX) {
         // RELAX 模式下，直接输出全 0，底层 CAN 会发送 0 电流，电机软掉
+
+        telem.targetYawRad = imuState.yaw;
+        telem.targetPitchRad = imuState.pitch;
+        output.targetPitchPos = gimbalState.pitch.pos;
+
+        Blackboard::instance().telem.write(telem);
         Blackboard::instance().gimbalOut.write(output);
         return;
     }
 
+    Blackboard::instance().gimbalOut.read(output);
+
     // 外环：输入目标角度，反馈真实角度，输出目标角速度
 
-    float err = cmd.yawRad - imuState.yaw;
+    telem.targetYawRad += cmd.yawVel * dt;
+
+    while (telem.targetYawRad > pyro::PI) telem.targetYawRad -= 2.0f * pyro::PI;
+    while (telem.targetYawRad < -pyro::PI) telem.targetYawRad += 2.0f * pyro::PI;
+
+    float err = telem.targetYawRad - imuState.yaw;
 
     while (err > M_PI) {
         err -= 2.0 * M_PI;
@@ -242,12 +263,53 @@ void MovtionCtrlApp::run() {
 
     float alignedTgtYaw = imuState.yaw + err;
 
-    float tgtYawSpd = -yawPosPid.calculate(alignedTgtYaw, imuState.yaw);
+    float tgtYawSpd = yawPosPid.calculate(alignedTgtYaw, imuState.yaw);
 
     // 内环：输入目标角速度，反馈真实角速度，输出电流指令
     telem.targetYawRotate = tgtYawSpd;
-    output.yawVoltage = -yawSpdPid.calculate(tgtYawSpd, imuState.gyro[2]);
+    output.yawVoltage = yawSpdPid.calculate(tgtYawSpd, imuState.gyro[2]);
 
+
+
+    /*=========================Pitch计算===========================*/
+    // =========================================================
+    // Pitch 轴控制计算 (MIT 模式: 目标规划 + 混合前馈)
+    // =========================================================
+
+
+    // --- 步骤 1：动态坐标映射 (绝对期望转相对期望) ---
+    // offset = 绝对仰角 - 电机相对角度
+    float offsetPitch = imuState.pitch - gimbalState.pitch.pos; // 注意：由于你之前定义了 IMU 也在 state 里，这里应为 imu_pitch - motor_pitch
+
+    telem.targetPitchRad += cmd.pitchVel * dt;
+
+    float targetMotorRaw = telem.targetPitchRad - offsetPitch;
+
+    // --- 步骤 2：基于方案一的物理限位裁切 ---
+
+    if (targetMotorRaw > Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT) {
+        targetMotorRaw = Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT;
+    } else if (targetMotorRaw < Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT) {
+        targetMotorRaw = Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT;
+    }
+
+    telem.targetPitchRad = targetMotorRaw + offsetPitch;
+
+
+    // --- 步骤 3：基于方案二的混合前馈计算 (物理重力 + 软积分) ---
+    // 3.1 纯物理重力前馈 (假设水平时下坠力矩最大，随俯仰角余弦变化)
+    float gravity_ff = Config::Algorithm::Gimbal::PITCH_K_GRAVITY * std::cos(imuState.pitch);
+
+    // 3.2 外环软积分补偿 (消除摩擦力、线束阻力造成的静态误差)
+    float pitchIntegralTorque = pitchPosPid.calculate(telem.targetPitchRad, imuState.pitch);
+
+    // 3.3 统合前馈总力矩
+    float t_ff = gravity_ff + pitchIntegralTorque;
+
+    // --- 步骤 4：装填发给 MIT 模式的参数 ---
+    // 注意：在你的 GimbalOutput 中，如果还没定义 targetPos 和 targetVel，需要去 data-def.h 补充
+    output.targetPitchPos = targetMotorRaw;
+    output.pitchFeedforwardTorque   = t_ff;  // 借助原有的 Current 字段下发前馈 Torque
 
     // 数据输出
     Blackboard::instance().gimbalOut.write(output);

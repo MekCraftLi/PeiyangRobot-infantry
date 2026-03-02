@@ -67,7 +67,7 @@ constexpr float MAX_YAW_SPEED   = 3.14f; // 约 180度/秒
 constexpr float MAX_PITCH_SPEED = 2.0f;  // 约 114度/秒
 
 // 云台 Pitch 轴物理限幅 (防止撞击底盘/弹仓)
-constexpr float MAX_PITCH_ANGLE =  0.60f; // 抬头上限 (rad)
+constexpr float PITCH_ELEVATION_LIMIT =  0.60f; // 抬头上限 (rad)
 constexpr float MIN_PITCH_ANGLE = -0.45f; // 低头下限 (rad)
 
 }

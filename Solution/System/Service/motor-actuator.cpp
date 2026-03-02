@@ -134,8 +134,24 @@ void MotActSrvc::init() {
     new (&fric[1]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_RIGHT_ID, Config::Hardware::MotorTopo::FRIC_RIGHT_CAN);
     new (&trigger) pyro::dji_m2006_motor_drv_t(Config::Hardware::MotorTopo::TRIGGER_ID, Config::Hardware::MotorTopo::TRIGGER_CAN);
     new (&yaw) pyro::dji_gm_6020_motor_drv_t(Config::Hardware::MotorTopo::YAW_ID, Config::Hardware::MotorTopo::YAW_CAN);
-    new (&pitch) pyro::dm_motor_drv_t(0x00, 0x00, Config::Hardware::MotorTopo::PITCH_CAN);
+    new (&pitch) pyro::dm_motor_drv_t(0x01, 0x00, Config::Hardware::MotorTopo::PITCH_CAN);
 
+    // ==========================================
+    // 【补充】达妙电机 MIT 模式核心配置参数对齐
+    // 注意：这里的范围必须与你用“达妙调参助手”烧录进电机内部的 P_MAX, V_MAX, T_MAX 绝对一致！
+    // 否则数据解包出来的浮点数全都是错的！
+    // ==========================================
+    pitch.set_position_range(-Config::Algorithm::Chassis::DM_MOTOR_PMAX,
+                             Config::Algorithm::Chassis::DM_MOTOR_PMAX); // 设定位置限位 (rad)
+    pitch.set_rotate_range(-Config::Algorithm::Chassis::DM_MOTOR_VMAX, Config::Algorithm::Chassis::DM_MOTOR_VMAX);   // 设定速度限位 (rad/s)
+    pitch.set_torque_range(-Config::Algorithm::Chassis::DM_MOTOR_TMAX, Config::Algorithm::Chassis::DM_MOTOR_TMAX);   // 设定扭矩限位 (N.m)
+
+    // 设置 MIT 模式下的阻抗参数 (若使用串级PID输出扭矩，Kp和Kd必须设为0)
+    pitch.set_runtime_kp(Config::Algorithm::Chassis::DM_MOTOR_KP);
+    pitch.set_runtime_kd(Config::Algorithm::Chassis::DM_MOTOR_KD);
+
+    // 发送使能指令 (0xFC)
+    pitch.enable();
 
 #endif
 
@@ -169,6 +185,8 @@ void MotActSrvc::run() {
 }
 #elifdef GIMBAL
 
+float kp = 0.1f;
+float kd;
 void MotActSrvc::run() {
 
     GimbalState gstate{.timestamp = xTaskGetTickCount()};
@@ -177,6 +195,7 @@ void MotActSrvc::run() {
     BooterOutput bout{};
 
     yaw.update_feedback();
+    pitch.update_feedback();
     fric[0].update_feedback();
     fric[1].update_feedback();
     trigger.update_feedback();
@@ -185,6 +204,11 @@ void MotActSrvc::run() {
     gstate.yaw.temp = yaw.get_temperature();
     gstate.yaw.torque = yaw.get_current_torque();
     gstate.yaw.vel = yaw.get_current_rotate();
+
+    gstate.pitch.pos    = pitch.get_current_position();
+    gstate.pitch.temp   = pitch.get_temperature();
+    gstate.pitch.torque = pitch.get_current_torque();
+    gstate.pitch.vel    = pitch.get_current_rotate();
 
     for (uint8_t i = 0; i < 2; i++) {
         bstate.fric[i].pos = fric[i].get_current_position();
@@ -209,6 +233,14 @@ void MotActSrvc::run() {
     trigger.send_torque(bout.triggerCurrent);
     fric[0].send_torque(bout.fricLeftCurrent);
     fric[1].send_torque(bout.fricRightCurrent);
+    // 【补充】达妙电机 MIT 控制输出
+    // 此处使用了 data-def.h 中定义的 pitchCurrent (实为 Torque 扭矩量)
+    // 结合我们在 init() 中设置的 Kp=0, Kd=0，这就是标准的力矩透传控制
+
+
+    // 提示：如果你上一轮修改了 dm_motor_drv_t 并增加了 send_mit_ctrl(pos, vel, t_ff)
+    // 并且希望使用满血的电机内部阻抗控制，这里可以改为：
+     pitch.send_mit_ctrl(gout.targetPitchPos, 0.0f, gout.pitchFeedforwardTorque);
 
 }
 

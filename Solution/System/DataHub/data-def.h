@@ -79,7 +79,9 @@ struct ChassisCmd {
 };
 
 struct GimbalCmd {
-    float yawRad, pitchRad; // 期望绝对角度 (rad)
+    // 【修改】将绝对角度改为期望角速度 (rad/s)
+    float yawVel;
+    float pitchVel;
     uint8_t mode;
     uint32_t timestamp;
 };
@@ -135,7 +137,8 @@ struct ChassisOutput {
 
 struct GimbalOutput {
     float yawVoltage;
-    float pitchCurrent;
+    float targetPitchPos;
+    float pitchFeedforwardTorque;
 
 };
 
@@ -166,7 +169,9 @@ struct ChassisTelemetry {
 };
 
 struct GimbalTelemetry {
+    float targetYawRad;
     float targetYawRotate;
+    float targetPitchRad;
     float targetPitchRotate;
 };
 
