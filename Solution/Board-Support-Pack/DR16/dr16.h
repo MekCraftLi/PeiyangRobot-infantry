@@ -35,6 +35,7 @@
 #include "../../Adapter/adapter-remote.h"
 
 #include "FreeRTOS.h"
+#include "System/crtp.h"
 #include "task.h"
 
 
@@ -88,7 +89,7 @@ typedef struct __attribute__((packed)) {
 
 
 
-class RemoteDR16 : public RemoteBase {
+class RemoteDR16 : public RemoteBase, public Singleton<RemoteDR16> {
   public:
     // ... 构造函数和 updateRaw 同前 ...
 
@@ -97,8 +98,6 @@ class RemoteDR16 : public RemoteBase {
 
     // 2. 数据更新接口 (被 BSP 驱动调用)
     void updateRaw(const Dr16Data& raw);
-    // 单例模式访问点 (方便全局访问)
-    static RemoteDR16& instance();
 
     // 3. 暴露控件接口 (供绑定层使用)
     // 架构原则: 返回基类指针 IInputControl*，隐藏具体实现
@@ -108,6 +107,7 @@ class RemoteDR16 : public RemoteBase {
     IInputControl* getRightY() { return &_axisry; }
     IInputControl* getSwLeft() { return &_swleft; }
     IInputControl* getSwRight() { return &_swright; }
+    IInputControl* getWheel() { return &_wheel; }
     // --- 实现基类接口 ---
 
     IInputControl* getAxis(AxisID id) override {
@@ -143,6 +143,7 @@ class RemoteDR16 : public RemoteBase {
     // 实体化控件 (内存直接分配在 Remote 对象内)
     ControlAxis _axislx, _axisly;
     ControlAxis _axisrx, _axisry;
+    ControlAxis _wheel;
     ControlSwitch _swleft;
     ControlSwitch _swright;
     TickType_t _lastUpdateTick;

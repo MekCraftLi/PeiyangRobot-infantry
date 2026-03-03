@@ -129,7 +129,7 @@ void MovtionCtrlApp::run() {
 
 
 
-    if (cmd.mode == CHASSIS_RC) {
+    if (cmd.mode == CHASSIS_NORMAL) {
 
         vw = yawPosPid.calculate(0, state.yaw.pos);
     } else {

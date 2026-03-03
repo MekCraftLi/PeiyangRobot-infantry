@@ -52,6 +52,7 @@
 
 /* IV. drivers */
 #include "Config/Chassis/algo-config.h"
+#include "System/Input/TriggerImpl/trigger-decorator-toggle.h"
 #include "usart.h"
 
 /* V. standard lib */
@@ -101,26 +102,29 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     TriggerHold _trigFricToggle;
     TriggerHold _triggerBurst;
     TriggerHold _trigSingleRelease;
+     TriggerHold baseTrigger = TriggerHold(0.5f, 0.5, true, HoldCondition::GreaterOrEqual);
+    TriggerToggle _trigSpin;
 
-    InputAction _actions[11];
+    InputAction _actions[12];
 
     // 1. 系统级意图 (仲裁器专用)
-    InputAction& actionCtrlMode          = _actions[0]; // 控制源切换 (DR16, 视觉, 键盘)
-    InputAction& actionSateStop          = _actions[1]; // 物理急停
+    InputAction& actionCtrlMode    = _actions[0]; // 控制源切换 (DR16, 视觉, 键盘)
+    InputAction& actionSateStop    = _actions[1]; // 物理急停
 
     // 2. 底盘意图 (底盘任务专用)
-    InputAction& actionMoveX             = _actions[2];
-    InputAction& actionMoveY             = _actions[3];
-    InputAction& actionSpin              = _actions[4];
+    InputAction& actionMoveX       = _actions[2];
+    InputAction& actionMoveY       = _actions[3];
+    InputAction& actionSpin        = _actions[4];
 
     // 3. 云台意图 (云台任务专用)
     InputAction& actionYaw         = _actions[5];
-    InputAction& actiongPitch       = _actions[6];
+    InputAction& actiongPitch      = _actions[6];
 
     // 1. 定义 Action (意图)
     InputAction& actionFricToggle  = _actions[8];
     InputAction& actionShootBurst  = _actions[9];
     InputAction& actionShootSingle = _actions[10];
+    InputAction& actionSpinMode    = _actions[11];
 };
 #endif
 

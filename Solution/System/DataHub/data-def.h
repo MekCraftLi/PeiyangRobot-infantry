@@ -61,8 +61,8 @@ enum class ControlSource : uint8_t {
 // ==========================================
 enum ChassisMode : uint8_t {
     CHASSIS_RELAX = 0, // 无力/急停模式
-    CHASSIS_RC    = 1, // 遥控器手动控制模式 (速度环)
-    CHASSIS_AUTO  = 2, // 自动/视觉/状态保留模式
+    CHASSIS_NORMAL    = 1, // 遥控器手动控制模式 (速度环)
+    CHASSIS_SPIN  = 2, // 自动/视觉/状态保留模式
 };
 
 enum GimbalMode : uint8_t {

@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * @file    input.cpp
+ * @file    commander.cpp
  * @brief   简要描述
  *******************************************************************************
  * @attention
@@ -66,10 +66,9 @@ __attribute__((section(".dma_pool"))) static uint8_t rxbuf[32] = {0};
 static Dr16Data dr16Data;
 
 
-
 // --- 宏观运动参数限制 ---
 // 宏观运动限制 (可根据机械结构调整)
-RemoteDR16& remote = RemoteDR16::instance();
+RemoteDR16& remote             = RemoteDR16::instance();
 
 /* ------- application attribute -------------------------------------------------------------------------------------*/
 
@@ -104,11 +103,11 @@ static StackType_t appStack[APPLICATION_STACK_SIZE];
 
 
 CommanderSrvc::CommanderSrvc()
-    : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY, 1),
-      _joystickDeadzone(0.02f), _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual), _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
+    : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY, 10),
+      _joystickDeadzone(0.02f), _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual),
+      _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _triggerBurst(0.5f, 1.0f, true, HoldCondition::GreaterOrEqual),
-      _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual)
-{}
+      _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual), _trigSpin(baseTrigger, false) {}
 
 void CommanderSrvc::init() {
     /* ========================================================
@@ -133,6 +132,7 @@ void CommanderSrvc::init() {
     actionFricToggle.bind(RemoteDR16::instance().getSwLeft(), &_trigFricToggle);
     actionShootBurst.bind(RemoteDR16::instance().getSwLeft(), &_triggerBurst);
     actionShootSingle.bind(RemoteDR16::instance().getSwLeft(), &_trigSingleRelease);
+    actionSpinMode.bind(RemoteDR16::instance().getWheel(), &_trigSpin);
 
 
 
@@ -176,6 +176,7 @@ void CommanderSrvc::run() {
     actionFricToggle.update(dt);
     actionShootBurst.update(dt);
     actionShootSingle.update(dt);
+    actionSpinMode.update(dt);
 
     /* ========================================================
      * 3. 仲裁层 第一阶：决断控制源 (Control Source)
@@ -225,17 +226,22 @@ void CommanderSrvc::run() {
     switch (currentSource) {
         case ControlSource::SAFE_STOP: {
             // 彻底切断底层动力
-            g2cComm.msg.mode      = (uint8_t)CHASSIS_RELAX;
-            finalShootCmd.event   = ShootEvent::EMERGENCY_STOP;
-            finalGimbalCmd.mode   = GIMBAL_RELAX;
+            g2cComm.msg.mode        = (uint8_t)CHASSIS_RELAX;
+            finalShootCmd.event     = ShootEvent::EMERGENCY_STOP;
+            finalGimbalCmd.mode     = GIMBAL_RELAX;
 
-            finalGimbalCmd.yawVel = 0;
+            finalGimbalCmd.yawVel   = 0;
+            finalGimbalCmd.pitchVel = 0;
 
         } break;
 
         case ControlSource::REMOTE: {
             // 遥控器映射
-            g2cComm.msg.mode        = CHASSIS_RC;
+            if (actionSpinMode.isTriggered()) {
+                g2cComm.msg.mode = CHASSIS_SPIN;
+            } else {
+                g2cComm.msg.mode = CHASSIS_NORMAL;
+            }
             g2cComm.msg.vx          = actionMoveX.getValue() * Config::Algorithm::Chassis::MAX_VX * 10;
             // 运动计算坐标系和遥控器方向相反
             g2cComm.msg.vy          = -actionMoveY.getValue() * Config::Algorithm::Chassis::MAX_VY * 10;
@@ -249,13 +255,13 @@ void CommanderSrvc::run() {
             finalGimbalCmd.yawVel   = -yawInput * Config::Algorithm::Gimbal::MAX_YAW_SPEED;
             finalGimbalCmd.pitchVel = -pitchInput * Config::Algorithm::Gimbal::MAX_PITCH_SPEED;
 
+
+            // 发射事件映射
             if (actionFricToggle.isTriggered()) {
                 finalShootCmd.event = ShootEvent::FRIC_TOGGLE;
-            }
-            else if (actionShootBurst.isTriggered()) {
+            } else if (actionShootBurst.isTriggered()) {
                 finalShootCmd.event = ShootEvent::BURST_START;
-            }
-            else if (actionShootSingle.isTriggered()) {
+            } else if (actionShootSingle.isTriggered()) {
                 finalShootCmd.event = ShootEvent::SINGLE_FIRE;
             }
 
@@ -263,7 +269,7 @@ void CommanderSrvc::run() {
 
         case ControlSource::VISION: {
             // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            g2cComm.msg.mode    = CHASSIS_AUTO;
+            g2cComm.msg.mode    = CHASSIS_NORMAL;
             finalGimbalCmd.mode = GIMBAL_AUTO;
 
             // 可以在此处从 Vision 接收缓冲中提取数据并覆盖目标值
