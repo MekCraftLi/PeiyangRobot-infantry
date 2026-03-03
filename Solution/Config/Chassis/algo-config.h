@@ -29,6 +29,8 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
+#include <cmath>
+
 
 
 
@@ -50,7 +52,7 @@ namespace Chassis {
 // 宏观运动速度限制
 constexpr float MAX_VX = 3.0f; // 前后最大平移速度 (m/s)
 constexpr float MAX_VY = 3.0f; // 左右最大平移速度 (m/s)
-constexpr float MAX_VW = 5.0f; // 最大旋转角速度 (rad/s)
+constexpr float MAX_VW = 1.0f * 2 * M_PI; // 最大旋转角速度 (rad/s)
 
 // 动力轮速度环 PID 默认参数 (需根据实际整定)
 constexpr PidParam DRIVE_SPD_PID = {10.0f, 0.1f, 0.0f, 5000.0f, 16384.0f};

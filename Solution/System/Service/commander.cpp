@@ -294,6 +294,12 @@ void CommanderSrvc::run() {
     cmd.mode = g2cComm.msg.mode;
     cmd.vx   = (float)g2cComm.msg.vx / 10;
     cmd.vy   = (float)g2cComm.msg.vy / 10;
+    if (cmd.mode == CHASSIS_NORMAL) {
+        cmd.vw =0;
+    } else if (cmd.mode == CHASSIS_SPIN) {
+        cmd.vw = Config::Algorithm::Chassis::MAX_VW;
+    }
+
     Blackboard::instance().chassisCmd.write(cmd);
 
 #endif
