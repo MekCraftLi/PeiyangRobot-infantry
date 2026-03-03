@@ -76,7 +76,7 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
 
         // FSM 决定的目标运动量 (供后续 PID 运算)
         float targetFricSpeed;
-        uint32_t targetTriggerAngle;
+        uint32_t targetTriggerEcd;
         uint32_t triggerOffset;
         float targetTriggerSpeed;
         bool useTriggerSpeedLoopOnly; // 连发/校准时，绕过位置环直接使用速度环
