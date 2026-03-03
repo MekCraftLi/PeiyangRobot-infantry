@@ -70,35 +70,36 @@ class MotActSrvc final : public PeriodicApp, public Singleton<MotActSrvc> {
     void run() override;
 
     /************ setter & getter ***********/
-    
+
 
     // 1. 静态分配足够大、且字节对齐的原始内存（不会触发任何电机初始化逻辑）
 
 
     // 2. 建立一个全局引用，将其重解释为电机数组。这满足了你不想用指针的需求！
 #ifdef CHASSIS
-    pyro::dji_m3508_motor_drv_t (&drive)[4] = reinterpret_cast<pyro::dji_m3508_motor_drv_t(&)[4]>(_driveMem);
-    pyro::dji_gm_6020_motor_drv_t (&steer)[4] = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t(&)[4]>(_steerMem);
+    pyro::dji_m3508_motor_drv_t (&drive)[4]   = reinterpret_cast<pyro::dji_m3508_motor_drv_t (&)[4]>(_driveMem);
+    pyro::dji_gm_6020_motor_drv_t (&steer)[4] = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t (&)[4]>(_steerMem);
 #elifdef GIMBAL
-    pyro::dji_m3508_motor_drv_t (&fric)[2] = reinterpret_cast<pyro::dji_m3508_motor_drv_t(&)[2]>( _fircMem);
-    pyro::dm_motor_drv_t (&pitch) = reinterpret_cast<pyro::dm_motor_drv_t(&)>( _pitchMem);
+    pyro::dji_m3508_motor_drv_t (&fric)[2] = reinterpret_cast<pyro::dji_m3508_motor_drv_t (&)[2]>(_fircMem);
+    pyro::dm_motor_drv_t& pitch            = reinterpret_cast<pyro::dm_motor_drv_t(&)>(_pitchMem);
 #endif
-    pyro::dji_gm_6020_motor_drv_t &yaw = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t(&)>( _yawMem);
-    [[maybe_unused]]pyro::dji_m2006_motor_drv_t &trigger = reinterpret_cast<pyro::dji_m2006_motor_drv_t(&)>( _triggerMem);
+    pyro::dji_gm_6020_motor_drv_t& yaw = reinterpret_cast<pyro::dji_gm_6020_motor_drv_t(&)>(_yawMem);
+    [[maybe_unused]] pyro::dji_m2006_motor_drv_t& trigger =
+        reinterpret_cast<pyro::dji_m2006_motor_drv_t(&)>(_triggerMem);
 
   private:
     /* message interface */
-    
+
     // 1. message queue
-    
+
     // 2. mutex
-    
+
     // 3. semphr
-    
+
     // 4. notify
-    
+
     // 5. stream or message
-    
+
     // 6. event group
 #ifdef CHASSIS
     alignas(pyro::dji_m3508_motor_drv_t) uint8_t _driveMem[sizeof(pyro::dji_m3508_motor_drv_t) * 4];
@@ -117,7 +118,7 @@ class MotActSrvc final : public PeriodicApp, public Singleton<MotActSrvc> {
 extern "C" {
 #endif
 
-    /* C Interface */
+/* C Interface */
 
 #ifdef __cplusplus
 }

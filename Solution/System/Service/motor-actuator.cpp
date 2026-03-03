@@ -203,9 +203,11 @@ float kd;
 void MotActSrvc::run() {
 
     GimbalState gstate{.timestamp = xTaskGetTickCount()};
-    BooterState bstate {.timestamp = gstate.timestamp};
+    BoosterState bstate {.timestamp = gstate.timestamp};
     GimbalOutput gout{};
-    BooterOutput bout{};
+    BoosterOutput bout{};
+
+    Blackboard::instance().boosterState.read(bstate);
 
     yaw.update_feedback();
     pitch.update_feedback();
@@ -234,18 +236,37 @@ void MotActSrvc::run() {
     bstate.trigger.temp = trigger.get_temperature();
     bstate.trigger.torque = trigger.get_current_torque();
     bstate.trigger.vel = trigger.get_current_rotate();
+    bstate.triggerEcd = trigger.get_current_ecd();
+
+    static int32_t lastEcd;
+    int32_t deltaEcd = bstate.triggerEcd - lastEcd;
+    if (deltaEcd < -4096) {
+        // 原始值突变变小，说明正向转过了零点 (例如 8190 -> 10)
+        bstate.triggerRound++;
+        if (bstate.triggerRound >= 36) {
+            bstate.triggerRound = 0; // 满36圈，输出轴刚好转满一圈，圈数归零
+        }
+    }
+    else if (deltaEcd > 4096) {
+        // 原始值突变变大，说明反向转过了零点 (例如 10 -> 8190)
+        bstate.triggerRound--;
+        if (bstate.triggerRound < 0) {
+            bstate.triggerRound = 35; // 退回上一圈
+        }
+    }
+    lastEcd = bstate.triggerEcd;
 
 
     Blackboard::instance().gimbalState.write(gstate);
-    Blackboard::instance().booterState.write(bstate);
+    Blackboard::instance().boosterState.write(bstate);
 
-    Blackboard::instance().booterOut.read(bout);
+    Blackboard::instance().boosterOut.read(bout);
     Blackboard::instance().gimbalOut.read(gout);
 
     yaw.send_torque(gout.yawVoltage);
     trigger.send_torque(bout.triggerCurrent);
-    fric[0].send_torque(bout.fricLeftCurrent);
-    fric[1].send_torque(bout.fricRightCurrent);
+    fric[Config::Hardware::MotorTopo::FRIC_LEFT_ID].send_torque(bout.fricLeftCurrent);
+    fric[Config::Hardware::MotorTopo::FRIC_RIGHT_ID].send_torque(bout.fricRightCurrent);
     // 【补充】达妙电机 MIT 控制输出
     // 此处使用了 data-def.h 中定义的 pitchCurrent (实为 Torque 扭矩量)
     // 结合我们在 init() 中设置的 Kp=0, Kd=0，这就是标准的力矩透传控制

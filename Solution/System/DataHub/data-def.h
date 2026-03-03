@@ -71,6 +71,22 @@ enum GimbalMode : uint8_t {
     GIMBAL_AUTO  = 2, // 视觉自瞄/绝对角度模式 (位置-速度串级环)
 };
 
+// 在 Solution/System/DataHub/data-def.h 中
+
+enum class ShootEvent {
+    NONE = 0,
+    EMERGENCY_STOP,
+    FRIC_TOGGLE,    // 摩擦轮开启/关闭 切换事件
+    SINGLE_FIRE,    // 单发事件
+    BURST_START,    // 连发开始事件
+    BURST_STOP      // 连发结束事件
+};
+
+struct ShootCmd {
+    ShootEvent event = ShootEvent::NONE;
+};
+
+
 // 底盘与云台的宏观期望指令
 struct ChassisCmd {
     float vx, vy, vw; // 期望速度 (m/s, rad/s)
@@ -121,9 +137,11 @@ struct GimbalState {
     uint32_t timestamp;
 };
 
-struct BooterState {
+struct BoosterState {
     MotorState fric[2];
     MotorState trigger;
+    uint32_t triggerEcd;
+    int32_t triggerRound;
     uint32_t timestamp;
 };
 
@@ -143,7 +161,7 @@ struct GimbalOutput {
     bool pitchEn;
 };
 
-struct BooterOutput {
+struct BoosterOutput {
     float fricLeftCurrent;
     float fricRightCurrent;
     float triggerCurrent;

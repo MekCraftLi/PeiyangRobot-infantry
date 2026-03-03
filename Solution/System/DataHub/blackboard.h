@@ -99,6 +99,7 @@ public:
 
 
     SeqVariable<ChassisCmd>   chassisCmd;
+    SeqVariable<ShootCmd>     shootCmd;
     SeqVariable<GimbalCmd>    gimbalCmd;
 
     // ----------------------------------------
@@ -106,13 +107,15 @@ public:
     // ----------------------------------------
     SeqVariable<ImuState>     imuState;
     SeqVariable<GimbalState>  gimbalState;
-    SeqVariable<BooterState>  booterState;
+
+    SeqVariable<BoosterState>  boosterState;
+
 
     // ----------------------------------------
     // [输出区] (主要由 核心控制算法任务 写入)
     // ----------------------------------------
     SeqVariable<GimbalOutput>  gimbalOut;
-    SeqVariable<BooterOutput> booterOut;
+    SeqVariable<BoosterOutput> boosterOut;
     SeqVariable<GimbalToChassisComm> g2cOutput;
 
     // ----------------------------------------

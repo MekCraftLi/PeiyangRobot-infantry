@@ -120,6 +120,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/app-main.cpp"
 
         "../Solution/Application/movtion-ctrl-app.cpp"
+        "../Solution/Application/fire-ctrl-app.cpp"
 
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
         "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
@@ -148,6 +149,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/OLS/pyro_algo_ols.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/KF/kalman_filter.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Peripheral/DWT/pyro_dwt_drv.cpp"
+        "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Core/FSM/pyro_core_fsm.tpp"
 
 )
 

@@ -153,6 +153,3 @@ extern "C" void getBoardCommFromISR(uint8_t* pData) {
 
 }
 #endif
-
-static FDCAN_RxHeaderTypeDef rx_header;
-
