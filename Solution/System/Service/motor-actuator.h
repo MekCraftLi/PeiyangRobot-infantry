@@ -103,7 +103,7 @@ class MotActSrvc final : public PeriodicApp, public Singleton<MotActSrvc> {
     // 6. event group
 #ifdef CHASSIS
     alignas(pyro::dji_m3508_motor_drv_t) uint8_t _driveMem[sizeof(pyro::dji_m3508_motor_drv_t) * 4];
-    alignas(pyro::dji_gm_6020_motor_drv_t) uint8_t _steerMem[sizeof(pyro::dji_m3508_motor_drv_t) * 4];
+    alignas(pyro::dji_gm_6020_motor_drv_t) uint8_t _steerMem[sizeof(pyro::dji_gm_6020_motor_drv_t) * 4];
 #elifdef GIMBAL
     alignas(pyro::dm_motor_drv_t) uint8_t _pitchMem[sizeof(pyro::dm_motor_drv_t)];
     alignas(pyro::dji_m3508_motor_drv_t) uint8_t _fircMem[sizeof(pyro::dji_m3508_motor_drv_t) * 2];

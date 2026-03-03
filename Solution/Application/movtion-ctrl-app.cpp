@@ -158,8 +158,6 @@ void MovtionCtrlApp::run() {
                 tgtSpeed = -tgtSpeed;
             }
 
-
-
             // 线速度(m/s) 转换为 角速度(rad/s)
             tgtSpeed *= (Config::Hardware::Chassis::DRIVE_GEAR_RATIO / Config::Hardware::Chassis::WHEEL_RADIUS);
 

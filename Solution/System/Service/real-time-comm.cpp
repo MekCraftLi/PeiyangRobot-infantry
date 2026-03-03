@@ -114,11 +114,11 @@ void RealTimeCommApp::run() {
 
     [[maybe_unused]]static FDCAN_TxHeaderTypeDef txHeader = {
 #ifdef GIMBAL
-        .Identifier = 0x0D000721,
+        .Identifier = 0x100,
 #elifdef CHASSIS
         .Identifier = 0x0D000722,
 #endif
-        .IdType = FDCAN_EXTENDED_ID,
+        .IdType = FDCAN_STANDARD_ID,
         .TxFrameType = FDCAN_DATA_FRAME,
         .DataLength = FDCAN_DLC_BYTES_8,
         .ErrorStateIndicator = FDCAN_ESI_ACTIVE,

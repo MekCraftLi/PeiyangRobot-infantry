@@ -50,7 +50,7 @@ namespace Chassis {
 constexpr float WHEEL_BASE       = 0.36f;  // 前后轴距
 constexpr float TRACK_WIDTH      = 0.33f;  // 左右轮距
 constexpr float WHEEL_RADIUS     = 0.06f;  // 轮子半径
-constexpr float DRIVE_GEAR_RATIO = 19.2f;  // 动力轮减速比 (M3508)
+constexpr float DRIVE_GEAR_RATIO = 268.0f / 17.0f;  // 动力轮减速比 (M3508)
 }
 
 // ========================================
