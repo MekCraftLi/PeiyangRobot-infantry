@@ -99,6 +99,9 @@ public:
         pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f),
         pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f)
     };
+
+    pyro::pid_t yawPosPid = pyro::pid_t(16.0f, 0.1f, 0.0f, 1.0f, 100.0f);
+
     uint8_t motorIdx[4] = {0};
 
 
