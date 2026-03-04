@@ -34,8 +34,6 @@
 /* I. header */
 
 #include "commander.h"
-#include "Config/Chassis/hw-config.h"
-#include "Config/Gimbal/hw-config.h"
 #include "Config/config.h"
 
 #include "System/DataHub/blackboard.h"
@@ -65,8 +63,9 @@
 
 __attribute__((section(".dma_pool"))) static uint8_t rxbuf[32] = {0};
 
-static Dr16Data dr16Data;
 
+
+static VideoLinkRawData _videoLinkRawData;
 
 // --- 宏观运动参数限制 ---
 // 宏观运动限制 (可根据机械结构调整)
@@ -116,6 +115,8 @@ void CommanderSrvc::init() {
      * 1. 建立 Action 映射绑定 (物理控件 -> 触发器过滤 -> 高级意图)
      * ======================================================== */
 
+#if REMOTE_DEVICE == REMOTE_DR16
+
     // 【底盘平移】左摇杆 Y轴 -> 前后(X)；左摇杆 X轴 -> 左右(Y)
     actionMoveX.bind(RemoteDR16::instance().getLeftY(), &_joystickDeadzone);
     actionMoveY.bind(RemoteDR16::instance().getLeftX(), &_joystickDeadzone);
@@ -135,6 +136,28 @@ void CommanderSrvc::init() {
     actionShootBurst.bind(RemoteDR16::instance().getSwLeft(), &_triggerBurst);
     actionShootSingle.bind(RemoteDR16::instance().getSwLeft(), &_trigSingleRelease);
     actionSpinMode.bind(RemoteDR16::instance().getWheel(), &_trigSpin);
+#elif  REMOTE_DEVICE == REMOTE_VIDEO_LINK
+
+    // 【底盘平移】左摇杆 Y轴 -> 前后(X)；左摇杆 X轴 -> 左右(Y)
+    actionMoveX.bind(VideoLinkRemote::instance().getRightY(), &_joystickDeadzone);
+    actionMoveY.bind(VideoLinkRemote::instance().getRightX(), &_joystickDeadzone);
+
+    // 【底盘旋转】右摇杆 X轴 -> 旋转(Spin)
+    //  Spin.bind(RemoteDR16::instance().getRightX(), &_joystickDeadzone);
+
+    // 【云台控制】右摇杆 Y轴 -> Pitch俯仰
+    actionYaw.bind(VideoLinkRemote::instance().getLeftY(), &_joystickDeadzone);
+    actiongPitch.bind(VideoLinkRemote::instance().getLeftX(), &_joystickDeadzone);
+
+    // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
+    actionCtrlMode.bind(VideoLinkRemote::instance().getModeSw(), &_work);
+
+
+    actionFricToggle.bind(VideoLinkRemote::instance().getFn2(), &_trigFricToggle);
+    actionShootBurst.bind(VideoLinkRemote::instance().getTrigger(), &_triggerBurst);
+    actionShootSingle.bind(VideoLinkRemote::instance().getTrigger(), &_trigSingleRelease);
+    actionSpinMode.bind(VideoLinkRemote::instance().getPause(), &_trigSpin);
+#endif
 
 
 
@@ -160,7 +183,11 @@ void CommanderSrvc::run() {
     /* ========================================================
      * 1. 硬件层：提取最新的遥控器 DMA 缓存数据
      * ======================================================== */
-    RemoteDR16::instance().updateRaw(dr16Data);
+#if REMOTE_DEVICE == REMOTE_DR16
+    RemoteDR16::instance().updateRaw(_dr16Data);
+#elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
+    VideoLinkRemote::instance().updateRaw(_videoLinkRawData);
+#endif
 
     /* ========================================================
      * 2. 动作层：驱动所有 Action 执行死区过滤、归一化、仲裁计算
@@ -188,10 +215,11 @@ void CommanderSrvc::run() {
     /* 3. 第一阶仲裁：决断控制权 */
     ControlSource currentSource = ControlSource::SAFE_STOP;
 
-    if (RemoteDR16::instance().isConnected()) {
+    if (remote.isConnected()) {
         // 读取完美归一化后的浮点数：-1.0f(上), 0.0f(中), 1.0f(下)
         float swState = actionCtrlMode.getValue();
 
+#if REMOTE_DEVICE == REMOTE_DR16
         if (actionCtrlMode.isTriggered()) {
             if (swState > -0.5f) {
                 currentSource = ControlSource::REMOTE;
@@ -201,6 +229,15 @@ void CommanderSrvc::run() {
         } else {
             currentSource = ControlSource::SAFE_STOP;
         }
+#elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
+        if (swState < 0) {
+            currentSource = ControlSource::SAFE_STOP;
+        } else if (swState > 0) {
+            currentSource = ControlSource::VISION;
+        } else {
+            currentSource = ControlSource::REMOTE;
+        }
+#endif
 
     } else {
         currentSource = ControlSource::SAFE_STOP;
@@ -306,13 +343,19 @@ void CommanderSrvc::run() {
 
 #endif
 }
-void CommanderSrvc::onUartRxEventCallback(size_t size) {
 
-    memcpy(&dr16Data, rxbuf, size);
+
+void CommanderSrvc::onUartRxEventCallback(size_t size) {
+#if REMOTE_DEVICE == REMOTE_DR16
+    memcpy(&_dr16Data, rxbuf, size);
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
     RemoteDR16::instance().onDataReceived();
+#elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
+    memcpy(&_videoLinkRawData, rxbuf, size);
+    HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
+    VideoLinkRemote::instance().onDataReceived();
+#endif
 }
 void CommanderSrvc::onUartErrCallback() {
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
 }
-

@@ -61,11 +61,21 @@ extern "C" {
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size) {
     switch (reinterpret_cast<uint32_t>(huart->Instance)) {
         case USART1_BASE: {
+#ifdef GIMBAL
+#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
+            CommanderSrvc::instance().onUartRxEventCallback(size);
+#endif
+#elifdef CHASSIS
             RefereeSrvc::instance().onUartRxEventCallback(size);
+#endif
         }
 
         case UART5_BASE: {
-            CommanderSrvc::onUartRxEventCallback(size);
+#ifdef GIMBAL
+#if REMOTE_DEVICE == REMOTE_DR16
+            CommanderSrvc::instance().onUartRxEventCallback(size);
+#endif
+#endif
         } break;
 
         default: {
@@ -86,11 +96,23 @@ extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
 
     switch (reinterpret_cast<uint32_t>(huart->Instance)) {
         case USART1_BASE: {
+#ifdef GIMBAL
+#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
+            CommanderSrvc::instance().onUartErrCallback();
+#endif
+#elifdef CHASSIS
             RefereeSrvc::instance().onUartErrCallback();
+#endif
+
         } break;
 
         case UART5_BASE: {
-            CommanderSrvc::onUartErrCallback();
+#ifdef GIMBAL
+#if REMOTE_DEVICE == REMOTE_DR16
+            CommanderSrvc::instance().onUartErrCallback();
+#endif
+#endif
+
         } break;
         default: {
         }

@@ -125,13 +125,15 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
         "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
         "../Solution/Board-Support-Pack/DR16/dr16.cpp"
+        "../Solution/Board-Support-Pack/VideoLink/video-link-remote.cpp"
 
 
         "../Solution/System/Service/commander.cpp"
         "../Solution/System/Service/state-estimator.cpp"
         "../Solution/System/Service/motor-actuator.cpp"
         "../Solution/System/Service/heart-beat.cpp"
-        "../SOlution/System/Service/real-time-comm.cpp"
+        "../Solution/System/Service/real-time-comm.cpp"
+        "../Solution/System/Service/interrupt-callback.cpp"
 
 
 
@@ -206,11 +208,19 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 
+if(REMOTE_DEVICE STREQUAL "DR16")
+    set(REMOTE 1)
+elseif(REMOTE_DEVICE STREQUAL "VideoLink")
+    set(REMOTE 2)
+endif()
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined symbols
         GIMBAL=1
+        REMOTE_DR16=1
+        REMOTE_VIDEO_LINK=2
+        REMOTE_DEVICE=${REMOTE}
 )
 
 # Remove wrong libob.a library dependency when using cpp files

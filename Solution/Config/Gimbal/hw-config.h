@@ -32,6 +32,7 @@
 
 #include "pyro_can_drv.h"
 #include "pyro_dji_motor_drv.h"
+#include "usart.h"
 
 
 
@@ -86,7 +87,11 @@ constexpr float FRIC_TARGET_SPEED                                 = PROJECTILE_T
 // ========================================
 namespace Comms {
 // 遥控器 DR16 接收串口
-#define REMOTE_UART huart5
+#if REMOTE_DEVICE == REMOTE_DR16
+inline constexpr UART_HandleTypeDef& REMOTE_UART  = huart5;
+#elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
+inline constexpr UART_HandleTypeDef& REMOTE_UART  = huart1;
+#endif
 } // namespace Comms
 } // namespace Config::Hardware
 

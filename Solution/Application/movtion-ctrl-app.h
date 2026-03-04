@@ -36,8 +36,7 @@
 
 #include "../System/Thread/application-base.h"
 #include "../tools/crtp.h"
-#include "Config/Chassis/hw-config.h"
-#include "Config/Gimbal/algo-config.h"
+#include "Config/config.h"
 #include "pyro_algo_pid.h"
 
 /* II. OS */

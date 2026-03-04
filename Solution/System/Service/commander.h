@@ -51,6 +51,7 @@
 
 
 /* IV. drivers */
+#include "Board-Support-Pack/VideoLink/video-link-remote.h"
 #include "Config/Chassis/algo-config.h"
 #include "System/Input/TriggerImpl/trigger-decorator-toggle.h"
 #include "usart.h"
@@ -76,14 +77,20 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
 
     void run() override;
 
-    static void onUartRxEventCallback(size_t);
-    static void onUartErrCallback();
+    void onUartRxEventCallback(size_t);
+    void onUartErrCallback();
 
     /************ setter & getter ***********/
 
 
 
   private:
+#if REMOTE_DEVICE == REMOTE_DR16
+    Dr16Data _dr16Data;
+    RemoteBase& remote = VideoLinkRemote::instance();
+#elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
+    RemoteBase& remote = VideoLinkRemote::instance();
+#endif
     /* message interface */
 
     // 1. message queue
@@ -104,7 +111,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     TriggerHold _trigFricToggle;
     TriggerHold _triggerBurst;
     TriggerHold _trigSingleRelease;
-     TriggerHold baseTrigger = TriggerHold(0.5f, 0.5, true, HoldCondition::GreaterOrEqual);
+     TriggerHold baseTrigger = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
     TriggerToggle _trigSpin;
 
     InputAction _actions[12];

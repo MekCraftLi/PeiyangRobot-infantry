@@ -11,8 +11,10 @@ project(Infantry NONE)
 
 # 1. 定义一个下拉选项，让你在 IDE 中选择要编译的目标
 set(BUILD_TARGET "CHASSIS" CACHE STRING "Select target to build: CHASSIS, GIMBAL, or BOTH")
+set(REMOTE_DEVICE CACHE STRING "Select remote device : DR16, VideoLink")
 # 限制下拉菜单的选项值
 set_property(CACHE BUILD_TARGET PROPERTY STRINGS "CHASSIS" "GIMBAL" "BOTH")
+set_property(CACHE REMOTE_DEVICE PROPERTY STRINGS "DR16" "VideoLink")
 
 
 message(STATUS "============= Current Build Target: ${BUILD_TARGET} =============")

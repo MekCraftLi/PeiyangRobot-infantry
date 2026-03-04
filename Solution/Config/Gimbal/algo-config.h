@@ -64,9 +64,9 @@ constexpr float DM_MOTOR_PMAX = 12.5f;
 constexpr float DM_MOTOR_VMAX = 30.0f;
 constexpr float DM_MOTOR_TMAX = 10.0f;
 
-constexpr float DM_MOTOR_KP = 63.0f;
+constexpr float DM_MOTOR_KP = 57.0f;
 constexpr float DM_MOTOR_KI = 4.0f;
-constexpr float DM_MOTOR_KD = 1.0f;
+constexpr float DM_MOTOR_KD = 2.0f;
 
 }
 
