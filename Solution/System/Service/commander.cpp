@@ -34,6 +34,8 @@
 /* I. header */
 
 #include "commander.h"
+#include "Config/Chassis/hw-config.h"
+#include "Config/Gimbal/hw-config.h"
 #include "Config/config.h"
 
 #include "System/DataHub/blackboard.h"
@@ -139,7 +141,7 @@ void CommanderSrvc::init() {
     /* ========================================================
      * 2. 初始化硬件通信
      * ======================================================== */
-    HAL_UARTEx_ReceiveToIdle_DMA(&REMOTE_UART, rxbuf, sizeof(rxbuf));
+    HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
 }
 
 void CommanderSrvc::run() {
@@ -304,23 +306,13 @@ void CommanderSrvc::run() {
 
 #endif
 }
+void CommanderSrvc::onUartRxEventCallback(size_t size) {
 
-extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size) {
-
-    memcpy(&dr16Data, rxbuf, Size);
-
-    HAL_UARTEx_ReceiveToIdle_DMA(&REMOTE_UART, rxbuf, sizeof(rxbuf));
+    memcpy(&dr16Data, rxbuf, size);
+    HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
     RemoteDR16::instance().onDataReceived();
 }
-
-
-
-extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
-    // 1. 禁用 UART DMA
-    HAL_UART_DMAStop(huart);
-    // 2. 清除 UART 错误标志
-    __HAL_UART_CLEAR_FEFLAG(huart);  // 帧错误
-    __HAL_UART_CLEAR_NEFLAG(huart);  // 噪声错误
-    __HAL_UART_CLEAR_OREFLAG(huart); // 溢出错误
-    HAL_UARTEx_ReceiveToIdle_DMA(&REMOTE_UART, rxbuf, sizeof(rxbuf));
+void CommanderSrvc::onUartErrCallback() {
+    HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
 }
+

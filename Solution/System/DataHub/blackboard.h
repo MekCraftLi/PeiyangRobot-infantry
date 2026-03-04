@@ -29,8 +29,8 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
+#include "../../tools/seq-variable.h"
 #include "data-def.h"
-#include "seq-variable.h"
 
 #include "Component/Motor/pyro_dji_motor_drv.h"
 #include "tools/crtp.h"

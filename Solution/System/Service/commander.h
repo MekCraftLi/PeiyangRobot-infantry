@@ -76,6 +76,8 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
 
     void run() override;
 
+    static void onUartRxEventCallback(size_t);
+    static void onUartErrCallback();
 
     /************ setter & getter ***********/
 

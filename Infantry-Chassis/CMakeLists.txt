@@ -127,6 +127,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/System/Service/motor-actuator.cpp"
         "../Solution/System/Service/heart-beat.cpp"
         "../Solution/System/Service/real-time-comm.cpp"
+        "../Solution/System/Service/referee.cpp"
+        "../Solution/System/Service/interrupt-callback.cpp"
+
+        "../Solution/tools/crc.cpp"
 
 
 
