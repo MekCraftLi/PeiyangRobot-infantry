@@ -44,6 +44,7 @@
 
 /* III. middlewares */
 
+#include "Algorithm/Motion/s-curve-planner.h"
 #include "Algorithm/Power/power-limiter.h"
 
 
@@ -82,6 +83,13 @@ public:
 
 
 #ifdef CHASSIS
+
+    // [新增] 实例化三个轴的 S 曲线规划器
+    // 这里的参数基于 RM 步兵常见调车经验，你可以通过 algo-config.h 去宏定义
+    SCurveVelocityPlanner vxPlanner{3.0f, 200.0f, 1000.0f}; // 前后：极高加速度，高 Jerk
+    SCurveVelocityPlanner vyPlanner{3.0f, 200.0f, 1000.0f};  // 左右：较高加速度，中 Jerk (防侧翻)
+    SCurveVelocityPlanner vwPlanner{6.28f, 30.0f, 300.0f}; // 旋转：几乎无限制，秒起小陀螺
+
     pyro::pid_t driveSpdPid[4] = {
         pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),
         pyro::pid_t(0.2f, 0.000f, 0.0f, 1.0f, 20.0f),

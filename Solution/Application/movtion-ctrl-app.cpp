@@ -129,18 +129,38 @@ void MovtionCtrlApp::run() {
     ChassisOutput output   = {};
     ChassisTelemetry telem = {};
 
+    // 1. 获取准确的 dt 周期 (S曲线积分和防震荡强依赖 dt)
+    static uint32_t dwtCnt;
+    float dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
+
     if (cmd.mode == CHASSIS_RELAX) {
+        // [新增] 模式切换时清空内部状态，防止切回正常模式时暴走
+        vxPlanner.reset();
+        vyPlanner.reset();
+        vwPlanner.reset();
         Blackboard::instance().chassisOut.write(output);
         return;
     }
+
+
 
     // --- 1. 坐标转换与宏观仲裁 (与原代码一致) ---
     float theta = -state.yaw.pos;
     float cosTheta = std::cos(theta);
     float sinTheta = std::sin(theta);
-    float chassisVx = cmd.vx * cosTheta - cmd.vy * sinTheta;
-    float chassisVy = cmd.vx * sinTheta + cmd.vy * cosTheta;
-    float chassisVw = (cmd.mode == CHASSIS_NORMAL) ? yawPosPid.calculate(0.0f, state.yaw.pos) : cmd.vw;
+    float rawChassisVx = cmd.vx * cosTheta - cmd.vy * sinTheta;
+    float rawChassisVy = cmd.vx * sinTheta + cmd.vy * cosTheta;
+    float rawChassisVw = (cmd.mode == CHASSIS_NORMAL) ? yawPosPid.calculate(0.0f, state.yaw.pos) : cmd.vw;
+
+
+    // =========================================================
+    // 2. 【核心神技】：S型速度曲线规划 (Jerk 限制)
+    // =========================================================
+    // 通过 S 曲线，过滤掉无限大的加速度和 Jerk，生成完全符合物理底线的平滑速度
+    float chassisVx = vxPlanner.calculate(rawChassisVx, dt);
+    float chassisVy = vyPlanner.calculate(rawChassisVy, dt);
+    // float chassisVw = vwPlanner.calculate(rawChassisVw, dt);
+    float chassisVw = rawChassisVw;
 
     // --- 2. 运动学解算 (仅算出目标速度，不跑PID) ---
     float halfL = Config::Hardware::Chassis::WHEEL_BASE / 2.0f;
