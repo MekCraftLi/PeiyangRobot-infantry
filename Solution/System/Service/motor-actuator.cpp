@@ -187,8 +187,12 @@ void MotActSrvc::run() {
         state.modules[i].steer.temp = steer[i].get_temperature();
         state.modules[i].steer.torque = steer[i].get_current_torque();
         state.modules[i].steer.vel = steer[i].get_current_rotate();
+
+
         steer[i].send_torque(chasOut.steerVoltage[i]);
+
         drive[i].send_torque(chasOut.driveCurrent[i]);
+
 
     }
 

@@ -51,7 +51,13 @@
 
 
 /* IV. drivers */
+#ifdef GIMBAL
+#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
 #include "Board-Support-Pack/VideoLink/video-link-remote.h"
+#endif
+#endif
+
+
 #include "Config/Chassis/algo-config.h"
 #include "System/Input/TriggerImpl/trigger-decorator-toggle.h"
 #include "usart.h"
@@ -85,11 +91,13 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
 
 
   private:
+#ifdef GIMBAL
 #if REMOTE_DEVICE == REMOTE_DR16
     Dr16Data _dr16Data;
     RemoteBase& remote = VideoLinkRemote::instance();
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
     RemoteBase& remote = VideoLinkRemote::instance();
+#endif
 #endif
     /* message interface */
 

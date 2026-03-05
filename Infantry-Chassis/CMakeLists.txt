@@ -115,6 +115,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
         "../Solution/app-main.cpp"
 
+        "../Solution/Algorithm/Power/power-limiter.cpp"
+
         "../Solution/Application/movtion-ctrl-app.cpp"
 
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"

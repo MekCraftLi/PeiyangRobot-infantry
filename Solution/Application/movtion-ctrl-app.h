@@ -44,6 +44,8 @@
 
 /* III. middlewares */
 
+#include "Algorithm/Power/power-limiter.h"
+
 
 /* IV. drivers */
 

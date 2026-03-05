@@ -64,8 +64,11 @@
 __attribute__((section(".dma_pool"))) static uint8_t rxbuf[32] = {0};
 
 
-
+#ifdef GIMBAL
+#if REMOTE_DEVICE == VIDEO_LINK_REMOTE
 static VideoLinkRawData _videoLinkRawData;
+#endif
+#endif
 
 // --- 宏观运动参数限制 ---
 // 宏观运动限制 (可根据机械结构调整)
@@ -183,10 +186,12 @@ void CommanderSrvc::run() {
     /* ========================================================
      * 1. 硬件层：提取最新的遥控器 DMA 缓存数据
      * ======================================================== */
+#ifdef GIMBAL
 #if REMOTE_DEVICE == REMOTE_DR16
     RemoteDR16::instance().updateRaw(_dr16Data);
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
     VideoLinkRemote::instance().updateRaw(_videoLinkRawData);
+#endif
 #endif
 
     /* ========================================================
@@ -344,7 +349,7 @@ void CommanderSrvc::run() {
 #endif
 }
 
-
+#ifdef GIMBAL
 void CommanderSrvc::onUartRxEventCallback(size_t size) {
 #if REMOTE_DEVICE == REMOTE_DR16
     memcpy(&_dr16Data, rxbuf, size);
@@ -359,3 +364,4 @@ void CommanderSrvc::onUartRxEventCallback(size_t size) {
 void CommanderSrvc::onUartErrCallback() {
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
 }
+#endif

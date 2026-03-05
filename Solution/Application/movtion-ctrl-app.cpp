@@ -174,9 +174,14 @@ void MovtionCtrlApp::run() {
     // 4. 计算每个模块的期望转速与期望打角
     // ---------------------------------------------------------
     for (int i = 0; i < 4; i++) {
+        uint8_t id = motorIdx[i]; // 获取对应的物理映射ID
+
+
         float tgtSpeed = std::hypot(targetVx[i], targetVy[i]); // 使用 std::hypot 避免溢出且性能更好
         float tgtAngle = 0.0f;
-        float realAngle = state.modules[i].steer.pos;
+
+
+        float realAngle = state.modules[id].steer.pos;
 
         // 【防抽搐保护】如果目标速度极小，保持当前角度不变，防止轮子回正
         if (tgtSpeed < 0.05f) {
@@ -208,7 +213,7 @@ void MovtionCtrlApp::run() {
         telem.targetSteerAngle[i] = finalTgtAngle;
         telem.targetDriveSpd[i]   = tgtSpeed;
 
-        uint8_t id = motorIdx[i]; // 获取对应的物理映射ID
+
 
         float tgtSteerSpd = steerPosPid[id].calculate(finalTgtAngle, state.modules[id].steer.pos);
         telem.targetSteerVelocity[i] = tgtSteerSpd;
