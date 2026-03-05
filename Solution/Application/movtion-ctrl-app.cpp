@@ -36,7 +36,7 @@
 #include "../System/DataHub/blackboard.h"
 #include "Config/Gimbal/algo-config.h"
 #include "pyro_dwt_drv.h"
-
+#include "System/DataHub/referee-data-hub.h"
 /* II. other application */
 
 
@@ -118,8 +118,13 @@ void MovtionCtrlApp::init() {
 void MovtionCtrlApp::run() {
     static ChassisCmd cmd;
     static ChassisState state;
+    static RMRobotStatus refState; // [新增]
+    static RMPowerHeatData powerHeatState;
     Blackboard::instance().chassisCmd.read(cmd);
     Blackboard::instance().chassisState.read(state);
+    RefereeDataHub::instance().robotStatus.read(refState); // [新增]
+    RefereeDataHub::instance().powerHeat.read(powerHeatState);
+
 
     ChassisOutput output   = {};
     ChassisTelemetry telem = {};
@@ -129,76 +134,49 @@ void MovtionCtrlApp::run() {
         return;
     }
 
-    // ---------------------------------------------------------
-    // 1. 坐标系转换 (云台系 -> 底盘系)
-    // ---------------------------------------------------------
-    // 假设云台 yaw 向左偏为正。这里的 cmd.vx 是云台正前方，cmd.vy 是云台正左方。
+    // --- 1. 坐标转换与宏观仲裁 (与原代码一致) ---
     float theta = -state.yaw.pos;
     float cosTheta = std::cos(theta);
     float sinTheta = std::sin(theta);
-
-    // 2D 旋转矩阵，将云台系速度投影到底盘系
     float chassisVx = cmd.vx * cosTheta - cmd.vy * sinTheta;
     float chassisVy = cmd.vx * sinTheta + cmd.vy * cosTheta;
-    float chassisVw = 0.0f;
+    float chassisVw = (cmd.mode == CHASSIS_NORMAL) ? yawPosPid.calculate(0.0f, state.yaw.pos) : cmd.vw;
 
-    // ---------------------------------------------------------
-    // 2. 底盘跟随与旋转逻辑仲裁
-    // ---------------------------------------------------------
-    if (cmd.mode == CHASSIS_NORMAL) {
-        // 底盘跟随云台模式：目标夹角为 0，反馈当前夹角
-        chassisVw = yawPosPid.calculate(0.0f, state.yaw.pos);
-    } else if (cmd.mode == CHASSIS_SPIN) {
-        // 小陀螺模式：直接使用独立下发的旋转速度
-        chassisVw = cmd.vw;
-
-    }
-
-    // ---------------------------------------------------------
-    // 3. 舵轮运动学逆解计算
-    // ---------------------------------------------------------
+    // --- 2. 运动学解算 (仅算出目标速度，不跑PID) ---
     float halfL = Config::Hardware::Chassis::WHEEL_BASE / 2.0f;
     float halfW = Config::Hardware::Chassis::TRACK_WIDTH / 2.0f;
-
-    // 计算底盘前后左右四个边缘的绝对速度分量
     float vyFront = chassisVy + chassisVw * halfL;
     float vyRear  = chassisVy - chassisVw * halfL;
     float vxLeft  = chassisVx - chassisVw * halfW;
     float vxRight = chassisVx + chassisVw * halfW;
 
-    // 严格映射：RF=0, LF=1, LB=2, RB=3
     float targetVx[4] = {vxRight, vxLeft, vxLeft, vxRight};
     float targetVy[4] = {vyFront, vyFront, vyRear, vyRear};
 
-    // ---------------------------------------------------------
-    // 4. 计算每个模块的期望转速与期望打角
-    // ---------------------------------------------------------
+    // 存储中间状态数组
+    float idealDriveSpd[4] = {0};
+    float realDriveVel[4]  = {0};
+    float filteredTorque[4] = {0}; // 低通滤波后的负载电流
+
+    static float s_lpfTorque[4] = {0}; // 静态滤波器记忆
+
     for (int i = 0; i < 4; i++) {
-        uint8_t id = motorIdx[i]; // 获取对应的物理映射ID
-
-
-        float tgtSpeed = std::hypot(targetVx[i], targetVy[i]); // 使用 std::hypot 避免溢出且性能更好
+        float tgtSpeed = std::hypot(targetVx[i], targetVy[i]);
         float tgtAngle = 0.0f;
-
-
+        uint8_t id = motorIdx[i];
         float realAngle = state.modules[id].steer.pos;
 
-        // 【防抽搐保护】如果目标速度极小，保持当前角度不变，防止轮子回正
         if (tgtSpeed < 0.05f) {
             tgtAngle = realAngle;
-            tgtSpeed = 0.0f; // 彻底切断微小抖动
+            tgtSpeed = 0.0f;
         } else {
             tgtAngle = std::atan2(targetVy[i], targetVx[i]);
         }
 
-        if (i == 0 || i == 3) {
-            tgtSpeed = -tgtSpeed; // 处理电机对称反向安装
-        }
+        if (i == 0 || i == 3) tgtSpeed = -tgtSpeed;
         tgtSpeed *= (Config::Hardware::Chassis::DRIVE_GEAR_RATIO / Config::Hardware::Chassis::WHEEL_RADIUS);
 
-        // 就近优选算法 (Angle Optimization)
         float errAngle = wrapAngle(tgtAngle - realAngle);
-
         if (errAngle > M_PI_2) {
             errAngle -= M_PI;
             tgtSpeed = -tgtSpeed;
@@ -207,19 +185,61 @@ void MovtionCtrlApp::run() {
             tgtSpeed = -tgtSpeed;
         }
 
+        // 航向舵逻辑照常运行
         float finalTgtAngle = realAngle + errAngle;
-
-        // 遥测与 PID 赋值
-        telem.targetSteerAngle[i] = finalTgtAngle;
-        telem.targetDriveSpd[i]   = tgtSpeed;
-
-
-
-        float tgtSteerSpd = steerPosPid[id].calculate(finalTgtAngle, state.modules[id].steer.pos);
-        telem.targetSteerVelocity[i] = tgtSteerSpd;
-
+        float tgtSteerSpd = steerPosPid[id].calculate(finalTgtAngle, realAngle);
         output.steerVoltage[id] = steerSpdPid[id].calculate(tgtSteerSpd, state.modules[id].steer.vel);
-        output.driveCurrent[id] = driveSpdPid[id].calculate(tgtSpeed, state.modules[id].drive.vel);
+
+        // [提取] 动力轮参数供功率模块使用
+        idealDriveSpd[i] = tgtSpeed;
+        realDriveVel[i]  = state.modules[id].drive.vel;
+
+        // [新增] 电流极简一阶低通滤波 (Alpha=0.2)，滤除高频尖刺
+        s_lpfTorque[i] = 0.8f * s_lpfTorque[i] + 0.2f * state.modules[id].drive.torque;
+        filteredTorque[i] = s_lpfTorque[i];
+    }
+
+    // =========================================================
+    // 3. 第一层防御：宏观速度诱导 (MPVS)
+    // =========================================================
+    float dynamicLimit = PowerLimiter::getDynamicPowerLimit(refState.chassisPowerLimit, powerHeatState.bufferEnergy);
+    float kv = PowerLimiter::instance().calculateVelocityScale(idealDriveSpd, filteredTorque, dynamicLimit);
+
+    float rawOutputCurrent[4] = {0};
+
+    // =========================================================
+    // 4. 应用速度缩放与 PID 计算
+    // =========================================================
+    for (int i = 0; i < 4; i++) {
+        uint8_t id = motorIdx[i];
+        float scaledDriveSpd = idealDriveSpd[i] * kv; // 等比例缩小目标速度，保底盘不偏航！
+
+        // 【抗积分饱和】如果在严重压制状态，清空 PID，防止暴冲 (调用 PYRo 的 clear() 方法)
+        if (kv < 0.1f) {
+            driveSpdPid[id].clear();
+        }
+
+        rawOutputCurrent[i] = driveSpdPid[id].calculate(scaledDriveSpd, realDriveVel[i]);
+    }
+
+    // =========================================================
+    // 5. 第二层防御：微观硬件电流钳位 (绝对零延时)
+    // =========================================================
+    float ki = PowerLimiter::instance().calculateCurrentScale(rawOutputCurrent, realDriveVel, dynamicLimit);
+
+    for (int i = 0; i < 4; i++) {
+        uint8_t id = motorIdx[i];
+
+        // 最终暴力限流，强行保证绝对不掉血
+        output.driveCurrent[id] = rawOutputCurrent[i] * ki;
+
+        // 如果触发了底层切断，代表执行层未达预期，也要清空积分
+        if (ki < 0.99f) {
+            driveSpdPid[id].clear();
+        }
+
+        // 装填遥测
+        telem.targetDriveSpd[i] = idealDriveSpd[i] * kv;
     }
 
     Blackboard::instance().chassisOut.write(output);
