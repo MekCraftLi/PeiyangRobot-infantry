@@ -2,6 +2,6 @@
 	path = Solution/ThirdParty/TinyUSB
 	url = git@github.com:hathach/tinyusb.git
 [submodule "Solution/ThirdParty/PYRo-uCtrl-Unity"]
-    path = Solution/ThirdParty/PYRo-uCtrl-Unity
-    url = git@github.com:MekCraftLi/PYRo-uCtrl-Unity.git
-    ignore = dirty
+	path = Solution/ThirdParty/PYRo-uCtrl-Unity
+	url = git@github.com:MekCraftLi/PYRo-uCtrl-Unity.git
+	ignore = dirty
