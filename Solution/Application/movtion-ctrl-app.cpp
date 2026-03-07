@@ -35,8 +35,8 @@
 
 #include "../System/DataHub/blackboard.h"
 #include "Config/Gimbal/algo-config.h"
-#include "pyro_dwt_drv.h"
 #include "System/DataHub/referee-data-hub.h"
+#include "pyro_dwt_drv.h"
 /* II. other application */
 
 
@@ -145,45 +145,45 @@ void MovtionCtrlApp::run() {
 
 
     // --- 1. 坐标转换与宏观仲裁 (与原代码一致) ---
-    float theta = -state.yaw.pos;
-    float cosTheta = std::cos(theta);
-    float sinTheta = std::sin(theta);
-    float rawChassisVx = cmd.vx * cosTheta - cmd.vy * sinTheta;
-    float rawChassisVy = cmd.vx * sinTheta + cmd.vy * cosTheta;
-    float rawChassisVw = (cmd.mode == CHASSIS_NORMAL) ? yawPosPid.calculate(0.0f, state.yaw.pos) : cmd.vw;
+    float theta                 = -state.yaw.pos;
+    float cosTheta              = std::cos(theta);
+    float sinTheta              = std::sin(theta);
+    float rawChassisVx          = cmd.vx * cosTheta - cmd.vy * sinTheta;
+    float rawChassisVy          = cmd.vx * sinTheta + cmd.vy * cosTheta;
+    float rawChassisVw          = (cmd.mode == CHASSIS_NORMAL) ? yawPosPid.calculate(0.0f, state.yaw.pos) : cmd.vw;
 
 
     // =========================================================
     // 2. 【核心神技】：S型速度曲线规划 (Jerk 限制)
     // =========================================================
     // 通过 S 曲线，过滤掉无限大的加速度和 Jerk，生成完全符合物理底线的平滑速度
-    float chassisVx = vxPlanner.calculate(rawChassisVx, dt);
-    float chassisVy = vyPlanner.calculate(rawChassisVy, dt);
+    float chassisVx             = vxPlanner.calculate(rawChassisVx, dt);
+    float chassisVy             = vyPlanner.calculate(rawChassisVy, dt);
     // float chassisVw = vwPlanner.calculate(rawChassisVw, dt);
-    float chassisVw = rawChassisVw;
+    float chassisVw             = rawChassisVw;
 
     // --- 2. 运动学解算 (仅算出目标速度，不跑PID) ---
-    float halfL = Config::Hardware::Chassis::WHEEL_BASE / 2.0f;
-    float halfW = Config::Hardware::Chassis::TRACK_WIDTH / 2.0f;
-    float vyFront = chassisVy + chassisVw * halfL;
-    float vyRear  = chassisVy - chassisVw * halfL;
-    float vxLeft  = chassisVx - chassisVw * halfW;
-    float vxRight = chassisVx + chassisVw * halfW;
+    float halfL                 = Config::Hardware::Chassis::WHEEL_BASE / 2.0f;
+    float halfW                 = Config::Hardware::Chassis::TRACK_WIDTH / 2.0f;
+    float vyFront               = chassisVy + chassisVw * halfL;
+    float vyRear                = chassisVy - chassisVw * halfL;
+    float vxLeft                = chassisVx - chassisVw * halfW;
+    float vxRight               = chassisVx + chassisVw * halfW;
 
-    float targetVx[4] = {vxRight, vxLeft, vxLeft, vxRight};
-    float targetVy[4] = {vyFront, vyFront, vyRear, vyRear};
+    float targetVx[4]           = {vxRight, vxLeft, vxLeft, vxRight};
+    float targetVy[4]           = {vyFront, vyFront, vyRear, vyRear};
 
     // 存储中间状态数组
-    float idealDriveSpd[4] = {0};
-    float realDriveVel[4]  = {0};
-    float filteredTorque[4] = {0}; // 低通滤波后的负载电流
+    float idealDriveSpd[4]      = {0};
+    float realDriveVel[4]       = {0};
+    float filteredTorque[4]     = {0}; // 低通滤波后的负载电流
 
     static float s_lpfTorque[4] = {0}; // 静态滤波器记忆
 
     for (int i = 0; i < 4; i++) {
-        float tgtSpeed = std::hypot(targetVx[i], targetVy[i]);
-        float tgtAngle = 0.0f;
-        uint8_t id = motorIdx[i];
+        float tgtSpeed  = std::hypot(targetVx[i], targetVy[i]);
+        float tgtAngle  = 0.0f;
+        uint8_t id      = motorIdx[i];
         float realAngle = state.modules[id].steer.pos;
 
         if (tgtSpeed < 0.05f) {
@@ -193,7 +193,8 @@ void MovtionCtrlApp::run() {
             tgtAngle = std::atan2(targetVy[i], targetVx[i]);
         }
 
-        if (i == 0 || i == 3) tgtSpeed = -tgtSpeed;
+        if (i == 0 || i == 3)
+            tgtSpeed = -tgtSpeed;
         tgtSpeed *= (Config::Hardware::Chassis::DRIVE_GEAR_RATIO / Config::Hardware::Chassis::WHEEL_RADIUS);
 
         float errAngle = wrapAngle(tgtAngle - realAngle);
@@ -206,32 +207,37 @@ void MovtionCtrlApp::run() {
         }
 
         // 航向舵逻辑照常运行
-        float finalTgtAngle = realAngle + errAngle;
-        float tgtSteerSpd = steerPosPid[id].calculate(finalTgtAngle, realAngle);
+        float finalTgtAngle     = realAngle + errAngle;
+        float tgtSteerSpd       = steerPosPid[id].calculate(finalTgtAngle, realAngle);
         output.steerVoltage[id] = steerSpdPid[id].calculate(tgtSteerSpd, state.modules[id].steer.vel);
 
         // [提取] 动力轮参数供功率模块使用
-        idealDriveSpd[i] = tgtSpeed;
-        realDriveVel[i]  = state.modules[id].drive.vel;
+        idealDriveSpd[i]        = tgtSpeed;
+        realDriveVel[i]         = state.modules[id].drive.vel;
 
         // [新增] 电流极简一阶低通滤波 (Alpha=0.2)，滤除高频尖刺
-        s_lpfTorque[i] = 0.8f * s_lpfTorque[i] + 0.2f * state.modules[id].drive.torque;
-        filteredTorque[i] = s_lpfTorque[i];
+        s_lpfTorque[i]          = 0.8f * s_lpfTorque[i] + 0.2f * state.modules[id].drive.torque;
+        filteredTorque[i]       = s_lpfTorque[i];
     }
 
     // =========================================================
     // 3. 第一层防御：宏观速度诱导 (MPVS)
     // =========================================================
-    float dynamicLimit = PowerLimiter::getDynamicPowerLimit(refState.chassisPowerLimit, powerHeatState.bufferEnergy);
-    float kv = PowerLimiter::instance().calculateVelocityScale(idealDriveSpd, filteredTorque, dynamicLimit);
 
-    float rawOutputCurrent[4] = {0};
+
+    float kv           = 1.0f;
+
+    float dynamicLimit = PowerLimiter::getDynamicPowerLimit(refState.chassisPowerLimit, powerHeatState.bufferEnergy);
+    //kv                 = PowerLimiter::instance().calculateVelocityScale(idealDriveSpd, filteredTorque, dynamicLimit);
+
+
+    float rawOutputCurrent[4] = {};
 
     // =========================================================
     // 4. 应用速度缩放与 PID 计算
     // =========================================================
     for (int i = 0; i < 4; i++) {
-        uint8_t id = motorIdx[i];
+        uint8_t id           = motorIdx[i];
         float scaledDriveSpd = idealDriveSpd[i] * kv; // 等比例缩小目标速度，保底盘不偏航！
 
         // 【抗积分饱和】如果在严重压制状态，清空 PID，防止暴冲 (调用 PYRo 的 clear() 方法)
@@ -245,10 +251,11 @@ void MovtionCtrlApp::run() {
     // =========================================================
     // 5. 第二层防御：微观硬件电流钳位 (绝对零延时)
     // =========================================================
-    float ki = PowerLimiter::instance().calculateCurrentScale(rawOutputCurrent, realDriveVel, dynamicLimit);
+    float ki = 1.0f;
+    //ki       = PowerLimiter::instance().calculateCurrentScale(rawOutputCurrent, realDriveVel, dynamicLimit);
 
     for (int i = 0; i < 4; i++) {
-        uint8_t id = motorIdx[i];
+        uint8_t id              = motorIdx[i];
 
         // 最终暴力限流，强行保证绝对不掉血
         output.driveCurrent[id] = rawOutputCurrent[i] * ki;
@@ -274,19 +281,25 @@ void MovtionCtrlApp::run() {
 void MovtionCtrlApp::init() { /* driver object initialize */ }
 
 void MovtionCtrlApp::run() {
-    GimbalCmd cmd;
-    ImuState imuState;
-    GimbalState gimbalState;
-    GimbalTelemetry telem;
+    GimbalCmd cmd{};
+    ImuState imuState{};
+    GimbalState gimbalState{};
+    GimbalTelemetry telem{};
+    VisionTelemetry visionTelem{}; // 新增视觉遥测对象
+    GimbalOutput output{};
+
+
     static uint32_t dwtCnt;
     float dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
+
 
     Blackboard::instance().gimbalCmd.read(cmd);
     Blackboard::instance().imuState.read(imuState);
     Blackboard::instance().gimbalState.read(gimbalState);
-    Blackboard::instance().telem.read(telem);
+    Blackboard::instance().gimbalTelem.read(telem);
 
-    GimbalOutput output = {0};
+
+
 
     // 1. 无力模式判断
     if (cmd.mode == GIMBAL_RELAX) {
@@ -295,32 +308,20 @@ void MovtionCtrlApp::run() {
         output.targetPitchPos = gimbalState.pitch.pos;
         output.pitchEn        = false;
 
-        Blackboard::instance().telem.write(telem);
+        Blackboard::instance().gimbalTelem.write(telem);
         Blackboard::instance().gimbalOut.write(output);
         return;
     }
-
     Blackboard::instance().gimbalOut.read(output);
 
-    // ---------------------------------------------------------
-    // 2. Yaw 轴串级 PID 计算
-    // ---------------------------------------------------------
-    telem.targetYawRad = wrapAngle(telem.targetYawRad + cmd.yawVel * dt);
-
-    // 使用新的规整函数，一行代码解决
-    float alignedTgtYaw = imuState.yaw + wrapAngle(telem.targetYawRad - imuState.yaw);
-
-    float tgtYawSpd = yawPosPid.calculate(alignedTgtYaw, imuState.yaw);
-    telem.targetYawRotate = tgtYawSpd;
-    output.yawVoltage     = yawSpdPid.calculate(tgtYawSpd, imuState.gyro[2]);
-
-    // ---------------------------------------------------------
-    // 3. Pitch 轴前馈与限幅控制 (MIT模式)
-    // ---------------------------------------------------------
-    float offsetPitch = imuState.pitch - gimbalState.pitch.pos;
-
-    // 目标规划
-    telem.targetPitchRad += cmd.pitchVel * dt;
+    if (cmd.mode == GIMBAL_AUTO && abs(cmd.targetYaw) < M_PI) {
+        telem.targetYawRad   = cmd.targetYaw;
+        telem.targetPitchRad = cmd.targetPitch;
+    } else {
+        telem.targetYawRad = wrapAngle(telem.targetYawRad + cmd.yawVel * dt);
+        telem.targetPitchRad += cmd.pitchVel * dt;
+    }
+    float offsetPitch    = imuState.pitch - gimbalState.pitch.pos;
     float targetMotorRaw = telem.targetPitchRad - offsetPitch;
 
     // 物理限位裁切
@@ -331,12 +332,19 @@ void MovtionCtrlApp::run() {
     }
 
     // 状态反写回，防止积分风暴和卡限位
-    telem.targetPitchRad = targetMotorRaw + offsetPitch;
+    telem.targetPitchRad          = targetMotorRaw + offsetPitch;
+
+    // 使用新的规整函数，一行代码解决
+    float alignedTgtYaw           = imuState.yaw + wrapAngle(telem.targetYawRad - imuState.yaw);
+
+    float tgtYawSpd               = yawPosPid.calculate(alignedTgtYaw, imuState.yaw);
+    telem.targetYawRotate         = tgtYawSpd;
+    output.yawVoltage             = yawSpdPid.calculate(tgtYawSpd, imuState.gyro[2]);
 
     // 前馈力矩计算
-    float gravityFf = Config::Algorithm::Gimbal::PITCH_K_GRAVITY * std::cos(imuState.pitch);
-    float pitchIntegralTorque = pitchPosPid.calculate(telem.targetPitchRad, imuState.pitch);
-    float totalFf = gravityFf + pitchIntegralTorque;
+    float gravityFf               = Config::Algorithm::Gimbal::PITCH_K_GRAVITY * std::cos(imuState.pitch);
+    float pitchIntegralTorque     = pitchPosPid.calculate(telem.targetPitchRad, imuState.pitch);
+    float totalFf                 = gravityFf + pitchIntegralTorque;
 
     // 参数装填下发
     output.targetPitchPos         = targetMotorRaw;
@@ -344,6 +352,6 @@ void MovtionCtrlApp::run() {
     output.pitchEn                = true;
 
     Blackboard::instance().gimbalOut.write(output);
-    Blackboard::instance().telem.write(telem);
+    Blackboard::instance().gimbalTelem.write(telem);
 }
 #endif

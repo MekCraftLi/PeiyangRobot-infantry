@@ -32,6 +32,7 @@
 #include "commander.h"
 #include "main.h"
 #include "referee.h"
+#include "vision-comm.h"
 
 
 
@@ -77,7 +78,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size) {
 #endif
 #endif
         } break;
-
         default: {
         }
     }

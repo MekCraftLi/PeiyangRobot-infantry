@@ -109,7 +109,7 @@ public:
         pyro::pid_t(0.87f,  0.0f, 0.0f, 1.0f, 24.0f)
     };
 
-    pyro::pid_t yawPosPid = pyro::pid_t(16.0f, 0.1f, 0.0f, 1.0f, 100.0f);
+    pyro::pid_t yawPosPid = pyro::pid_t(11.0f, 0.1f, 0.1f, 1.0f, 100.0f);
 
     uint8_t motorIdx[4] = {0};
 
@@ -117,8 +117,8 @@ public:
 
 #elifdef GIMBAL
 
-    pyro::pid_t yawPosPid = pyro::pid_t(80.0f, 3.0f, 0.0f, 100.0f, 500.0f);
-    pyro::pid_t yawSpdPid = pyro::pid_t(10.0f, 0.0f, 0.0f, 0.0f, 24.0f);
+    pyro::pid_t yawPosPid = pyro::pid_t(32.0f, 8.0f, 0.0f, 100.0f, 500.0f);
+    pyro::pid_t yawSpdPid = pyro::pid_t(14.0f, 0.0f, 0.0f, 0.0f, 24.0f);
     pyro::pid_t pitchPosPid = pyro::pid_t(0.0f, Config::Algorithm::Chassis::DM_MOTOR_KI, 0.0f, 12.0f, 12.0f);
 
 #endif

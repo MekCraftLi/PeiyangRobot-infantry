@@ -98,6 +98,15 @@ struct GimbalCmd {
     // 【修改】将绝对角度改为期望角速度 (rad/s)
     float yawVel;
     float pitchVel;
+
+    // --- 新增：视觉模式使用的高阶期望 ---
+    float targetYaw;
+    float targetPitch;
+    float targetYawSpeed;         // 目标角速度 (用于前馈)
+    float targetYawAcceleration;  // 目标角加速度 (用于高级动力学前馈)
+    // ------------------------------------
+
+
     uint8_t mode;
     uint32_t timestamp;
 };

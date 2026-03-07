@@ -31,6 +31,7 @@
 
 #include "../../tools/seq-variable.h"
 #include "data-def.h"
+#include "vision-protocol.h"
 
 #include "Component/Motor/pyro_dji_motor_drv.h"
 #include "tools/crtp.h"
@@ -121,7 +122,11 @@ public:
     // ----------------------------------------
     // [中间区] (主要由 核心控制算法任务 同步写入)
     // ----------------------------------------
-    SeqVariable<GimbalTelemetry> telem;
+    SeqVariable<GimbalTelemetry> gimbalTelem;
+    // =========================================================
+    // 视觉上位机通信域
+    // =========================================================
+    SeqVariable<VisionCommand>   visionCmd;    // 接收到的视觉控制指令
 
 private:
 

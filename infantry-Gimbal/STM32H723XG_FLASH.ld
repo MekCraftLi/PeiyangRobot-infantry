@@ -246,6 +246,12 @@ SECTIONS
     *(.dma_pool*)
   } >RAM_D1
 
+  .usb_pool (NOLOAD) : ALIGN(8)
+  {
+    *(.usb_pool)
+    *(.usb_pool*)
+  } >RAM_D1
+
 
   /* Remove information from the standard libraries */
   /DISCARD/ :

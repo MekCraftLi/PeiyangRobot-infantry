@@ -50,6 +50,30 @@ add_subdirectory(cmake/stm32cubemx)
 
 
 
+# ------------------ Tiny USB ------------------------------------------------------------------------------------------
+# 定义 TinyUSB 的路径 (假设你放在了 ThirdParty/tinyusb)
+set(TINYUSB_DIR "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/TinyUSB")
+
+# 添加 TinyUSB 的头文件路径
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+        ${TINYUSB_DIR}/src
+        # 你的工程中似乎已经在 Core/Inc 里放了 tusb_config.h，所以不需要额外为 config 指定目录
+)
+
+# 添加 TinyUSB 需要的源文件
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+
+)
+
+# 告诉 TinyUSB 你使用的 MCU 类型
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+        CFG_TUSB_MCU=OPT_MCU_STM32H7
+        CFG_TUSB_OS=OPT_OS_FREERTOS
+)
+
+
+
+# ------------------ CMSIS-DSP -----------------------------------------------------------------------------------------
 
 
 # 1. 设置 DSP 库的绝对或相对路径
@@ -66,6 +90,8 @@ add_subdirectory(${DSP_REPO} build_cmsis_dsp)
 target_include_directories(CMSISDSP PRIVATE
         "${CMAKE_CURRENT_LIST_DIR}/Drivers/CMSIS/Include"
 )
+
+
 
 # -------------------------------------------------------------------------
 # 5. 【极其重要】为 CMSISDSP 注入硬件宏定义
@@ -92,17 +118,6 @@ target_include_directories(dsppp_lib INTERFACE
 # target_link_libraries(${PROJECT_NAME}.elf PRIVATE CMSISDSP dsppp_lib)
 
 
-
-
-
-
-
-
-
-
-
-
-
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined library search paths
@@ -122,6 +137,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
         "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
         "../Solution/Board-Support-Pack/DR16/dr16.cpp"
+        "../Solution/Board-Support-Pack/USB/dev-usb.cpp"
 
 
         "../Solution/System/Service/commander.cpp"
@@ -150,6 +166,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/KF/kalman_filter.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Peripheral/DWT/pyro_dwt_drv.cpp"
 
+        # TinyUSB
 )
 
 # Add include paths
@@ -200,6 +217,9 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
         "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Debug/VOFA"
         "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Debug/JCOM"
+
+        # ---- Tiny USB ----
+        "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/TinyUSB/src/"
 )
 
 # Add project symbols (macros)

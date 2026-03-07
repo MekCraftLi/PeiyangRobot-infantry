@@ -37,33 +37,38 @@ extern "C" {
 
 /*-------- 2. enum and define ----------------------------------------------------------------------------------------*/
 
-// 配置MCU
+
 #define CFG_TUSB_MCU              OPT_MCU_STM32H7
+#define CFG_TUSB_OS               OPT_OS_FREERTOS
 
-// 端口与速度配置
-#define CFG_TUSB_RHPORT0_MODE     (OPT_MODE_DEVICE | OPT_MODE_FULL_SPEED)
-
-// 驱动模式配置
-#define CFG_TUD_DWC2_DMA_ENABLE   1
-#define CFG_TUD_DWC2_SLAVE_ENABLE 0
-
-// 4. 操作系统 (先跑裸机，排除 FreeRTOS 干扰)
-#define CFG_TUSB_OS               OPT_OS_NONE
-
-// 5. 内存管理 (H7 的 DMA 需要内存对齐)
-#define CFG_TUSB_MEM_SECTION      __attribute__((section(".dma_pool")))
-#define CFG_TUSB_MEM_ALIGN        __attribute__((aligned(4)))
-
-// 6. 端点 0 缓冲区大小
-#define CFG_TUD_ENDPOINT0_SIZE    64
-
+// ★ 关键：设置 Debug 级别为 2，TinyUSB 会通过 printf 打印出所有的控制传输请求！
+// 请确保你的工程已经重定向了 printf 到串口
+#define CFG_TUSB_DEBUG            0
+// 启用 TinyUSB Device
 #define CFG_TUD_ENABLED           1
 
-// 7. 关闭所有 Class，只做枚举
-#define CFG_TUD_CDC               0
+// 配置 RHPORT 1 为设备模式，且使用内部全速 PHY
+#define CFG_TUSB_RHPORT1_MODE     (OPT_MODE_DEVICE | OPT_MODE_FULL_SPEED)
+#define CFG_TUD_DWC2_SLAVE_ENABLE 1
+// 你的端点0大小
+#define CFG_TUD_ENDPOINT0_SIZE    64
+
+
+// ★ 关键：关闭所有的标准 USB 类
+#define CFG_TUD_CDC               1
 #define CFG_TUD_MSC               0
 #define CFG_TUD_HID               0
-#define CFG_TUD_VENDOR            0
+#define CFG_TUD_MIDI              0
+#define CFG_TUD_VENDOR            0 // 即使我们用Vendor类，这里也设为0，因为我们连Vendor的端点都不想处理
+
+#define BOARD_TUD_RHPORT          0
+#define BOARD_TUD_MAX_SPEED       OPT_MODE_DEFAULT_SPEED
+
+/* -------- CDC --------------*/
+// 3. 配置 CDC 相关的端点 FIFO 缓冲区大小 (全速模式下通常为 64)
+#define CFG_TUD_CDC_RX_BUFSIZE    64
+#define CFG_TUD_CDC_TX_BUFSIZE    64
+#define CFG_TUD_CDC_EP_BUFSIZE    64
 
 /*-------- 3. interface ----------------------------------------------------------------------------------------------*/
 

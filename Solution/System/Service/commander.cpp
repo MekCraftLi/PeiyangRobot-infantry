@@ -65,7 +65,7 @@ __attribute__((section(".dma_pool"))) static uint8_t rxbuf[32] = {0};
 
 
 #ifdef GIMBAL
-#if REMOTE_DEVICE == VIDEO_LINK_REMOTE
+#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
 static VideoLinkRawData _videoLinkRawData;
 #endif
 #endif
@@ -313,13 +313,57 @@ void CommanderSrvc::run() {
 
         case ControlSource::VISION: {
             // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            g2cComm.msg.mode    = CHASSIS_NORMAL;
+            g2cComm.msg.mode    = CHASSIS_NORMAL; // 视觉通常也需要底盘跟随
             finalGimbalCmd.mode = GIMBAL_AUTO;
 
-            // 可以在此处从 Vision 接收缓冲中提取数据并覆盖目标值
-            // 如果不作操作，由于提前 Read 了历史数据，底盘将以切换瞬间的速度继续运动
-        } break;
+            // 1. 读取视觉指令
+            VisionCommand vCmd{};
+            Blackboard::instance().visionCmd.read(vCmd);
 
+            // 2. 将视觉指令映射到云台控制结构体
+            finalGimbalCmd.targetYaw             = vCmd.targetYaw;
+            finalGimbalCmd.targetPitch           = vCmd.targetPitch;
+            finalGimbalCmd.targetYawSpeed        = vCmd.targetYawSpeed;
+            finalGimbalCmd.targetYawAcceleration = vCmd.targetYawAcceleration;
+
+            // 3. 构建高鲁棒性的射击触发器状态机 (处理边缘跳变)
+            static uint8_t lastFire   = 0;
+            static uint8_t lastSingle = 0;
+            static bool    isBursting = false; // 记录当前是否处于连发持续状态
+
+            uint8_t curFire   = vCmd.fireCommand;
+            uint8_t curSingle = vCmd.isSingleShot;
+            // 发射事件映射
+            if (actionFricToggle.isTriggered()) {
+                finalShootCmd.event = ShootEvent::FRIC_TOGGLE;
+            }
+            if (curSingle == 1) {
+                // 【单发逻辑】
+                if (lastFire == 0 && curFire == 1) { // 发生 0->1 跳变
+                    finalShootCmd.event = ShootEvent::SINGLE_FIRE;
+                }
+
+                // 防暴走保护：如果在连发中途，视觉突然把 isSingleShot 置 1，必须立刻截断连发
+                if (isBursting) {
+                    finalShootCmd.event = ShootEvent::BURST_STOP;
+                    isBursting = false;
+                }
+            } else {
+                // 【连发逻辑】
+                if (lastFire == 0 && curFire == 1) { // 发生 0->1 跳变
+                    finalShootCmd.event = ShootEvent::BURST_START;
+                    isBursting = true;
+                } else if (lastFire == 1 && curFire == 0) { // 发生 1->0 跳变
+                    finalShootCmd.event = ShootEvent::BURST_STOP;
+                    isBursting = false;
+                }
+            }
+
+            // 更新历史状态供下一帧边缘检测使用
+            lastFire   = curFire;
+            lastSingle = curSingle;
+
+        } break;
         default:
             break;
     }

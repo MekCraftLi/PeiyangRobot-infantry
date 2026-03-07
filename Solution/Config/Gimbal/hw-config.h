@@ -92,6 +92,7 @@ inline constexpr UART_HandleTypeDef& REMOTE_UART  = huart5;
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
 inline constexpr UART_HandleTypeDef& REMOTE_UART  = huart1;
 #endif
+inline constexpr UART_HandleTypeDef& VISION_UART = huart7;
 } // namespace Comms
 } // namespace Config::Hardware
 

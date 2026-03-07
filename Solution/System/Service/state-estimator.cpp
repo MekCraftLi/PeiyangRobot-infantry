@@ -167,7 +167,9 @@ void ImuApp::run() {
 
     // 4. 从全局的 QEKF_INS 结构体中提取解算好的欧拉角
     // (QEKF_INS 是 QuaternionEKF.h 中定义好的全局结构体，算完后自动更新)
-    ImuState state;
+    ImuState state{};
+
+
     state.roll  = QEKF_INS.Roll;  // 内部已转为 Rad 或 Degree，请查阅 QuaternionEKF.h 确认
     state.pitch = QEKF_INS.Pitch;
     state.yaw   = QEKF_INS.Yaw;
@@ -186,7 +188,7 @@ void ImuApp::run() {
     // 5. 写入你自己的黑板
     Blackboard::instance().imuState.write(state);
 
-
+    VisionTelemetry visionTelem{}; // 新增视觉遥测对象
 }
 
 

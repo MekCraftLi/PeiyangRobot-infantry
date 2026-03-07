@@ -46,10 +46,18 @@ add_executable(${CMAKE_PROJECT_NAME}
 add_subdirectory(cmake/stm32cubemx)
 
 
+#---------- Tiny USB ---------------------------------------------------------------------------------------------------
+# 定义 TinyUSB 的路径 (假设你放在了 ThirdParty/tinyusb)
+set(TINYUSB_DIR "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/TinyUSB")
+
+# 告诉 TinyUSB 你使用的 MCU 类型
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+        CFG_TUSB_MCU=OPT_MCU_STM32H7
+        CFG_TUSB_OS=OPT_OS_FREERTOS
+)
 
 
-
-
+#--------- CMSIS-DSP ---------------------------------------------------------------------------------------------------
 
 
 
@@ -110,14 +118,16 @@ target_include_directories(dsppp_lib INTERFACE
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined library search paths
-
 )
+
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user sources here
 
         "../Solution/app-main.cpp"
+
+        "../Solution/tools/crc.cpp"
 
         "../Solution/Application/movtion-ctrl-app.cpp"
         "../Solution/Application/fire-ctrl-app.cpp"
@@ -126,6 +136,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
         "../Solution/Board-Support-Pack/DR16/dr16.cpp"
         "../Solution/Board-Support-Pack/VideoLink/video-link-remote.cpp"
+        "../Solution/Board-Support-Pack/USB/dev-usb.cpp"
+        "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
 
 
         "../Solution/System/Service/commander.cpp"
@@ -134,6 +146,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/System/Service/heart-beat.cpp"
         "../Solution/System/Service/real-time-comm.cpp"
         "../Solution/System/Service/interrupt-callback.cpp"
+        "../Solution/System/Service/usb-device.cpp"
+        "../Solution/System/Service/vision-comm.cpp"
 
 
 
@@ -152,6 +166,21 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/KF/kalman_filter.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Peripheral/DWT/pyro_dwt_drv.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Core/FSM/pyro_core_fsm.tpp"
+
+        # Tiny USB
+        # Tiny USB 核心通用文件
+        "../Solution/ThirdParty/TinyUSB/src/tusb.c"
+        "../Solution/ThirdParty/TinyUSB/src/common/tusb_fifo.c"
+        # TinyUSB 设备栈核心层
+        "../Solution/ThirdParty/TinyUSB/src/device/usbd.c"
+        "../Solution/ThirdParty/TinyUSB/src/device/usbd_control.c"
+        # TinyUSB 类设备驱动
+        "../Solution/ThirdParty/TinyUSB/src/class/cdc/cdc_device.c"
+        #"../Solution/ThirdParty/TinyUSB/src/class/vendor/vendor_device.c"
+        #"../Solution/Board-Support-Pack/USB/class-cdc.cpp"
+        # 移植层
+        "../Solution/ThirdParty/TinyUSB/src/portable/synopsys/dwc2/dcd_dwc2.c"
+        "../Solution/ThirdParty/TinyUSB/src/portable/synopsys/dwc2/dwc2_common.c"
 
 )
 
@@ -205,6 +234,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Debug/JCOM"
 
         "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/Ported_third_lib/CMSIS-DSP/Include"
+
+        "${CMAKE_CURRENT_LIST_DIR}/../Solution/Board-Support-Pack/USB"
 )
 
 
