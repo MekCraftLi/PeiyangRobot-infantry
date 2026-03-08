@@ -84,6 +84,9 @@ enum class ShootEvent {
 
 struct ShootCmd {
     ShootEvent event = ShootEvent::NONE;
+    struct {
+        uint32_t burstShot: 1 = 0;
+    } state;
 };
 
 
@@ -186,7 +189,16 @@ union GimbalToChassisComm {
 
     uint8_t buffer[8];
 };
-
+// ==========================================
+// [新增] 底盘向云台发送的通信联合体
+// ==========================================
+union ChassisToGimbalComm {
+    __attribute__((packed)) struct {
+        float initialSpeed; // 裁判系统提供的弹丸初速度 (m/s)
+        uint32_t reserved;  // 预留 4 字节，凑满 8 字节对齐
+    } msg;
+    uint8_t buffer[8];
+};
 // ==========================================
 // 4. 遥测/中间区数据 (控制过程可视化)
 // ==========================================

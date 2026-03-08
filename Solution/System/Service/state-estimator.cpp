@@ -188,7 +188,6 @@ void ImuApp::run() {
     // 5. 写入你自己的黑板
     Blackboard::instance().imuState.write(state);
 
-    VisionTelemetry visionTelem{}; // 新增视觉遥测对象
 }
 
 

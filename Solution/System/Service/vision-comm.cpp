@@ -170,14 +170,23 @@ void VisionCommSrvc::sendTxFrame() {
     // 1. 从黑板读取最新的云台、底盘状态
     VisionTelemetry telem{};
     ImuState state{};
+    ChassisToGimbalComm comm{};
     VisionTxFrame dmaTxFrame{};
 
-    telem.currentPitch = state.pitch;
-    telem.currentYaw   = state.yaw;
+
     Blackboard::instance().imuState.read(state);
+    Blackboard::instance().c2gComm.read(comm);
+
+
+
 
     telem.currentPitch = -state.pitch;
     telem.currentYaw   = state.yaw;
+    telem.autoAimMode = 1;
+    static float initalSpeed;
+    initalSpeed =  telem.initialSpeed = comm.msg.initialSpeed;
+
+
 
 
     // 2. 组装数据帧

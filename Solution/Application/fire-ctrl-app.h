@@ -65,6 +65,17 @@
 class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
   public:
     FireCtrlApp();
+    enum class FireState {
+        Passive,
+        SpinUp,
+        Ready,
+        CaliReverse,
+        CaliForward,
+        SingleFire,
+        BurstFire,
+        JamClear,
+    } ;
+
     // ==========================================
     // 1. 火控上下文 (FSM Context)
     // ==========================================
@@ -72,7 +83,12 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
         // 黑板数据缓存
         ShootCmd cmd;
         ShootEvent transientEvent; // 边沿触发的瞬态事件
-        BoosterState fdb;         // 电机实时反馈
+        struct {
+            uint32_t burstShot:1;
+        }inputState;
+
+        BoosterState fdb;          // 电机实时反馈
+        FireState state;
 
         // FSM 决定的目标运动量 (供后续 PID 运算)
         float targetFricSpeed;
@@ -149,20 +165,23 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
     FireCtrlCtx _ctx;
 
     // 静态状态单例 (内存连续，无动态分配)
-    StatePassive     _statePassive;
-    StateSpinUp      _stateSpinUp;
-    StateReady       _stateReady;
+    StatePassive _statePassive;
+    StateSpinUp _stateSpinUp;
+    StateReady _stateReady;
     StateCaliReverse _stateCaliReverse;
     StateCaliForward _stateCaliForward;
-    StateSingleFire  _stateSingleFire;
-    StateBurstFire   _stateBurstFire;
-    StateJamClear    _stateJamClear;
+    StateSingleFire _stateSingleFire;
+    StateBurstFire _stateBurstFire;
+    StateJamClear _stateJamClear;
 
     // 独立维护的算法组件 (PID 控制器)
-    pyro::pid_t _fricLeftSpdPid = pyro::pid_t(0.22f, 0.0f, 0.0f, 0.0f, 20.0f);
-    pyro::pid_t _fricRightSpdPid = pyro::pid_t(0.22f, 0.0f, 0.0f, 0.0f, 20.0f);;
-    pyro::pid_t _triggerPosPid = pyro::pid_t(1000.0f, 0.0f, 0.0f, 100.0f, 1000.0f);;
-    pyro::pid_t _triggerSpdPid = pyro::pid_t(0.05f, 0.02f, 0.0f, 5.0f, 20.0f);;
+    pyro::pid_t _fricLeftSpdPid  = pyro::pid_t(0.22f, 0.0f, 0.0f, 0.0f, 20.0f);
+    pyro::pid_t _fricRightSpdPid = pyro::pid_t(0.22f, 0.0f, 0.0f, 0.0f, 20.0f);
+    ;
+    pyro::pid_t _triggerPosPid = pyro::pid_t(1000.0f, 0.0f, 0.0f, 100.0f, 1000.0f);
+    ;
+    pyro::pid_t _triggerSpdPid = pyro::pid_t(0.05f, 0.02f, 0.0f, 5.0f, 20.0f);
+    ;
 
     ShootEvent _lastEvent = ShootEvent::NONE;
 

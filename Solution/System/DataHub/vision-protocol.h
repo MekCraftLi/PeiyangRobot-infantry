@@ -50,7 +50,9 @@ struct VisionTelemetry {
     float   currentPitch;
     float   selfVelocityMagnitude;
     float   selfVelocityAngle;
+    float initialSpeed;
     uint8_t shootDelay;
+
 
     // 位域保持原有的内存布局分布
     uint8_t robotState  : 5;

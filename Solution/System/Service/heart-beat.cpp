@@ -40,6 +40,7 @@
 
 /* II. other application */
 #include "../DataHub/blackboard.h"
+#include "commander.h"
 #include "motor-actuator.h"
 
 /* III. standard lib */
@@ -106,6 +107,17 @@ void HeartBeatApp::init() {
     pyro::dwt_drv_t::init(550);
 }
 
+struct {
+    float commander;
+    float motorActuator;
+    float realTimeComm;
+    float stateEstimator;
+    float usbDevice;
+    float visionComm;
+    float fireCtrl;
+    float moveCtrl;
+}runTime;
+
 
 void HeartBeatApp::run() {
  pyro::dwt_drv_t::get_timeline();
@@ -119,6 +131,16 @@ void HeartBeatApp::run() {
         MotActSrvc::instance().pitch.disable();
     }
 #endif
+
+
+    runTime.commander = CommanderSrvc::instance().getRunTime();
+    runTime.motorActuator = CommanderSrvc::instance().getRunTime();
+    runTime.realTimeComm = CommanderSrvc::instance().getRunTime();
+    runTime.stateEstimator = CommanderSrvc::instance().getRunTime();
+    runTime.usbDevice = CommanderSrvc::instance().getRunTime();
+    runTime.visionComm = CommanderSrvc::instance().getRunTime();
+    runTime.fireCtrl = CommanderSrvc::instance().getRunTime();
+    runTime.moveCtrl = CommanderSrvc::instance().getRunTime();
 
 
 }

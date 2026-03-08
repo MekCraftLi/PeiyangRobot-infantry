@@ -38,6 +38,8 @@
 
 #include "System/DataHub/blackboard.h"
 #include "System/DataHub/data-def.h"
+#include "System/DataHub/referee-data-hub.h"
+#include "System/DataHub/referee-protocol.h"
 #include "motor-actuator.h"
 
 /* II. other application */
@@ -116,7 +118,7 @@ void RealTimeCommApp::run() {
 #ifdef GIMBAL
         .Identifier = 0x100,
 #elifdef CHASSIS
-        .Identifier = 0x0D000722,
+        .Identifier = 0x101,
 #endif
         .IdType = FDCAN_STANDARD_ID,
         .TxFrameType = FDCAN_DATA_FRAME,
@@ -127,13 +129,27 @@ void RealTimeCommApp::run() {
         .TxEventFifoControl = FDCAN_NO_TX_EVENTS,
         .MessageMarker = 0,
     };
+
+
 #ifdef GIMBAL
     Blackboard::instance().g2cOutput.read(output);
 
     HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, output.buffer);
 
-#elifdef CHSSIS
+#elifdef CHASSIS
+    // 1. 获取裁判系统中的射击数据
+    RMShootData shootData{};
+    RefereeDataHub::instance().shootData.read(shootData);
+    static ChassisToGimbalComm comm {};
 
+    // 2. 填充到底盘发往云台的结构体中
+    comm.msg.initialSpeed = shootData.initialSpeed;
+
+    // 3. 将装填好的数据回写到底盘黑板，供调试或其他应用查看
+    Blackboard::instance().tComm.write(comm);
+
+    // 4. 将 buffer 发送至 CAN 邮箱
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &txHeader, comm.buffer);
 #endif
 
 }
@@ -150,6 +166,9 @@ extern "C" void getBoardCommFromISR(uint8_t* pData) {
 
 extern "C" void getBoardCommFromISR(uint8_t* pData) {
 
-
+    // [新增] 云台板在此接收来自底盘的 0x101 CAN 数据
+    static ChassisToGimbalComm comm{};
+    memcpy(comm.buffer, pData, 8);
+    Blackboard::instance().c2gComm.writeFromISR(comm);
 }
 #endif

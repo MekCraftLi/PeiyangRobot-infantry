@@ -53,7 +53,7 @@ public:
     Blackboard() = default;
 
     SeqVariable<GimbalToChassisComm>  rComm;
-
+    SeqVariable<ChassisToGimbalComm> tComm;
     // ----------------------------------------
     // [意图区] (主要由 DR16 任务 / ROS 通信任务 写入)
     // ----------------------------------------
@@ -118,7 +118,8 @@ public:
     SeqVariable<GimbalOutput>  gimbalOut;
     SeqVariable<BoosterOutput> boosterOut;
     SeqVariable<GimbalToChassisComm> g2cOutput;
-
+    // [新增] 云台接收到底盘发来的数据区
+    SeqVariable<ChassisToGimbalComm> c2gComm;
     // ----------------------------------------
     // [中间区] (主要由 核心控制算法任务 同步写入)
     // ----------------------------------------

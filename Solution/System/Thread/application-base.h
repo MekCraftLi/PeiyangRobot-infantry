@@ -37,6 +37,9 @@
 #include "task.h"
 
 /* II. standard lib */
+#include "tools/perf-monitor.h"
+
+
 #include <cstring>
 #include <vector>
 
@@ -103,6 +106,14 @@ class StaticAppBase : public IApplication {
     float _runTime = 0;
     TaskInfo _taskInfo;
     inline static uint8_t _inited = 0;
+    // [新增] 为每个线程实例分配独立的性能统计内存块
+    PerfCounter::Statistics _perfStats{};
+
+    // [新增] NVI (Non-Virtual Interface) 包转函数，自动完成 RAII 性能统计
+    inline void executeRun() {
+        PerfCounter pc(_perfStats); // 实例化即开始计时，离开作用域自动结算
+        run();                      // 执行用户的业务逻辑
+    }
 
   public:
     StaticAppBase(bool enable, const char* name, uint16_t stackSize, StackType_t* stackBuf, UBaseType_t priority)
@@ -126,8 +137,14 @@ class StaticAppBase : public IApplication {
     [[nodiscard]] const char* getName() const override { return _taskInfo.name; }
     [[nodiscard]] uint32_t getStackHighWaterMark() const override { return uxTaskGetStackHighWaterMark(_tskHandle); }
     [[nodiscard]] TaskHandle_t getTaskHandle() const override { return _tskHandle; }
-    [[nodiscard]] float getRunTime() const override { return _runTime; }
-
+    // [修改] 利用 FreeRTOS 宏直接将 CPU 周期转化为微秒 (us) 并返回单次执行耗时
+    [[nodiscard]] float getRunTime() const override {
+        return (float)_perfStats.last_ticks * 1000000.0f / configCPU_CLOCK_HZ;
+    }
+    // [可选新增] 如果你想获取最大耗时，也可以暴露此接口
+    [[nodiscard]] float getMaxRunTime() const {
+        return (float)_perfStats.max_ticks * 1000000.0f / configCPU_CLOCK_HZ;
+    }
   private:
 
     [[noreturn]] static void _taskEntry(void* pvParameters) {
@@ -159,7 +176,7 @@ class PeriodicApp : public StaticAppBase {
         TickType_t xLastExecutionTime = xTaskGetTickCount();
         const TickType_t kPeriodTicks = pdMS_TO_TICKS(_periodMs);
         for (;;) {
-            run();
+            executeRun();
             vTaskDelayUntil(&xLastExecutionTime, kPeriodTicks);
         }
     }
@@ -176,7 +193,7 @@ class ContinuousApp : public StaticAppBase {
   protected:
     void taskLoop() override {
         for (;;) {
-            run();
+            executeRun();
         }
     }
 
@@ -194,7 +211,7 @@ class NotifyApp : public StaticAppBase {
     void taskLoop() override {
         for (;;) {
             ulTaskNotifyTake(pdTRUE, _timeoutTicks);
-            run();
+            executeRun();
         }
     }
 
@@ -234,11 +251,11 @@ class QueueApp : public StaticAppBase {
     void taskLoop() override {
         for (;;) {
             if (xQueueReceive(_commQueue, &_currentMsg, _timeoutTicks) == pdTRUE) {
-                run();
+                executeRun();
             } else {
                 _currentMsg.pMsg = nullptr;
                 _currentMsg.msgLen = 0;
-                run(); // 超时也会触发 run()，业务层通过 pMsg 是否为空判断
+                executeRun(); // 超时也会触发 run()，业务层通过 pMsg 是否为空判断
             }
         }
     }

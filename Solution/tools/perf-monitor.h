@@ -29,7 +29,7 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
-#include "core_cm7.h"
+#include "stm32h7xx.h"
 
 
 #include <cstdint>

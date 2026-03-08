@@ -117,8 +117,8 @@ public:
 
 #elifdef GIMBAL
 
-    pyro::pid_t yawPosPid = pyro::pid_t(32.0f, 8.0f, 0.0f, 100.0f, 500.0f);
-    pyro::pid_t yawSpdPid = pyro::pid_t(14.0f, 0.0f, 0.0f, 0.0f, 24.0f);
+    pyro::pid_t yawPosPid = pyro::pid_t(20.0f, 0.8f, 0.0f, 10.0f, 500.0f);
+    pyro::pid_t yawSpdPid = pyro::pid_t(18.0f, 0.0f, 0.0f, 0.0f, 24.0f);
     pyro::pid_t pitchPosPid = pyro::pid_t(0.0f, Config::Algorithm::Chassis::DM_MOTOR_KI, 0.0f, 12.0f, 12.0f);
 
 #endif

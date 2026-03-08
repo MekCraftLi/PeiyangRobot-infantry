@@ -34,6 +34,8 @@
 /* I. header */
 
 #include "commander.h"
+
+#include "Board-Support-Pack/GamePad/bluetooth-gamepad.h"
 #include "Config/config.h"
 
 #include "System/DataHub/blackboard.h"
@@ -67,6 +69,8 @@ __attribute__((section(".dma_pool"))) static uint8_t rxbuf[32] = {0};
 #ifdef GIMBAL
 #if REMOTE_DEVICE == REMOTE_VIDEO_LINK
 static VideoLinkRawData _videoLinkRawData;
+#elif REMOTE_DEVICE == REMOTE_GAMEPAD
+static GamepadRawData _gamepadRawData;
 #endif
 #endif
 
@@ -191,6 +195,8 @@ void CommanderSrvc::run() {
     RemoteDR16::instance().updateRaw(_dr16Data);
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
     VideoLinkRemote::instance().updateRaw(_videoLinkRawData);
+#elif REMOTE_DEVICE == REMOTE_GAMEPAD
+    BluetoothGamepad::instance().updateRaw(_gamepadRawData);
 #endif
 #endif
 
@@ -277,14 +283,15 @@ void CommanderSrvc::run() {
             finalGimbalCmd.yawVel   = 0;
             finalGimbalCmd.pitchVel = 0;
 
+
         } break;
 
         case ControlSource::REMOTE: {
             // 遥控器映射
             if (actionSpinMode.isTriggered()) {
-                g2cComm.msg.mode = CHASSIS_SPIN;
+                g2cComm.msg.mode = CHASSIS_RELAX;
             } else {
-                g2cComm.msg.mode = CHASSIS_NORMAL;
+                g2cComm.msg.mode = CHASSIS_RELAX;
             }
             g2cComm.msg.vx          = actionMoveX.getValue() * Config::Algorithm::Chassis::MAX_VX * 10;
             // 运动计算坐标系和遥控器方向相反
@@ -297,6 +304,7 @@ void CommanderSrvc::run() {
 
             // 遥控器的Y轴与标准正方向（左）相反, X轴与标准正方向(下)相反
             finalGimbalCmd.yawVel   = -yawInput * Config::Algorithm::Gimbal::MAX_YAW_SPEED;
+            finalGimbalCmd.targetYawSpeed = 0;
             finalGimbalCmd.pitchVel = -pitchInput * Config::Algorithm::Gimbal::MAX_PITCH_SPEED;
 
 
@@ -313,7 +321,7 @@ void CommanderSrvc::run() {
 
         case ControlSource::VISION: {
             // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            g2cComm.msg.mode    = CHASSIS_NORMAL; // 视觉通常也需要底盘跟随
+            g2cComm.msg.mode    = CHASSIS_RELAX; // 视觉通常也需要底盘跟随
             finalGimbalCmd.mode = GIMBAL_AUTO;
 
             // 1. 读取视觉指令
@@ -322,27 +330,29 @@ void CommanderSrvc::run() {
 
             // 2. 将视觉指令映射到云台控制结构体
             finalGimbalCmd.targetYaw             = vCmd.targetYaw;
-            finalGimbalCmd.targetPitch           = vCmd.targetPitch;
+            finalGimbalCmd.targetPitch           = -vCmd.targetPitch;
             finalGimbalCmd.targetYawSpeed        = vCmd.targetYawSpeed;
             finalGimbalCmd.targetYawAcceleration = vCmd.targetYawAcceleration;
 
             // 3. 构建高鲁棒性的射击触发器状态机 (处理边缘跳变)
             static uint8_t lastFire   = 0;
             static uint8_t lastSingle = 0;
+            static uint8_t fricActive = 0;
             static bool    isBursting = false; // 记录当前是否处于连发持续状态
 
             uint8_t curFire   = vCmd.fireCommand;
             uint8_t curSingle = vCmd.isSingleShot;
             // 发射事件映射
+
             if (actionFricToggle.isTriggered()) {
                 finalShootCmd.event = ShootEvent::FRIC_TOGGLE;
+                fricActive = !fricActive;
             }
             if (curSingle == 1) {
                 // 【单发逻辑】
                 if (lastFire == 0 && curFire == 1) { // 发生 0->1 跳变
                     finalShootCmd.event = ShootEvent::SINGLE_FIRE;
                 }
-
                 // 防暴走保护：如果在连发中途，视觉突然把 isSingleShot 置 1，必须立刻截断连发
                 if (isBursting) {
                     finalShootCmd.event = ShootEvent::BURST_STOP;
@@ -350,13 +360,17 @@ void CommanderSrvc::run() {
                 }
             } else {
                 // 【连发逻辑】
-                if (lastFire == 0 && curFire == 1) { // 发生 0->1 跳变
-                    finalShootCmd.event = ShootEvent::BURST_START;
-                    isBursting = true;
-                } else if (lastFire == 1 && curFire == 0) { // 发生 1->0 跳变
-                    finalShootCmd.event = ShootEvent::BURST_STOP;
-                    isBursting = false;
+                if (curFire == 1) { // 发生 0->1 跳变
+                    finalShootCmd.state.burstShot = 1;
+                } else if (curFire == 0) { // 发生 1->0 跳变
+                    finalShootCmd.state.burstShot = 0;
                 }
+            }
+
+            if (actionShootBurst.isTriggered()) {
+                finalShootCmd.event = ShootEvent::BURST_START;
+            } else if (actionShootSingle.isTriggered()) {
+                finalShootCmd.event = ShootEvent::SINGLE_FIRE;
             }
 
             // 更新历史状态供下一帧边缘检测使用

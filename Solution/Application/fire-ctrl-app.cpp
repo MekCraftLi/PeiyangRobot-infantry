@@ -136,11 +136,12 @@ void FireCtrlApp::StatePassive::enter(FireCtrlCtx& ctx) {
     ctx.isCalibrated            = false;
     ctx.targetFricSpeed         = 0.0f;
     ctx.useTriggerSpeedLoopOnly = false;
+    ctx.state                   = FireState::Passive;
 }
 
 void FireCtrlApp::StatePassive::execute(FireCtrlCtx& ctx) {
     // 锁死当前位置，防止掉电滑转
-    ctx.targetTriggerEcd = ctx.fdb.trigger.pos;
+    ctx.targetTriggerEcd = ctx.fdb.triggerEcd + ctx.fdb.triggerRound * 8192 - ctx.triggerOffset; // 锁死拨弹盘
 
     if (ctx.transientEvent == ShootEvent::FRIC_TOGGLE) {
         request_switch(&instance()._stateSpinUp);
@@ -157,6 +158,7 @@ void FireCtrlApp::StatePassive::execute(FireCtrlCtx& ctx) {
 void FireCtrlApp::StateSpinUp::enter(FireCtrlCtx& ctx) {
     ctx.targetFricSpeed         = Config::Hardware::MotorTopo::FRIC_TARGET_SPEED;
     ctx.useTriggerSpeedLoopOnly = false;
+    ctx.state                   = FireState::SpinUp;
 }
 
 void FireCtrlApp::StateSpinUp::execute(FireCtrlCtx& ctx) {
@@ -183,6 +185,7 @@ void FireCtrlApp::StateSpinUp::execute(FireCtrlCtx& ctx) {
 
 void FireCtrlApp::StateReady::enter(FireCtrlCtx& ctx) {
     ctx.useTriggerSpeedLoopOnly = false;
+    ctx.state                   = FireState::Ready;
 }
 
 void FireCtrlApp::StateReady::execute(FireCtrlCtx& ctx) {
@@ -196,7 +199,7 @@ void FireCtrlApp::StateReady::execute(FireCtrlCtx& ctx) {
             request_switch(&instance()._stateCaliReverse);
         else
             request_switch(&instance()._stateSingleFire);
-    } else if (ctx.transientEvent == ShootEvent::BURST_START) {
+    } else if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot) {
         ctx.isCalibrated = false; // 连发会破坏绝对槽位
         request_switch(&instance()._stateBurstFire);
     }
@@ -214,6 +217,7 @@ void FireCtrlApp::StateReady::execute(FireCtrlCtx& ctx) {
 void FireCtrlApp::StateCaliReverse::enter(FireCtrlCtx& ctx) {
     ctx.blockTimer              = 0;
     ctx.useTriggerSpeedLoopOnly = true; // 开启纯速度环反转
+    ctx.state                   = FireState::CaliReverse;
 }
 
 void FireCtrlApp::StateCaliReverse::execute(FireCtrlCtx& ctx) {
@@ -252,6 +256,7 @@ void FireCtrlApp::StateCaliReverse::exit(FireCtrlCtx& ctx) {
 void FireCtrlApp::StateCaliForward::enter(FireCtrlCtx& ctx) {
     ctx.useTriggerSpeedLoopOnly = false; // 恢复位置环
     ctx.targetTriggerEcd        = 0;
+    ctx.state                   = FireState::CaliForward;
 }
 
 void FireCtrlApp::StateCaliForward::execute(FireCtrlCtx& ctx) {
@@ -277,6 +282,7 @@ void FireCtrlApp::StateSingleFire::enter(FireCtrlCtx& ctx) {
     ctx.blockTimer = 0;
     ctx.targetTriggerEcd += 8192 * 36 / 8;
     ctx.useTriggerSpeedLoopOnly = false;
+    ctx.state                   = FireState::SingleFire;
 }
 
 void FireCtrlApp::StateSingleFire::execute(FireCtrlCtx& ctx) {
@@ -289,14 +295,16 @@ void FireCtrlApp::StateSingleFire::execute(FireCtrlCtx& ctx) {
     float targetTriggerAngle = (float)(ctx.targetTriggerEcd) / (float)(8192 * 36) * 2 * M_PI;
 
     // 计算当前的ECD值
-    int32_t ecd = ctx.fdb.triggerEcd + ctx.fdb.triggerRound * 8192 - ctx.triggerOffset;
+    int32_t ecd              = ctx.fdb.triggerEcd + ctx.fdb.triggerRound * 8192 - ctx.triggerOffset;
     // 进行循环限幅
-    while ( ecd < 0 ) {ecd += 8192 * 36 ;}
+    while (ecd < 0) {
+        ecd += 8192 * 36;
+    }
     // 将当前ECD换算为真实角度
     float realTriggerAngle = (float)(ecd) / (float)(8192 * 36) * 2 * M_PI;
 
     // 计算角度误差
-    float err = targetTriggerAngle - realTriggerAngle;
+    float err              = targetTriggerAngle - realTriggerAngle;
 
     while (err > M_PI) {
         err -= 2.0 * M_PI;
@@ -308,8 +316,9 @@ void FireCtrlApp::StateSingleFire::execute(FireCtrlCtx& ctx) {
     // 卡弹检测：角度误差大且速度极低
     if (err > 15.0f && std::abs(ctx.fdb.trigger.vel) < 10.0f) {
         ctx.blockTimer++;
-        if (ctx.blockTimer > 50){}
-           // request_switch(&instance()._stateJamClear);
+        if (ctx.blockTimer > 50) {
+        }
+        // request_switch(&instance()._stateJamClear);
     } else {
         ctx.blockTimer = 0;
         if (err < 0.01f)
@@ -327,6 +336,7 @@ void FireCtrlApp::StateSingleFire::execute(FireCtrlCtx& ctx) {
 void FireCtrlApp::StateBurstFire::enter(FireCtrlCtx& ctx) {
     ctx.blockTimer              = 0;
     ctx.useTriggerSpeedLoopOnly = true; // 连发使用纯速度环
+    ctx.state                   = FireState::BurstFire;
 }
 
 void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
@@ -334,7 +344,8 @@ void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
         request_switch(&instance()._stateReady);
         return;
     }
-    if (ctx.transientEvent == ShootEvent::FRIC_TOGGLE || ctx.transientEvent == ShootEvent::EMERGENCY_STOP) {
+    if (ctx.transientEvent == ShootEvent::FRIC_TOGGLE || ctx.transientEvent == ShootEvent::EMERGENCY_STOP ||
+        ctx.transientEvent == ShootEvent::BURST_STOP || ctx.cmd.state.burstShot == 0) {
         request_switch(&instance()._statePassive);
         return;
     }
@@ -343,8 +354,9 @@ void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
 
     if (std::abs(ctx.fdb.trigger.vel) < 10.0f) {
         ctx.blockTimer++;
-        if (ctx.blockTimer > 50){}
-           // request_switch(&instance()._stateJamClear);
+        if (ctx.blockTimer > 50) {
+        }
+        // request_switch(&instance()._stateJamClear);
     } else {
         ctx.blockTimer = 0;
     }
@@ -365,6 +377,7 @@ void FireCtrlApp::StateBurstFire::exit(FireCtrlCtx& ctx) {
 void FireCtrlApp::StateJamClear::enter(FireCtrlCtx& ctx) {
     ctx.stateTimer              = 0;
     ctx.useTriggerSpeedLoopOnly = true;
+    ctx.state                   = FireState::JamClear;
 }
 
 void FireCtrlApp::StateJamClear::execute(FireCtrlCtx& ctx) {
@@ -415,11 +428,13 @@ void FireCtrlApp::calculateCurrents(BoosterOutput& out) {
             static float realTriggerAngle;
             targetTriggerAngle = (float)(_ctx.targetTriggerEcd) / (float)(8192 * 36) * 2 * M_PI;
 
-            int32_t ecd = _ctx.fdb.triggerEcd + _ctx.fdb.triggerRound * 8192 - _ctx.triggerOffset;
-            while ( ecd < 0 ) {ecd += 8192 * 36 ;}
+            int32_t ecd        = _ctx.fdb.triggerEcd + _ctx.fdb.triggerRound * 8192 - _ctx.triggerOffset;
+            while (ecd < 0) {
+                ecd += 8192 * 36;
+            }
             realTriggerAngle = (float)(ecd) / (float)(8192 * 36) * 2 * M_PI;
 
-            float err = targetTriggerAngle - realTriggerAngle;
+            float err        = targetTriggerAngle - realTriggerAngle;
 
             while (err > M_PI) {
                 err -= 2.0 * M_PI;
@@ -432,11 +447,11 @@ void FireCtrlApp::calculateCurrents(BoosterOutput& out) {
 
 
 
-            spdTarget = _triggerPosPid.calculate(alignedTgtTrigger, realTriggerAngle);
+            spdTarget               = _triggerPosPid.calculate(alignedTgtTrigger, realTriggerAngle);
         }
 
         // 最终的速度->电流 内环计算
         out.triggerCurrent = _triggerSpdPid.calculate(spdTarget, _ctx.fdb.trigger.vel);
-        //out.triggerCurrent = 0;
+        // out.triggerCurrent = 0;
     }
 }

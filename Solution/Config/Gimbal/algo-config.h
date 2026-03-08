@@ -74,7 +74,7 @@ namespace Gimbal {
 // 遥控器推满时，云台的最大旋转速度 (rad/s)
 constexpr float MAX_YAW_SPEED   = 6.28f; // 约 180度/秒
 constexpr float MAX_PITCH_SPEED = 6.28f;  // 约 114度/秒
-
+constexpr float YAW_INERTIA_K = 2.3f;
 // 云台 Pitch 轴物理限幅 (防止撞击底盘/弹仓)
 constexpr float PITCH_ELEVATION_LIMIT =  -0.332f; // 抬头上限 (rad)
 constexpr float PITCH_DEPRESSION_LIMIT = 0.821f; // 低头下限 (rad)

@@ -138,6 +138,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/Board-Support-Pack/VideoLink/video-link-remote.cpp"
         "../Solution/Board-Support-Pack/USB/dev-usb.cpp"
         "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
+        "../Solution/Board-Support-Pack/GamePad/bluetooth-gamepad.cpp"
 
 
         "../Solution/System/Service/commander.cpp"
@@ -243,6 +244,8 @@ if(REMOTE_DEVICE STREQUAL "DR16")
     set(REMOTE 1)
 elseif(REMOTE_DEVICE STREQUAL "VideoLink")
     set(REMOTE 2)
+elseif(REMOTE_DEVICE STREQUAL "GamePad")
+    set(REMOTE 3)
 endif()
 
 # Add project symbols (macros)
@@ -251,6 +254,7 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
         GIMBAL=1
         REMOTE_DR16=1
         REMOTE_VIDEO_LINK=2
+        REMOTE_GAMEPAD=3
         REMOTE_DEVICE=${REMOTE}
 )
 
