@@ -291,7 +291,7 @@ void CommanderSrvc::run() {
             if (actionSpinMode.isTriggered()) {
                 g2cComm.msg.mode = CHASSIS_RELAX;
             } else {
-                g2cComm.msg.mode = CHASSIS_RELAX;
+                g2cComm.msg.mode = CHASSIS_NORMAL;
             }
             g2cComm.msg.vx          = actionMoveX.getValue() * Config::Algorithm::Chassis::MAX_VX * 10;
             // 运动计算坐标系和遥控器方向相反
@@ -321,7 +321,7 @@ void CommanderSrvc::run() {
 
         case ControlSource::VISION: {
             // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            g2cComm.msg.mode    = CHASSIS_RELAX; // 视觉通常也需要底盘跟随
+            g2cComm.msg.mode    = CHASSIS_NORMAL; // 视觉通常也需要底盘跟随
             finalGimbalCmd.mode = GIMBAL_AUTO;
 
             // 1. 读取视觉指令
@@ -369,8 +369,10 @@ void CommanderSrvc::run() {
 
             if (actionShootBurst.isTriggered()) {
                 finalShootCmd.event = ShootEvent::BURST_START;
+                finalShootCmd.state.burstShot = 1;
             } else if (actionShootSingle.isTriggered()) {
                 finalShootCmd.event = ShootEvent::SINGLE_FIRE;
+                finalShootCmd.state.burstShot = 0;
             }
 
             // 更新历史状态供下一帧边缘检测使用

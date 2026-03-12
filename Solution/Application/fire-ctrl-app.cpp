@@ -108,8 +108,10 @@ void FireCtrlApp::init() {
 
 void FireCtrlApp::run() {
     // 1. 从黑板读取数据
+    ChassisToGimbalComm c2gData{};
     Blackboard::instance().shootCmd.read(_ctx.cmd);
     Blackboard::instance().boosterState.read(_ctx.fdb);
+    Blackboard::instance().c2gComm.read(c2gData);
 
     // 2. 提取瞬态边沿事件
     updateTransientEvent();
@@ -444,8 +446,6 @@ void FireCtrlApp::calculateCurrents(BoosterOutput& out) {
             }
 
             float alignedTgtTrigger = realTriggerAngle + err;
-
-
 
             spdTarget               = _triggerPosPid.calculate(alignedTgtTrigger, realTriggerAngle);
         }

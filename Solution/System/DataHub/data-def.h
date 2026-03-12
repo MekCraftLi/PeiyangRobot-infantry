@@ -152,7 +152,7 @@ struct GimbalState {
 struct BoosterState {
     MotorState fric[2];
     MotorState trigger;
-    uint32_t triggerEcd;
+    int32_t triggerEcd;
     int32_t triggerRound;
     uint32_t timestamp;
 };
@@ -194,8 +194,10 @@ union GimbalToChassisComm {
 // ==========================================
 union ChassisToGimbalComm {
     __attribute__((packed)) struct {
-        float initialSpeed; // 裁判系统提供的弹丸初速度 (m/s)
-        uint32_t reserved;  // 预留 4 字节，凑满 8 字节对齐
+        float    initialSpeed;          // 弹丸初速度 (m/s) (4 Bytes)
+        uint16_t shooter17mmBarrelHeat; // 17mm 枪口当前热量 (2 Bytes)
+        uint8_t  robotId;               // 机器人 ID (1 Byte)
+        uint8_t  reserved;              // 预留补齐对齐 (1 Byte)
     } msg;
     uint8_t buffer[8];
 };

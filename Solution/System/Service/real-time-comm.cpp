@@ -137,19 +137,25 @@ void RealTimeCommApp::run() {
     HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, output.buffer);
 
 #elifdef CHASSIS
-    // 1. 获取裁判系统中的射击数据
+    // 1. 获取裁判系统中的各项数据
     RMShootData shootData{};
+    RMPowerHeatData powerHeatData{};
+    RMRobotStatus robotStatus{};
+
     RefereeDataHub::instance().shootData.read(shootData);
-    static ChassisToGimbalComm comm {};
+    RefereeDataHub::instance().powerHeat.read(powerHeatData);
+    RefereeDataHub::instance().robotStatus.read(robotStatus);
 
     // 2. 填充到底盘发往云台的结构体中
-    comm.msg.initialSpeed = shootData.initialSpeed;
+    output.msg.initialSpeed          = shootData.initialSpeed;
+    output.msg.shooter17mmBarrelHeat = powerHeatData.shooter17mmBarrelHeat;
+    output.msg.robotId               = robotStatus.robotId;
 
     // 3. 将装填好的数据回写到底盘黑板，供调试或其他应用查看
-    Blackboard::instance().tComm.write(comm);
+    Blackboard::instance().c2gOutput.write(output);
 
     // 4. 将 buffer 发送至 CAN 邮箱
-    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &txHeader, comm.buffer);
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, output.buffer);
 #endif
 
 }
