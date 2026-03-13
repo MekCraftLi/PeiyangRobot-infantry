@@ -141,21 +141,19 @@ void RealTimeCommApp::run() {
     RMShootData shootData{};
     RMPowerHeatData powerHeatData{};
     RMRobotStatus robotStatus{};
+    ChassisToGimbalComm tComm{};
 
     RefereeDataHub::instance().shootData.read(shootData);
     RefereeDataHub::instance().powerHeat.read(powerHeatData);
     RefereeDataHub::instance().robotStatus.read(robotStatus);
 
     // 2. 填充到底盘发往云台的结构体中
-    output.msg.initialSpeed          = shootData.initialSpeed;
-    output.msg.shooter17mmBarrelHeat = powerHeatData.shooter17mmBarrelHeat;
-    output.msg.robotId               = robotStatus.robotId;
-
-    // 3. 将装填好的数据回写到底盘黑板，供调试或其他应用查看
-    Blackboard::instance().c2gOutput.write(output);
+    tComm.msg.initialSpeed          = shootData.initialSpeed;
+    tComm.msg.shooter17mmBarrelHeat = powerHeatData.shooter17mmBarrelHeat;
+    tComm.msg.robotId               = robotStatus.robotId;
 
     // 4. 将 buffer 发送至 CAN 邮箱
-    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, output.buffer);
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, tComm.buffer);
 #endif
 
 }

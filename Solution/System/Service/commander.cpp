@@ -289,7 +289,7 @@ void CommanderSrvc::run() {
         case ControlSource::REMOTE: {
             // 遥控器映射
             if (actionSpinMode.isTriggered()) {
-                g2cComm.msg.mode = CHASSIS_RELAX;
+                g2cComm.msg.mode = CHASSIS_SPIN;
             } else {
                 g2cComm.msg.mode = CHASSIS_NORMAL;
             }
