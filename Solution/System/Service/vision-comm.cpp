@@ -170,12 +170,14 @@ void VisionCommSrvc::sendTxFrame() {
     // 1. 从黑板读取最新的云台、底盘状态
     VisionTelemetry telem{};
     ImuState state{};
+    GimbalOutput out {};
     ChassisToGimbalComm comm{};
     VisionTxFrame dmaTxFrame{};
 
 
     Blackboard::instance().imuState.read(state);
     Blackboard::instance().c2gComm.read(comm);
+    Blackboard::instance().gimbalOut.read(out);
 
 
 
@@ -202,8 +204,7 @@ void VisionCommSrvc::sendTxFrame() {
     if (tud_cdc_write_available() < sizeof(VisionTxFrame) + 1) {
         tud_cdc_write_clear();
     }
-    tud_cdc_write(dmaTxBuf, sizeof(dmaTxBuf));
-    tud_cdc_write_flush();
+
 
     //
     // // 4. 触发 DMA 发送 (非阻塞，CPU 立刻返回)

@@ -140,19 +140,19 @@ void HeartBeatApp::run() {
         HAL_FDCAN_Stop(&hfdcan1);
         HAL_FDCAN_Start(&hfdcan1);
         // 重启后必须重新激活 RX 中断，否则彻底收不到数据
-        HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+        HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_ERROR_PASSIVE, 0);
     }
 
     if (hfdcan2.Instance->PSR & FDCAN_PSR_EP) {
         HAL_FDCAN_Stop(&hfdcan2);
         HAL_FDCAN_Start(&hfdcan2);
-        HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+        HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_ERROR_PASSIVE, 0);
     }
 
     if (hfdcan3.Instance->PSR & FDCAN_PSR_EP) {
         HAL_FDCAN_Stop(&hfdcan3);
         HAL_FDCAN_Start(&hfdcan3);
-        HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+        HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_ERROR_PASSIVE, 0);
     }
     // ========================================================================
     runTime.commander = CommanderSrvc::instance().getRunTime();
