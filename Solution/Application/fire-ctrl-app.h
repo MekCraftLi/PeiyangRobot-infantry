@@ -41,6 +41,7 @@
 
 /* III. middlewares */
 #include "Algorithm/Shoot/speed-compensater.h"
+#include "Algorithm/Shoot/heat-controller.h"
 #include "System/DataHub/data-def.h"
 #include "./tools/crtp.h"
 #include "pyro_algo_pid.h"
@@ -86,6 +87,8 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
         ShootCmd cmd;
         ShootEvent transientEvent;         // 边沿触发的瞬态事件
         SpeedCompensator speedCompensator; // 弹速补偿器
+        HeatController heatController;     // 【新增】热量控制器实例
+
         struct {
             uint32_t burstShot : 1;
         } inputState;
@@ -187,6 +190,8 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
     ;
 
     ShootEvent _lastEvent = ShootEvent::NONE;
+
+    HeatController _heatController{};
 
     /* message interface */
 

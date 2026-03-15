@@ -186,7 +186,7 @@ void VisionCommSrvc::sendTxFrame() {
     telem.currentYaw   = state.yaw;
     telem.autoAimMode  = 1;
 
-    telem.initialSpeed = comm.msg.initialSpeed;
+    telem.initialSpeed = comm.msg.initialSpeedX100 / 100;
 
 
 

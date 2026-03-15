@@ -168,14 +168,12 @@ extern "C" void getBoardCommFromISR(uint8_t* pData) {
 
 }
 #elifdef GIMBAL
-static float initSpeed;
 
 extern "C" void getBoardCommFromISR(uint8_t* pData) {
 
     // [新增] 云台板在此接收来自底盘的 0x101 CAN 数据
     static ChassisToGimbalComm comm{};
     memcpy(comm.buffer, pData, 8);
-    initSpeed = comm.msg.initialSpeed;
     Blackboard::instance().c2gComm.writeFromISR(comm);
 }
 #endif

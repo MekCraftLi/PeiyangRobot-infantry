@@ -38,6 +38,7 @@
 
 #include "Config/Gimbal/hw-config.h"
 #include "System/DataHub/blackboard.h"
+#include "pyro_dwt_drv.h"
 
 /* II. other application */
 
@@ -108,10 +109,30 @@ void FireCtrlApp::init() {
 
 void FireCtrlApp::run() {
     // 1. 从黑板读取数据
+    uint32_t dwtCnt;
+    float dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
+
     ChassisToGimbalComm c2gData{};
     Blackboard::instance().shootCmd.read(_ctx.cmd);
     Blackboard::instance().boosterState.read(_ctx.fdb);
     Blackboard::instance().c2gComm.read(c2gData);
+
+
+    // =========================================================
+    // 【新增】热量观测器更新与物理发弹检测
+    // =========================================================
+    uint32_t current_time_ms = xTaskGetTickCount();
+
+    // 1.1 同步裁判系统真实数据 (注意速度还原)
+    _ctx.heatController.syncWithReferee(
+        c2gData.msg.shooter17mmBarrelHeat,
+        c2gData.msg.heatLimit,
+        c2gData.msg.coolingRate,
+        current_time_ms);
+
+    // 1.2 高频本地冷却推演
+    _ctx.heatController.tickCooling(dt);
+
 
     // 2. 提取瞬态边沿事件
     updateTransientEvent();
@@ -169,12 +190,17 @@ void FireCtrlApp::StateSpinUp::execute(FireCtrlCtx& ctx) {
         return;
     }
 
-    ctx.targetTriggerEcd = ctx.fdb.triggerEcd + ctx.fdb.triggerRound * 8192 - ctx.triggerOffset; // 锁死拨弹盘
-
-    // 判断摩擦轮是否达标 (容差 5%)
-    if (std::abs(ctx.fdb.fric[Config::Hardware::MotorTopo::FRIC_LEFT_ID].vel) > ctx.targetFricSpeed * 0.95f &&
-        std::abs(ctx.fdb.fric[Config::Hardware::MotorTopo::FRIC_RIGHT_ID].vel) > ctx.targetFricSpeed * 0.95f) {
-        request_switch(&instance()._stateReady);
+    if (ctx.transientEvent == ShootEvent::SINGLE_FIRE) {
+        // 【新增安全拦截】：只有热量安全，才允许切入发弹状态
+        if (ctx.heatController.canShootSingle()) {
+            if (!ctx.isCalibrated)
+                request_switch(&instance()._stateCaliReverse);
+            else
+                request_switch(&instance()._stateSingleFire);
+        }
+    } else if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot) {
+        ctx.isCalibrated = false;
+        request_switch(&instance()._stateBurstFire);
     }
 }
 
@@ -351,18 +377,20 @@ void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
         return;
     }
 
-    ctx.targetTriggerSpeed = Config::Hardware::MotorTopo::TRIGGER_SPEED;
+    // 【核心修改】：通过热控器获取当前允许的最大安全射频
+    // 假设 Config::Hardware::MotorTopo::TRIGGER_SPEED 是你的极致爆射转速（如 8000.0f）
+    // 第二个参数 36.0f 是你的拨弹电机减速比
+    ctx.targetTriggerSpeed = ctx.heatController.getSafeBurstRpm(Config::Hardware::MotorTopo::TRIGGER_SPEED, 36.0f);
 
-    if (std::abs(ctx.fdb.trigger.vel) < 10.0f) {
+    if (std::abs(ctx.fdb.trigger.vel) < 10.0f && ctx.targetTriggerSpeed > 100.0f) {
         ctx.blockTimer++;
         if (ctx.blockTimer > 50) {
+            // request_switch(&instance()._stateJamClear);
         }
-        // request_switch(&instance()._stateJamClear);
     } else {
         ctx.blockTimer = 0;
     }
 }
-
 void FireCtrlApp::StateBurstFire::exit(FireCtrlCtx& ctx) {
     // 退出连发时，利用当前物理位置，向上取整找最近的 45 度槽位！这是防松手卡壳的神技。
     ctx.targetTriggerEcd        = std::ceil(ctx.fdb.trigger.pos / ANGLE_PER_BULLET) * ANGLE_PER_BULLET;

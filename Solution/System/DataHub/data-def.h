@@ -196,10 +196,12 @@ union GimbalToChassisComm {
 // ==========================================
 union ChassisToGimbalComm {
     __attribute__((packed)) struct {
-        float initialSpeed;             // 弹丸初速度 (m/s) (4 Bytes)
+        // 将 float (4字节) 压缩为 uint16_t (2字节) 传初速度，乘以 100 发送，云台除以 100
+        uint16_t initialSpeedX100;      // 弹丸初速度 * 100 (2 Bytes)
         uint16_t shooter17mmBarrelHeat; // 17mm 枪口当前热量 (2 Bytes)
-        uint8_t robotId;                // 机器人 ID (1 Byte)
-        uint8_t reserved;               // 预留补齐对齐 (1 Byte)
+        uint16_t heatLimit;             // 热量上限 (如 150, 240, 360) (2 Bytes)
+        uint8_t  coolingRate;           // 冷却速率 (如 40, 60, 80) (1 Byte)
+        uint8_t  robotId;               // 机器人 ID (1 Byte)
     } msg;
     uint8_t buffer[8];
 };
