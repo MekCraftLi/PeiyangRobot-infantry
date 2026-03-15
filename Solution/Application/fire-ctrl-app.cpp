@@ -342,12 +342,11 @@ void FireCtrlApp::StateBurstFire::enter(FireCtrlCtx& ctx) {
 }
 
 void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
-    if (ctx.transientEvent == ShootEvent::BURST_STOP) {
+    if (ctx.transientEvent == ShootEvent::BURST_STOP || ctx.transientEvent == ShootEvent::SINGLE_FIRE) {
         request_switch(&instance()._stateReady);
         return;
     }
-    if (ctx.transientEvent == ShootEvent::FRIC_TOGGLE || ctx.transientEvent == ShootEvent::EMERGENCY_STOP ||
-        ctx.transientEvent == ShootEvent::BURST_STOP || ctx.cmd.state.burstShot == 0) {
+    if (ctx.transientEvent == ShootEvent::FRIC_TOGGLE || ctx.transientEvent == ShootEvent::EMERGENCY_STOP ) {
         request_switch(&instance()._statePassive);
         return;
     }

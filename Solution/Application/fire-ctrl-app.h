@@ -35,15 +35,16 @@
 /* I. interface */
 
 #include "./System/Thread/application-base.h"
-#include "./tools/crtp.h"
-#include "System/DataHub/data-def.h"
-#include "pyro_algo_pid.h"
-#include "pyro_core_fsm.h"
 
 /* II. OS */
 
 
 /* III. middlewares */
+#include "Algorithm/Shoot/speed-compensater.h"
+#include "System/DataHub/data-def.h"
+#include "./tools/crtp.h"
+#include "pyro_algo_pid.h"
+#include "pyro_core_fsm.h"
 
 
 /* IV. drivers */
@@ -65,58 +66,6 @@
 class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
   public:
 
-    class SpeedCompensator {
-    public:
-        void update(float newInitialSpeed) {
-            // 1. 过滤无效数据或异常子弹 (如卡弹碎弹导致的个位数弹速)
-            if (newInitialSpeed < 15.0f || newInitialSpeed > 30.0f) {
-                return;
-            }
-
-            // 2. 检测是否是新的一发有效测速
-            if (std::abs(newInitialSpeed - _lastInitialSpeed) > 0.01f) {
-
-                // 3. 计算误差
-                float error = _targetSpeed - newInitialSpeed;
-
-                // 4. 离散积分补偿 (I 控制)
-                _radsCompensation += _ki * error;
-
-                // 5. 严格限幅防暴走
-                if (_radsCompensation > _maxCompensation)  _radsCompensation = _maxCompensation;
-                if (_radsCompensation < -_maxCompensation) _radsCompensation = -_maxCompensation;
-
-                _lastInitialSpeed = newInitialSpeed;
-            }
-        }
-
-        // 获取补偿后的最终角速度指令
-        float getCompensatedRadPerSec(float baseRadPerSec) const {
-            return baseRadPerSec + _radsCompensation;
-        }
-
-        void reset() {
-            _radsCompensation = 0.0f;
-        }
-
-    private:
-        float _targetSpeed = 23.5f;   // 期望压制的安全弹速 (m/s)
-
-        // ==========================================================
-        // 关键参数 (已换算为 rad/s)
-        // ==========================================================
-        // 积分增益: 1m/s 的误差，每发补偿约 5.0 rad/s (折合原来约 50 RPM)
-        // 假设摩擦轮半径约 30mm，纯物理无滑差换算是 33 rad/s，但为了平滑和防止延迟超调，I参数应远小于物理值
-        float _ki = 5.0f;
-
-        // 极限补偿幅度上限: 最多允许上下浮动 63 rad/s (折合原来约 600 RPM)
-        float _maxCompensation = 63.0f;
-
-        float _radsCompensation = 0.0f;
-        float _lastInitialSpeed = 0.0f;
-    };
-
-
     FireCtrlApp();
     enum class FireState {
         Passive,
@@ -127,7 +76,7 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
         SingleFire,
         BurstFire,
         JamClear,
-    } ;
+    };
 
     // ==========================================
     // 1. 火控上下文 (FSM Context)
@@ -135,13 +84,13 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
     struct FireCtrlCtx {
         // 黑板数据缓存
         ShootCmd cmd;
-        ShootEvent transientEvent; // 边沿触发的瞬态事件
+        ShootEvent transientEvent;         // 边沿触发的瞬态事件
         SpeedCompensator speedCompensator; // 弹速补偿器
         struct {
-            uint32_t burstShot:1;
-        }inputState;
+            uint32_t burstShot : 1;
+        } inputState;
 
-        BoosterState fdb;          // 电机实时反馈
+        BoosterState fdb; // 电机实时反馈
         FireState state;
 
         // FSM 决定的目标运动量 (供后续 PID 运算)

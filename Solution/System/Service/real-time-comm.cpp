@@ -36,6 +36,7 @@
 
 #include "real-time-comm.h"
 
+#include "Config/Chassis/hw-config.h"
 #include "System/DataHub/blackboard.h"
 #include "System/DataHub/data-def.h"
 #include "System/DataHub/referee-data-hub.h"
@@ -153,7 +154,7 @@ void RealTimeCommApp::run() {
     tComm.msg.robotId               = robotStatus.robotId;
 
     // 4. 将 buffer 发送至 CAN 邮箱
-    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, tComm.buffer);
+    HAL_FDCAN_AddMessageToTxFifoQ(&Config::Hardware::Comms::BOARD_COMM_CAN, &txHeader, tComm.buffer);
 #endif
 
 }
@@ -167,12 +168,14 @@ extern "C" void getBoardCommFromISR(uint8_t* pData) {
 
 }
 #elifdef GIMBAL
+static float initSpeed;
 
 extern "C" void getBoardCommFromISR(uint8_t* pData) {
 
     // [新增] 云台板在此接收来自底盘的 0x101 CAN 数据
     static ChassisToGimbalComm comm{};
     memcpy(comm.buffer, pData, 8);
+    initSpeed = comm.msg.initialSpeed;
     Blackboard::instance().c2gComm.writeFromISR(comm);
 }
 #endif

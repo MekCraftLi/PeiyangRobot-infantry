@@ -70,6 +70,11 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size) {
             RefereeSrvc::instance().onUartRxEventCallback(size);
 #endif
         }
+        case UART7_BASE: {
+#if REMOTE_DEVICE == REMOTE_GAMEPAD && defined(GIMBAL)
+    CommanderSrvc::instance().onUartRxEventCallback(size);
+#endif
+        }break;
 
         case UART5_BASE: {
 #ifdef GIMBAL

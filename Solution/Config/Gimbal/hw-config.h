@@ -30,10 +30,10 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
+#include "main.h"
 #include "pyro_can_drv.h"
 #include "pyro_dji_motor_drv.h"
 #include "usart.h"
-
 
 
 
@@ -64,20 +64,24 @@ constexpr pyro::dji_motor_tx_frame_t::register_id_t YAW_ID        = pyro::dji_mo
 constexpr pyro::dji_motor_tx_frame_t::register_id_t TRIGGER_ID    = pyro::dji_motor_tx_frame_t::id_3;
 constexpr pyro::dji_motor_tx_frame_t::register_id_t PITCH         = pyro::dji_motor_tx_frame_t::id_5;
 
+
 constexpr uint16_t YAW_OFFSET                                     = 1526;
 
 // 弹丸初速度
 constexpr float PROJECTILE_TARGET_MUZZLE_VELOCITY                 = 23.5f;
+
+// 弹速调整系数
+constexpr float FRIC_ADJUST_K                                     = 0.88f;
 // 摩擦轮半径
 constexpr float FRIC_RADIUS                                       = 0.03f;
 
 // 发射速度 (发/秒)
-constexpr float SHOOT_SPEED                                       = 30.0f;
+constexpr float SHOOT_SPEED                                       = 15.0f;
 
 // 拨弹盘速度
 constexpr float TRIGGER_SPEED                                     = SHOOT_SPEED / 8 * 2 * M_PI * 36;
 
-constexpr float FRIC_TARGET_SPEED                                 = PROJECTILE_TARGET_MUZZLE_VELOCITY / FRIC_RADIUS;
+constexpr float FRIC_TARGET_SPEED = PROJECTILE_TARGET_MUZZLE_VELOCITY / FRIC_RADIUS * FRIC_ADJUST_K;
 
 } // namespace MotorTopo
 
@@ -88,13 +92,17 @@ constexpr float FRIC_TARGET_SPEED                                 = PROJECTILE_T
 namespace Comms {
 // 遥控器 DR16 接收串口
 #if REMOTE_DEVICE == REMOTE_DR16
-inline constexpr UART_HandleTypeDef& REMOTE_UART  = huart5;
+inline constexpr UART_HandleTypeDef& REMOTE_UART = huart5;
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
-inline constexpr UART_HandleTypeDef& REMOTE_UART  = huart1;
+inline constexpr UART_HandleTypeDef& REMOTE_UART = huart1;
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
-inline constexpr UART_HandleTypeDef& REMOTE_UART  = huart7;
+inline constexpr UART_HandleTypeDef& REMOTE_UART = huart7;
 #endif
-inline constexpr UART_HandleTypeDef& VISION_UART = huart7;
+inline constexpr UART_HandleTypeDef& VISION_UART     = huart7;
+
+
+inline constexpr FDCAN_HandleTypeDef& BOARD_COMM_CAN = hfdcan1;
+
 } // namespace Comms
 } // namespace Config::Hardware
 

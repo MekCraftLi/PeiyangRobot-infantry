@@ -87,6 +87,7 @@ namespace Comms {
 // 遥控器 DR16 接收串口
 inline constexpr UART_HandleTypeDef& REMOTE_UART  = huart5;
 inline constexpr UART_HandleTypeDef& REFEREE_UART = huart1;
+inline constexpr FDCAN_HandleTypeDef& BOARD_COMM_CAN = hfdcan3;
 } // namespace Comms
 
 

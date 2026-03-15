@@ -93,8 +93,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
   private:
 #ifdef GIMBAL
 #if REMOTE_DEVICE == REMOTE_DR16
-    Dr16Data _dr16Data;
-    RemoteBase& remote = VideoLinkRemote::instance();
+    RemoteBase& remote = RemoteDR16::instance();
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
     RemoteBase& remote = VideoLinkRemote::instance();
 #endif
@@ -112,7 +111,10 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     // 5. stream or message
 
     // 6. event group
+    InputAction _actions[12];
 
+
+#if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
 
     TriggerLinear _joystickDeadzone; // 摇杆死区触发器
     TriggerHold _work;
@@ -122,9 +124,10 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
      TriggerHold baseTrigger = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
     TriggerToggle _trigSpin;
 
-    InputAction _actions[12];
+
 
     // 1. 系统级意图 (仲裁器专用)
+
     InputAction& actionCtrlMode    = _actions[0]; // 控制源切换 (DR16, 视觉, 键盘)
     InputAction& actionSateStop    = _actions[1]; // 物理急停
 
@@ -135,13 +138,25 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
 
     // 3. 云台意图 (云台任务专用)
     InputAction& actionYaw         = _actions[5];
-    InputAction& actiongPitch      = _actions[6];
+    InputAction& actionPitch      = _actions[6];
 
     // 1. 定义 Action (意图)
     InputAction& actionFricToggle  = _actions[8];
     InputAction& actionShootBurst  = _actions[9];
     InputAction& actionShootSingle = _actions[10];
     InputAction& actionSpinMode    = _actions[11];
+#else
+    TriggerLinear _joystickDeadzone;
+    TriggerHold _handbreak;
+    TriggerHold _aTest;
+    TriggerToggle _relax;
+
+    InputAction& actionRelax = _actions[0];
+    InputAction& actionHandbrakeDepth = _actions[1];
+    InputAction& actionMoveX = _actions[2];
+    InputAction& actionYaw = _actions[3];
+    InputAction& actionBreak = _actions[4];
+#endif
 };
 #endif
 

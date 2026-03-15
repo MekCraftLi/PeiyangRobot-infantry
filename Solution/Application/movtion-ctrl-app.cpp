@@ -229,7 +229,7 @@ void MovtionCtrlApp::run() {
     float kv           = 1.0f;
 
     float dynamicLimit = PowerLimiter::getDynamicPowerLimit(refState.chassisPowerLimit, powerHeatState.bufferEnergy);
-    //kv                 = PowerLimiter::instance().calculateVelocityScale(idealDriveSpd, filteredTorque, dynamicLimit);
+    kv                 = PowerLimiter::instance().calculateVelocityScale(idealDriveSpd, filteredTorque, dynamicLimit);
 
 
     float rawOutputCurrent[4] = {};
@@ -253,7 +253,7 @@ void MovtionCtrlApp::run() {
     // 5. 第二层防御：微观硬件电流钳位 (绝对零延时)
     // =========================================================
     float ki = 1.0f;
-    //ki       = PowerLimiter::instance().calculateCurrentScale(rawOutputCurrent, realDriveVel, dynamicLimit);
+    ki       = PowerLimiter::instance().calculateCurrentScale(rawOutputCurrent, realDriveVel, dynamicLimit);
 
     for (int i = 0; i < 4; i++) {
         uint8_t id              = motorIdx[i];
@@ -286,7 +286,6 @@ void MovtionCtrlApp::run() {
     ImuState imuState{};
     GimbalState gimbalState{};
     GimbalTelemetry telem{};
-    VisionTelemetry visionTelem{}; // 新增视觉遥测对象
     GimbalOutput output{};
 
 
@@ -319,17 +318,12 @@ void MovtionCtrlApp::run() {
 Blackboard::instance().gimbalOut.read(output);
 
     // 前馈分量初始化
-    float ffYawSpd = 0.0f;
     float ffYawTorque = 0.0f;
-    float ffPitchTorque = 0.0f;
 
     // 2. 模式处理与期望值计算
     if (cmd.mode == GIMBAL_AUTO && abs(cmd.targetYaw) < M_PI) {
         telem.targetYawRad   = cmd.targetYaw;
         telem.targetPitchRad = cmd.targetPitch;
-
-        // 【核心】：提取视觉的速度与加速度前馈
-        ffYawSpd      = cmd.targetYawSpeed;
 
         // 加速度转化为前馈力矩 (需在 config.h 中标定转动惯量系数 INERTIA_K)
         ffYawTorque   = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.targetYawSpeed;
@@ -360,7 +354,9 @@ Blackboard::instance().gimbalOut.read(output);
     telem.targetPitchRad = targetMotorRaw + offsetPitch;
 
     // 重力补偿前馈 + PID 力矩 + 视觉动态加速度前馈
-    float gravityFf           = Config::Algorithm::Gimbal::PITCH_K_GRAVITY * std::cos(imuState.pitch);
+    static float kGravity = 0.0f;
+    //float gravityFf           = Config::Algorithm::Gimbal::PITCH_K_GRAVITY * std::cos(imuState.pitch);
+    float gravityFf = kGravity * arm_cos_f32(imuState.pitch);
     float pitchIntegralTorque = pitchPosPid.calculate(telem.targetPitchRad, imuState.pitch);
     float totalFf             = gravityFf + pitchIntegralTorque; // 【融合前馈力矩】
 

@@ -118,15 +118,11 @@ void BluetoothGamepad::updateRaw(const GamepadRawData& raw) {
 IInputControl* BluetoothGamepad::getAxis(AxisID id) {
     switch (id) {
         case AxisID::MoveX:
-            return &_leftStickY;   // 左摇杆推拉 -> 底盘前后
-        case AxisID::MoveY:
-            return &_leftStickX;   // 左摇杆左右 -> 底盘平移
-        case AxisID::ViewYaw:
-            return &_rightStickX;  // 右摇杆左右 -> 云台 Yaw
-        case AxisID::ViewPitch:
-            return &_rightStickY;  // 右摇杆推拉 -> 云台 Pitch
+            return &_rightTrigger;   // 左摇杆推拉 -> 底盘前后
         case AxisID::Aux1:
-            return &_rightTrigger; // 将右扳机作为辅助轴 (如控制摩擦轮转速或射频)
+            return &_leftTrigger;
+        case AxisID::ViewYaw:
+            return &_leftStickX;   // 左摇杆左右 -> 底盘平移
         default:
             return nullptr;
     }

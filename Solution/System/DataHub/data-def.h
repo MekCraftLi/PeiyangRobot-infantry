@@ -67,7 +67,7 @@ enum ChassisMode : uint8_t {
 
 enum GimbalMode : uint8_t {
     GIMBAL_RELAX = 0, // 无力模式
-    GIMBAL_RC    = 1, // 遥控器控制模式 (速度环)
+    GIMBAL_NORMAL    = 1, // 遥控器控制模式 (速度环)
     GIMBAL_AUTO  = 2, // 视觉自瞄/绝对角度模式 (位置-速度串级环)
 };
 
@@ -121,6 +121,7 @@ struct GimbalCmd {
 struct ImuState {
     float accel[3], gyro[3];
     float roll, pitch, yaw;
+    float temperature;
     uint32_t timestamp;
 };
 
@@ -184,7 +185,7 @@ union GimbalToChassisComm {
     __attribute__((packed)) struct {
         int32_t vx   : 6; //  正方向： 向前
         int32_t vy   : 6; // 正方向： 向左
-        uint32_t mode : 2;
+        uint32_t mode : 4;
     } msg;
 
     uint8_t buffer[8];

@@ -129,6 +129,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
         "../Solution/tools/crc.cpp"
 
+        "../Solution/Algorithm/Shoot/speed-compensater.cpp"
+
         "../Solution/Application/movtion-ctrl-app.cpp"
         "../Solution/Application/fire-ctrl-app.cpp"
 
