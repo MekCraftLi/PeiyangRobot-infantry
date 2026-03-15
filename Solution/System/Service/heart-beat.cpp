@@ -132,7 +132,29 @@ void HeartBeatApp::run() {
     }
 #endif
 
+    // ========================================================================
+    // 【终极防御】：主动轮询 FDCAN 硬件状态，无视任何中断配置
+    // FDCAN_CCCR_INIT 位为 1 代表硬件处于初始化/休眠状态（被 Bus-Off 强杀）
+    // ========================================================================
+    if (hfdcan1.Instance->PSR & FDCAN_PSR_EP) {
+        HAL_FDCAN_Stop(&hfdcan1);
+        HAL_FDCAN_Start(&hfdcan1);
+        // 重启后必须重新激活 RX 中断，否则彻底收不到数据
+        HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+    }
 
+    if (hfdcan2.Instance->PSR & FDCAN_PSR_EP) {
+        HAL_FDCAN_Stop(&hfdcan2);
+        HAL_FDCAN_Start(&hfdcan2);
+        HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+    }
+
+    if (hfdcan3.Instance->PSR & FDCAN_PSR_EP) {
+        HAL_FDCAN_Stop(&hfdcan3);
+        HAL_FDCAN_Start(&hfdcan3);
+        HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+    }
+    // ========================================================================
     runTime.commander = CommanderSrvc::instance().getRunTime();
     runTime.motorActuator = CommanderSrvc::instance().getRunTime();
     runTime.realTimeComm = CommanderSrvc::instance().getRunTime();

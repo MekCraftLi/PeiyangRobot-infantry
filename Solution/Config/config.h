@@ -29,6 +29,11 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
+#define DOG 0x0D00
+#define MYSELF 0x0721
+
+#define IDENTITY MYSELF
+
 #ifdef CHASSIS
 #include "Chassis/algo-config.h"
 #include "Chassis/hw-config.h"

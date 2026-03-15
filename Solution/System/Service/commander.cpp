@@ -265,7 +265,7 @@ void CommanderSrvc::run() {
     ImuState imuState{};
 
 #if REMOTE_DEVICE != REMOTE_GAMEPAD // 非游戏手柄控制
-    if (RemoteDR16::instance().isConnected()) {
+    if (remote.isConnected()) {
         // 读取完美归一化后的浮点数：-1.0f(上), 0.0f(中), 1.0f(下)
         float swState = actionCtrlMode.getValue();
 

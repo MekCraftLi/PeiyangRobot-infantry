@@ -66,7 +66,7 @@
 [[maybe_unused]] static auto& forceInit = VisionCommSrvc::instance();
 
 // 强制将缓冲区放入 DMA 可访问且非 Cache 区域
-__attribute__((section(".dma_pool"))) static uint8_t dmaRxBuf[VisionCommSrvc::RX_BUFFER_SIZE];
+[[maybe_unused]] __attribute__((section(".dma_pool"))) static uint8_t dmaRxBuf[VisionCommSrvc::RX_BUFFER_SIZE];
 __attribute__((section(".dma_pool"))) static uint8_t dmaTxBuf[sizeof(VisionTxFrame) + 1];
 
 /* ------- application attribute -------------------------------------------------------------------------------------*/
@@ -105,7 +105,7 @@ VisionCommSrvc::VisionCommSrvc()
 void VisionCommSrvc::init() {
     /* driver object initialize */
     // 开启 DMA 环形连续接收模式
-    //HAL_UART_Receive_DMA(&Config::Hardware::Comms::VISION_UART, dmaRxBuf, RX_BUFFER_SIZE);
+    // HAL_UART_Receive_DMA(&Config::Hardware::Comms::VISION_UART, dmaRxBuf, RX_BUFFER_SIZE);
 }
 
 
@@ -182,9 +182,9 @@ void VisionCommSrvc::sendTxFrame() {
 
     telem.currentPitch = -state.pitch;
     telem.currentYaw   = state.yaw;
-    telem.autoAimMode = 1;
-    static float initalSpeed;
-    initalSpeed =  telem.initialSpeed = comm.msg.initialSpeed;
+    telem.autoAimMode  = 1;
+
+    telem.initialSpeed = comm.msg.initialSpeed;
 
 
 

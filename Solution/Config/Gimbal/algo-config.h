@@ -34,6 +34,7 @@
 
 /*-------- 2. enum and define ----------------------------------------------------------------------------------------*/
 
+
 namespace Config::Algorithm {
 
 // 统一的 PID 参数结构体
@@ -64,9 +65,16 @@ constexpr float DM_MOTOR_PMAX = 12.5f;
 constexpr float DM_MOTOR_VMAX = 30.0f;
 constexpr float DM_MOTOR_TMAX = 10.0f;
 
+
+#if IDENTITY == DOG
 constexpr float DM_MOTOR_KP = 220.1f;
 constexpr float DM_MOTOR_KI = 1.0f;
 constexpr float DM_MOTOR_KD = 3.0f;
+#elif IDENTITY == MYSELF
+constexpr float DM_MOTOR_KP = 50.0f;
+constexpr float DM_MOTOR_KI = 1.0f;
+constexpr float DM_MOTOR_KD = 1.5f;
+#endif
 
 }
 
@@ -76,10 +84,15 @@ constexpr float MAX_YAW_SPEED   = 6.28f; // 约 180度/秒
 constexpr float MAX_PITCH_SPEED = 6.28f;  // 约 114度/秒
 constexpr float YAW_INERTIA_K = 2.3f;
 // 云台 Pitch 轴物理限幅 (防止撞击底盘/弹仓)
-// constexpr float PITCH_ELEVATION_LIMIT =  -0.332f; // 抬头上限 (rad)
+
+#if IDENTITY == DOG
 constexpr float PITCH_ELEVATION_LIMIT =  1.623f; // 抬头上限 (rad)
-// constexpr float PITCH_DEPRESSION_LIMIT = 0.821f; // 低头下限 (rad)
 constexpr float PITCH_DEPRESSION_LIMIT = 2.946f; // 低头下限 (rad)
+#elif IDENTITY == MYSELF
+constexpr float PITCH_ELEVATION_LIMIT =  -0.332f; // 抬头上限 (rad)
+constexpr float PITCH_DEPRESSION_LIMIT = 0.821f; // 低头下限 (rad)
+#endif
+
 
 constexpr float PITCH_K_GRAVITY = -0.06f;
 

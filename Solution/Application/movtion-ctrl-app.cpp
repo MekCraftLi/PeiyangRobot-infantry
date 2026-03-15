@@ -315,80 +315,104 @@ void MovtionCtrlApp::run() {
         pitchPosPid.clear();
         return;
     }
-Blackboard::instance().gimbalOut.read(output);
+    Blackboard::instance().gimbalOut.read(output);
 
-    // 前馈分量初始化
-    float ffYawTorque = 0.0f;
-
-    // 2. 模式处理与期望值计算
-    if (cmd.mode == GIMBAL_AUTO && abs(cmd.targetYaw) < M_PI) {
-        telem.targetYawRad   = cmd.targetYaw;
-        telem.targetPitchRad = cmd.targetPitch;
-
-        // 加速度转化为前馈力矩 (需在 config.h 中标定转动惯量系数 INERTIA_K)
-        ffYawTorque   = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.targetYawSpeed;
-
-    } else {
-        // 手动模式：遥控器输入的是速度
-        telem.targetYawRad = wrapAngle(telem.targetYawRad + cmd.yawVel * dt);
-        telem.targetPitchRad += cmd.pitchVel * dt;
-        // 自瞄数据无效的时候使用遥控器的数据
-        ffYawTorque   = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.yawVel;
-
-        // 手动模式下也可以利用遥控器指令做简单的速度前馈
-    }
 
     // =================================================================
     // 3. Pitch 轴解算 (针对类似 MIT 模式或内置位置环的电机)
     // =================================================================
-    float offsetPitch    = imuState.pitch - gimbalState.pitch.pos;
-    float targetMotorRaw = telem.targetPitchRad - offsetPitch;
+    if (gimbalState.pitch.online) {
 
-    // 物理限位裁切
-    if (targetMotorRaw > Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT) {
-        targetMotorRaw = Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT;
-    } else if (targetMotorRaw < Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT) {
-        targetMotorRaw = Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT;
+        // 判断是否符合进入自瞄的条件（进入自瞄模式， 发现目标）
+        if (cmd.mode == GIMBAL_AUTO && abs(cmd.targetYaw) < M_PI) {
+            telem.targetPitchRad = cmd.targetPitch;
+        } else {
+            // 更新pitch轴目标角度
+            telem.targetPitchRad += cmd.pitchVel * dt;
+        }
+
+
+        // 自瞄数据无效的时候使用遥控器的数据
+
+        float offsetPitch    = imuState.pitch - gimbalState.pitch.pos;
+        float targetMotorRaw = telem.targetPitchRad - offsetPitch;
+
+        // 物理限位裁切
+        if (targetMotorRaw > Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT) {
+            targetMotorRaw = Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT;
+        } else if (targetMotorRaw < Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT) {
+            targetMotorRaw = Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT;
+        }
+
+        telem.targetPitchRad          = targetMotorRaw + offsetPitch;
+
+        // 重力补偿前馈 + PID 力矩 + 视觉动态加速度前馈
+        static float kGravity         = 0.0f;
+        // float gravityFf           = Config::Algorithm::Gimbal::PITCH_K_GRAVITY * std::cos(imuState.pitch);
+        float gravityFf               = kGravity * arm_cos_f32(imuState.pitch);
+        float pitchIntegralTorque     = pitchPosPid.calculate(telem.targetPitchRad, imuState.pitch);
+        float totalFf                 = gravityFf + pitchIntegralTorque; // 【融合前馈力矩】
+
+        // 更新数据
+        output.targetPitchPos         = targetMotorRaw;
+        output.pitchFeedforwardTorque = totalFf;
+        output.pitchEn                = true;
+    } else {
+        telem.targetPitchRad = imuState.pitch;
+        pitchPosPid.clear();
+        output.pitchEn = false;
     }
 
-    telem.targetPitchRad = targetMotorRaw + offsetPitch;
-
-    // 重力补偿前馈 + PID 力矩 + 视觉动态加速度前馈
-    static float kGravity = 0.0f;
-    //float gravityFf           = Config::Algorithm::Gimbal::PITCH_K_GRAVITY * std::cos(imuState.pitch);
-    float gravityFf = kGravity * arm_cos_f32(imuState.pitch);
-    float pitchIntegralTorque = pitchPosPid.calculate(telem.targetPitchRad, imuState.pitch);
-    float totalFf             = gravityFf + pitchIntegralTorque; // 【融合前馈力矩】
-
-    output.targetPitchPos         = targetMotorRaw;
-    output.pitchFeedforwardTorque = totalFf;
-    output.pitchEn                = true;
 
     // 如果你的底层 Pitch 电机支持传入速度期望(如 MIT 模式的 v_des)，可以在此传入 cmd.targetPitchSpeed
 
     // =================================================================
     // 4. Yaw 轴解算 (标准双环串级 PID)
     // =================================================================
-    float alignedTgtYaw = imuState.yaw + wrapAngle(telem.targetYawRad - imuState.yaw);
+    if (gimbalState.yaw.online) {
+        // 前馈分量初始化
+        float ffYawTorque = 0.0f;
 
-    // 位置环计算 (反馈分量)
-    float yawPosOut = yawPosPid.calculate(alignedTgtYaw, imuState.yaw);
 
-    // 【复合速度】：位置环修正输出 + 视觉预测速度前馈
-    float tgtYawSpd = yawPosOut;
-    telem.targetYawRotate = tgtYawSpd;
+        // 2. 模式处理与期望值计算
+        if (cmd.mode == GIMBAL_AUTO && abs(cmd.targetYaw) < M_PI) {
+            telem.targetYawRad   = cmd.targetYaw;
+            // 加速度转化为前馈力矩 (需在 config.h 中标定转动惯量系数 INERTIA_K)
+            ffYawTorque          = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.targetYawSpeed;
 
-    // 速度环计算 (反馈分量)
-    float yawSpdOut = yawSpdPid.calculate(tgtYawSpd, imuState.gyro[2]);
+        } else {
+            // 手动模式：遥控器输入的是速度
+            telem.targetYawRad = wrapAngle(telem.targetYawRad + cmd.yawVel * dt);
+            ffYawTorque = 0.0f;
+        }
 
-    // 【复合力矩】：速度环修正输出 + 视觉预测加速度前馈
-    // static float test_ffk_yaw;
-    // static float test_yaw_angle;
-    // static float test_yaw_speed;
-    // float t = pyro::dwt_drv_t::get_timeline_s();
-    // test_yaw_angle = M_PI_4 * arm_sin_f32(2 * M_PI * t);
-    // test_yaw_speed = M_PI * M_PI_2 * arm_cos_f32(2 * M_PI * t);
-    output.yawVoltage = yawSpdOut + ffYawTorque;
+
+        // 手动模式下也可以利用遥控器指令做简单的速度前馈
+        ffYawTorque        = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.yawVel;
+
+
+        float alignedTgtYaw   = imuState.yaw + wrapAngle(telem.targetYawRad - imuState.yaw);
+
+        // 位置环计算 (反馈分量)
+        float yawPosOut       = yawPosPid.calculate(alignedTgtYaw, imuState.yaw);
+
+        // 【复合速度】：位置环修正输出 + 视觉预测速度前馈
+        float tgtYawSpd       = yawPosOut;
+        telem.targetYawRotate = tgtYawSpd;
+
+        // 速度环计算 (反馈分量)
+        float yawSpdOut       = yawSpdPid.calculate(tgtYawSpd, imuState.gyro[2]);
+
+        output.yawVoltage     = yawSpdOut + ffYawTorque;
+
+    } else {
+        telem.targetYawRad = imuState.yaw;
+        yawPosPid.clear();
+        yawSpdPid.clear();
+    }
+
+
+
 
 
     // 数据回写

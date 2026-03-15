@@ -34,8 +34,8 @@
 
 /* I. header */
 
-#include "Config/config.h"
 #include "motor-actuator.h"
+#include "Config/config.h"
 
 /* II. other application */
 
@@ -124,17 +124,26 @@ void MotActSrvc::init() {
 #ifdef CHASSIS
     /* 3. 再实例化电机对象，此时它们就能从 hub 中成功获取 _can_drv 并注册反馈邮箱了 */
     for (uint8_t i = 0; i < 4; i++) {
-        new (&drive[i]) pyro::dji_m3508_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i, Config::Hardware::MotorTopo::DRIVE_MOTOR_CANS[i]);
-        new (&steer[i]) pyro::dji_gm_6020_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i, Config::Hardware::MotorTopo::STEER_MOTOR_CANS[i], Config::Hardware::MotorTopo::STEER_ECD_OFFSET[i]);
+        new (&drive[i]) pyro::dji_m3508_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i,
+                                                    Config::Hardware::MotorTopo::DRIVE_MOTOR_CANS[i]);
+        new (&steer[i]) pyro::dji_gm_6020_motor_drv_t((pyro::dji_motor_tx_frame_t::register_id_t)i,
+                                                      Config::Hardware::MotorTopo::STEER_MOTOR_CANS[i],
+                                                      Config::Hardware::MotorTopo::STEER_ECD_OFFSET[i]);
     }
-    new (&trigger) pyro::dji_m2006_motor_drv_t(Config::Hardware::MotorTopo::TRIGGER_ID, Config::Hardware::MotorTopo::COMM_CAN);
-    new (&yaw) pyro::dji_gm_6020_motor_drv_t(Config::Hardware::MotorTopo::YAW_ID, Config::Hardware::MotorTopo::COMM_CAN, Config::Hardware::MotorTopo::YAW_OFFSET);
+    new (&trigger)
+        pyro::dji_m2006_motor_drv_t(Config::Hardware::MotorTopo::TRIGGER_ID, Config::Hardware::MotorTopo::COMM_CAN);
+    new (&yaw) pyro::dji_gm_6020_motor_drv_t(Config::Hardware::MotorTopo::YAW_ID, Config::Hardware::MotorTopo::COMM_CAN,
+                                             Config::Hardware::MotorTopo::YAW_OFFSET);
 #elifdef GIMBAL
 
-    new (&fric[0]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_LEFT_ID, Config::Hardware::MotorTopo::FRIC_LEFT_CAN);
-    new (&fric[1]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_RIGHT_ID, Config::Hardware::MotorTopo::FRIC_RIGHT_CAN);
-    new (&trigger) pyro::dji_m2006_motor_drv_t(Config::Hardware::MotorTopo::TRIGGER_ID, Config::Hardware::MotorTopo::TRIGGER_CAN);
-    new (&yaw) pyro::dji_gm_6020_motor_drv_t(Config::Hardware::MotorTopo::YAW_ID, Config::Hardware::MotorTopo::YAW_CAN, Config::Hardware::MotorTopo::YAW_OFFSET);
+    new (&fric[0]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_LEFT_ID,
+                                               Config::Hardware::MotorTopo::FRIC_LEFT_CAN);
+    new (&fric[1]) pyro::dji_m3508_motor_drv_t(Config::Hardware::MotorTopo::FRIC_RIGHT_ID,
+                                               Config::Hardware::MotorTopo::FRIC_RIGHT_CAN);
+    new (&trigger)
+        pyro::dji_m2006_motor_drv_t(Config::Hardware::MotorTopo::TRIGGER_ID, Config::Hardware::MotorTopo::TRIGGER_CAN);
+    new (&yaw) pyro::dji_gm_6020_motor_drv_t(Config::Hardware::MotorTopo::YAW_ID, Config::Hardware::MotorTopo::YAW_CAN,
+                                             Config::Hardware::MotorTopo::YAW_OFFSET);
     new (&pitch) pyro::dm_motor_drv_t(0x01, 0x00, Config::Hardware::MotorTopo::PITCH_CAN);
 
     // ==========================================
@@ -144,8 +153,10 @@ void MotActSrvc::init() {
     // ==========================================
     pitch.set_position_range(-Config::Algorithm::Chassis::DM_MOTOR_PMAX,
                              Config::Algorithm::Chassis::DM_MOTOR_PMAX); // 设定位置限位 (rad)
-    pitch.set_rotate_range(-Config::Algorithm::Chassis::DM_MOTOR_VMAX, Config::Algorithm::Chassis::DM_MOTOR_VMAX);   // 设定速度限位 (rad/s)
-    pitch.set_torque_range(-Config::Algorithm::Chassis::DM_MOTOR_TMAX, Config::Algorithm::Chassis::DM_MOTOR_TMAX);   // 设定扭矩限位 (N.m)
+    pitch.set_rotate_range(-Config::Algorithm::Chassis::DM_MOTOR_VMAX,
+                           Config::Algorithm::Chassis::DM_MOTOR_VMAX); // 设定速度限位 (rad/s)
+    pitch.set_torque_range(-Config::Algorithm::Chassis::DM_MOTOR_TMAX,
+                           Config::Algorithm::Chassis::DM_MOTOR_TMAX); // 设定扭矩限位 (N.m)
 
     // 设置 MIT 模式下的阻抗参数 (若使用串级PID输出扭矩，Kp和Kd必须设为0)
     pitch.set_runtime_kp(Config::Algorithm::Chassis::DM_MOTOR_KP);
@@ -155,22 +166,21 @@ void MotActSrvc::init() {
     pitch.enable();
 
 #endif
-
 }
 
 #ifdef CHASSIS
 void MotActSrvc::run() {
     ChassisState state{.timestamp = xTaskGetTickCount()};
-    ChassisOutput chasOut {};
+    ChassisOutput chasOut{};
     Blackboard::instance().chassisOut.read(chasOut);
 
     // 更新数据与发送数据
     yaw.update_feedback();
     // yaw向左为正
-    state.yaw.pos = -yaw.get_current_position();
+    state.yaw.pos    = -yaw.get_current_position();
     state.yaw.torque = -yaw.get_current_torque();
-    state.yaw.vel = -yaw.get_current_rotate();
-    state.yaw.temp = yaw.get_temperature();
+    state.yaw.vel    = -yaw.get_current_rotate();
+    state.yaw.temp   = yaw.get_temperature();
 
 
 
@@ -178,22 +188,22 @@ void MotActSrvc::run() {
     for (uint8_t i = 0; i < 4; i++) {
         drive[i].update_feedback();
         steer[i].update_feedback();
-        state.modules[i].drive.pos = drive[i].get_current_position();
-        state.modules[i].drive.temp = drive[i].get_temperature();
+        state.modules[i].drive.pos    = drive[i].get_current_position();
+        state.modules[i].drive.temp   = drive[i].get_temperature();
         state.modules[i].drive.torque = drive[i].get_current_torque();
-        state.modules[i].drive.vel = drive[i].get_current_rotate();
+        state.modules[i].drive.vel    = drive[i].get_current_rotate();
+        state.modules[i].drive.online = drive[i].is_online();
 
-        state.modules[i].steer.pos = steer[i].get_current_position();
-        state.modules[i].steer.temp = steer[i].get_temperature();
+        state.modules[i].steer.pos    = steer[i].get_current_position();
+        state.modules[i].steer.temp   = steer[i].get_temperature();
         state.modules[i].steer.torque = steer[i].get_current_torque();
-        state.modules[i].steer.vel = steer[i].get_current_rotate();
+        state.modules[i].steer.vel    = steer[i].get_current_rotate();
+        state.modules[i].steer.vel    = steer[i].is_online();
 
 
         steer[i].send_torque(chasOut.steerVoltage[i]);
 
         drive[i].send_torque(chasOut.driveCurrent[i]);
-
-
     }
 
 
@@ -207,7 +217,7 @@ float kd;
 void MotActSrvc::run() {
 
     GimbalState gstate{.timestamp = xTaskGetTickCount()};
-    BoosterState bstate {.timestamp = gstate.timestamp};
+    BoosterState bstate{.timestamp = gstate.timestamp};
     GimbalOutput gout{};
     BoosterOutput bout{};
 
@@ -219,28 +229,32 @@ void MotActSrvc::run() {
     fric[1].update_feedback();
     trigger.update_feedback();
 
-    gstate.yaw.pos = yaw.get_current_position();
-    gstate.yaw.temp = yaw.get_temperature();
-    gstate.yaw.torque = yaw.get_current_torque();
-    gstate.yaw.vel = yaw.get_current_rotate();
+    gstate.yaw.pos      = yaw.get_current_position();
+    gstate.yaw.temp     = yaw.get_temperature();
+    gstate.yaw.torque   = yaw.get_current_torque();
+    gstate.yaw.vel      = yaw.get_current_rotate();
+    gstate.yaw.online   = yaw.is_online();
 
     gstate.pitch.pos    = pitch.get_current_position();
     gstate.pitch.temp   = pitch.get_temperature();
     gstate.pitch.torque = pitch.get_current_torque();
     gstate.pitch.vel    = pitch.get_current_rotate();
+    gstate.pitch.online = pitch.is_online();
 
     for (uint8_t i = 0; i < 2; i++) {
-        bstate.fric[i].pos = fric[i].get_current_position();
-        bstate.fric[i].temp = fric[i].get_temperature();
+        bstate.fric[i].pos    = fric[i].get_current_position();
+        bstate.fric[i].temp   = fric[i].get_temperature();
         bstate.fric[i].torque = fric[i].get_current_torque();
-        bstate.fric[i].vel = fric[i].get_current_rotate();
+        bstate.fric[i].vel    = fric[i].get_current_rotate();
+        bstate.fric[i].online = fric[i].is_online();
     }
 
-    bstate.trigger.pos = trigger.get_current_position();
-    bstate.trigger.temp = trigger.get_temperature();
+    bstate.trigger.pos    = trigger.get_current_position();
+    bstate.trigger.temp   = trigger.get_temperature();
     bstate.trigger.torque = trigger.get_current_torque();
-    bstate.trigger.vel = trigger.get_current_rotate();
-    bstate.triggerEcd = trigger.get_current_ecd();
+    bstate.trigger.vel    = trigger.get_current_rotate();
+    bstate.triggerEcd     = trigger.get_current_ecd();
+    bstate.trigger.online = trigger.is_online();
 
     static int32_t lastEcd;
     int32_t deltaEcd = bstate.triggerEcd - lastEcd;
@@ -250,8 +264,7 @@ void MotActSrvc::run() {
         if (bstate.triggerRound >= 36) {
             bstate.triggerRound = 0; // 满36圈，输出轴刚好转满一圈，圈数归零
         }
-    }
-    else if (deltaEcd > 4096) {
+    } else if (deltaEcd > 4096) {
         // 原始值突变变大，说明反向转过了零点 (例如 10 -> 8190)
         bstate.triggerRound--;
         if (bstate.triggerRound < 0) {
@@ -278,9 +291,9 @@ void MotActSrvc::run() {
 
     // 提示：如果你上一轮修改了 dm_motor_drv_t 并增加了 send_mit_ctrl(pos, vel, t_ff)
     // 并且希望使用满血的电机内部阻抗控制，这里可以改为：
-     pitch.send_mit_ctrl(gout.targetPitchPos, 0.0f, gout.pitchFeedforwardTorque);
-
-
+    if (gout.pitchEn) {
+        pitch.send_mit_ctrl(gout.targetPitchPos, 0.0f, gout.pitchFeedforwardTorque);
+    }
 }
 
 

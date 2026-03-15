@@ -60,15 +60,15 @@ enum class ControlSource : uint8_t {
 // [新增] 模式枚举定义
 // ==========================================
 enum ChassisMode : uint8_t {
-    CHASSIS_RELAX = 0, // 无力/急停模式
-    CHASSIS_NORMAL    = 1, // 遥控器手动控制模式 (速度环)
-    CHASSIS_SPIN  = 2, // 自动/视觉/状态保留模式
+    CHASSIS_RELAX  = 0, // 无力/急停模式
+    CHASSIS_NORMAL = 1, // 遥控器手动控制模式 (速度环)
+    CHASSIS_SPIN   = 2, // 自动/视觉/状态保留模式
 };
 
 enum GimbalMode : uint8_t {
-    GIMBAL_RELAX = 0, // 无力模式
-    GIMBAL_NORMAL    = 1, // 遥控器控制模式 (速度环)
-    GIMBAL_AUTO  = 2, // 视觉自瞄/绝对角度模式 (位置-速度串级环)
+    GIMBAL_RELAX  = 0, // 无力模式
+    GIMBAL_NORMAL = 1, // 遥控器控制模式 (速度环)
+    GIMBAL_AUTO   = 2, // 视觉自瞄/绝对角度模式 (位置-速度串级环)
 };
 
 // 在 Solution/System/DataHub/data-def.h 中
@@ -76,16 +76,16 @@ enum GimbalMode : uint8_t {
 enum class ShootEvent {
     NONE = 0,
     EMERGENCY_STOP,
-    FRIC_TOGGLE,    // 摩擦轮开启/关闭 切换事件
-    SINGLE_FIRE,    // 单发事件
-    BURST_START,    // 连发开始事件
-    BURST_STOP      // 连发结束事件
+    FRIC_TOGGLE, // 摩擦轮开启/关闭 切换事件
+    SINGLE_FIRE, // 单发事件
+    BURST_START, // 连发开始事件
+    BURST_STOP   // 连发结束事件
 };
 
 struct ShootCmd {
     ShootEvent event = ShootEvent::NONE;
     struct {
-        uint32_t burstShot: 1 = 0;
+        uint32_t burstShot : 1 = 0;
     } state;
 };
 
@@ -105,8 +105,8 @@ struct GimbalCmd {
     // --- 新增：视觉模式使用的高阶期望 ---
     float targetYaw;
     float targetPitch;
-    float targetYawSpeed;         // 目标角速度 (用于前馈)
-    float targetYawAcceleration;  // 目标角加速度 (用于高级动力学前馈)
+    float targetYawSpeed;        // 目标角速度 (用于前馈)
+    float targetYawAcceleration; // 目标角加速度 (用于高级动力学前馈)
     // ------------------------------------
 
 
@@ -130,6 +130,7 @@ struct MotorState {
     float vel;    // 角速度 (rad/s)
     float torque; // 真实反馈力矩 (N.m) 或 电流 (A)
     int8_t temp;  // 温度 (°C)
+    bool online;
 };
 
 // 舵轮模块组合状态
@@ -183,8 +184,8 @@ struct BoosterOutput {
 union GimbalToChassisComm {
 
     __attribute__((packed)) struct {
-        int32_t vx   : 6; //  正方向： 向前
-        int32_t vy   : 6; // 正方向： 向左
+        int32_t vx    : 6; //  正方向： 向前
+        int32_t vy    : 6; // 正方向： 向左
         uint32_t mode : 4;
     } msg;
 
@@ -195,10 +196,10 @@ union GimbalToChassisComm {
 // ==========================================
 union ChassisToGimbalComm {
     __attribute__((packed)) struct {
-        float    initialSpeed;          // 弹丸初速度 (m/s) (4 Bytes)
+        float initialSpeed;             // 弹丸初速度 (m/s) (4 Bytes)
         uint16_t shooter17mmBarrelHeat; // 17mm 枪口当前热量 (2 Bytes)
-        uint8_t  robotId;               // 机器人 ID (1 Byte)
-        uint8_t  reserved;              // 预留补齐对齐 (1 Byte)
+        uint8_t robotId;                // 机器人 ID (1 Byte)
+        uint8_t reserved;               // 预留补齐对齐 (1 Byte)
     } msg;
     uint8_t buffer[8];
 };
