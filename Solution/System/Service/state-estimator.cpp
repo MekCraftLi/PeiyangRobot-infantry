@@ -312,18 +312,7 @@ void ImuApp::run() {
         std::isnan(QEKF_INS.Roll)  || std::isinf(QEKF_INS.Roll)  ||
         std::isnan(QEKF_INS.Yaw)   || std::isinf(QEKF_INS.Yaw))
     {
-        // 1. 发现数据污染，越过 PYRo 实例，直接调用底层 C 函数重新初始化 EKF 矩阵
-        IMU_QuaternionEKF_Init(10.0f, 0.001f, 10000000.0f, 0.9996f, 0);
-
-        // 2. 强行清洗底层暴露的全局脏数据，防止下一毫秒被再次感染
-        QEKF_INS.Pitch = 0.0f;
-        QEKF_INS.Roll  = 0.0f;
-        QEKF_INS.Yaw   = 0.0f;
-        QEKF_INS.q[0]  = 1.0f;
-        QEKF_INS.q[1]  = 0.0f;
-        QEKF_INS.q[2]  = 0.0f;
-        QEKF_INS.q[3]  = 0.0f;
-
+        NVIC_SystemReset();
         // 3. 拦截生效，直接 return 结束本次解算，绝对不将脏数据写入 Blackboard！
         return;
     }

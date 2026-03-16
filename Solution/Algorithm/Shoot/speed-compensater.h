@@ -77,6 +77,8 @@
         float _filterBuffer[FILTER_SIZE]     = {0};
         uint8_t _filterIndex                 = 0;
         uint8_t _filterCount                 = 0;
+        // 上一次更新时间
+        uint32_t _lastUpdateTime;
     };
 
 

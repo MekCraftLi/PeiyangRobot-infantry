@@ -77,6 +77,7 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
         SingleFire,
         BurstFire,
         JamClear,
+        SafeBurst,
     };
 
     // ==========================================
@@ -107,6 +108,9 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
         bool isCalibrated   = false;
         uint32_t stateTimer = 0;
         uint32_t blockTimer = 0;
+
+        // 【新增】用于精准捕获拨弹物理动作的连续编码器记录
+        int32_t lastShotContinuousEcd = 0;
     };
 
     // ==========================================
@@ -147,6 +151,13 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
         void execute(FireCtrlCtx& ctx) override;
         void exit(FireCtrlCtx& ctx) override;
     };
+    // 在 FireCtrlApp 类内部的 State 声明区添加：
+    class StateSafeBurst : public pyro::state_t<FireCtrlCtx> {
+    public:
+        void enter(FireCtrlCtx& ctx) override;
+        void execute(FireCtrlCtx& ctx) override;
+        void exit(FireCtrlCtx& ctx) override {}
+    };
     struct StateJamClear : public pyro::state_t<FireCtrlCtx> {
         void enter(FireCtrlCtx& ctx) override;
         void execute(FireCtrlCtx& ctx) override;
@@ -178,6 +189,7 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
     StateCaliForward _stateCaliForward;
     StateSingleFire _stateSingleFire;
     StateBurstFire _stateBurstFire;
+    StateSafeBurst _stateSafeBurst;
     StateJamClear _stateJamClear;
 
     // 独立维护的算法组件 (PID 控制器)

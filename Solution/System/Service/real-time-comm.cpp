@@ -149,8 +149,10 @@ void RealTimeCommApp::run() {
     RefereeDataHub::instance().robotStatus.read(robotStatus);
 
     // 2. 填充到底盘发往云台的结构体中
-    tComm.msg.initialSpeed          = shootData.initialSpeed;
+    tComm.msg.initialSpeedX100          = shootData.initialSpeed * 100;
     tComm.msg.shooter17mmBarrelHeat = powerHeatData.shooter17mmBarrelHeat;
+    tComm.msg.coolingRate = robotStatus.shooterBarrelCoolingValue;
+    tComm.msg.heatLimit = robotStatus.shooterBarrelHeatLimit;
     tComm.msg.robotId               = robotStatus.robotId;
 
     // 4. 将 buffer 发送至 CAN 邮箱
@@ -175,5 +177,6 @@ extern "C" void getBoardCommFromISR(uint8_t* pData) {
     static ChassisToGimbalComm comm{};
     memcpy(comm.buffer, pData, 8);
     Blackboard::instance().c2gComm.writeFromISR(comm);
+
 }
 #endif

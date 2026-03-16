@@ -325,7 +325,7 @@ void CommanderSrvc::run() {
             if (actionSpinMode.isTriggered()) {
                 comm.msg.mode = CHASSIS_SPIN;
             } else {
-                comm.msg.mode = CHASSIS_NORMAL;
+                comm.msg.mode = CHASSIS_RELAX;
             }
             comm.msg.vx                = actionMoveX.getValue() * Config::Algorithm::Chassis::MAX_VX * 10;
             // 运动计算坐标系和遥控器方向相反
