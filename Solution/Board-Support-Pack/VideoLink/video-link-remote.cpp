@@ -86,6 +86,26 @@ VideoLinkRemote::VideoLinkRemote()
       _mouseRight({{0, 0}, {1, 1}}, 0),
       _mouseMiddle({{0, 0}, {1, 1}}, 0),
 
+      _axisKeyWS(static_cast<uint8_t>(VideoLinkKeyBit::W), static_cast<uint8_t>(VideoLinkKeyBit::S)),
+      _axisKeyAD(static_cast<uint8_t>(VideoLinkKeyBit::D), static_cast<uint8_t>(VideoLinkKeyBit::A)),
+
+      _keyW({{0, 0}, {1, 1}}, 0),
+      _keyS({{0, 0}, {1, 1}}, 0),
+      _keyA({{0, 0}, {1, 1}}, 0),
+      _keyD({{0, 0}, {1, 1}}, 0),
+      _keyShift({{0, 0}, {1, 1}}, 0),
+      _keyCtrl({{0, 0}, {1, 1}}, 0),
+      _keyQ({{0, 0}, {1, 1}}, 0),
+      _keyE({{0, 0}, {1, 1}}, 0),
+      _keyR({{0, 0}, {1, 1}}, 0),
+      _keyF({{0, 0}, {1, 1}}, 0),
+      _keyG({{0, 0}, {1, 1}}, 0),
+      _keyZ({{0, 0}, {1, 1}}, 0),
+      _keyX({{0, 0}, {1, 1}}, 0),
+      _keyC({{0, 0}, {1, 1}}, 0),
+      _keyV({{0, 0}, {1, 1}}, 0),
+      _keyB({{0, 0}, {1, 1}}, 0),
+
       _lastUpdateTick(0)
 {}
 
@@ -110,6 +130,65 @@ void VideoLinkRemote::updateRaw(const VideoLinkRawData& raw) {
     _mouseLeft.updateRaw(raw.mouseLeft);
     _mouseRight.updateRaw(raw.mouseRight);
     _mouseMiddle.updateRaw(raw.mouseMiddle);
+
+    _axisKeyWS.updateRaw(raw.keyMask);
+    _axisKeyAD.updateRaw(raw.keyMask);
+
+    _keyW.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::W)) & 0x01);
+    _keyS.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::S)) & 0x01);
+    _keyA.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::A)) & 0x01);
+    _keyD.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::D)) & 0x01);
+    _keyShift.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::Shift)) & 0x01);
+    _keyCtrl.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::Ctrl)) & 0x01);
+    _keyQ.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::Q)) & 0x01);
+    _keyE.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::E)) & 0x01);
+    _keyR.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::R)) & 0x01);
+    _keyF.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::F)) & 0x01);
+    _keyG.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::G)) & 0x01);
+    _keyZ.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::Z)) & 0x01);
+    _keyX.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::X)) & 0x01);
+    _keyC.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::C)) & 0x01);
+    _keyV.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::V)) & 0x01);
+    _keyB.updateRaw((raw.keyMask >> static_cast<uint8_t>(VideoLinkKeyBit::B)) & 0x01);
+}
+
+IInputControl* VideoLinkRemote::getKeyControl(uint16_t keyBitMask) {
+    switch (keyBitMask) {
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::W)):
+            return &_keyW;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::S)):
+            return &_keyS;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::A)):
+            return &_keyA;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::D)):
+            return &_keyD;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::Shift)):
+            return &_keyShift;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::Ctrl)):
+            return &_keyCtrl;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::Q)):
+            return &_keyQ;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::E)):
+            return &_keyE;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::R)):
+            return &_keyR;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::F)):
+            return &_keyF;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::G)):
+            return &_keyG;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::Z)):
+            return &_keyZ;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::X)):
+            return &_keyX;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::C)):
+            return &_keyC;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::V)):
+            return &_keyV;
+        case (1u << static_cast<uint8_t>(VideoLinkKeyBit::B)):
+            return &_keyB;
+        default:
+            return nullptr;
+    }
 }
 
 // 统一路由映射 (通过枚举获取对应的控件对象指针)

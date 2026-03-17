@@ -40,6 +40,8 @@
 
 #include "System/DataHub/blackboard.h"
 
+#include <algorithm>
+
 /* II. other application */
 
 
@@ -108,6 +110,16 @@ static StackType_t appStack[APPLICATION_STACK_SIZE];
 
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 
+namespace {
+inline float clampUnit(float v) {
+    return std::max(-1.0f, std::min(1.0f, v));
+}
+
+inline float composeAxis(float joystick, float keyboard) {
+    return clampUnit(joystick + keyboard);
+}
+}
+
 
 
 
@@ -119,7 +131,13 @@ CommanderSrvc::CommanderSrvc()
       _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual),
       _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _triggerBurst(0.5f, 1.0f, true, HoldCondition::GreaterOrEqual),
-      _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual), _trigSpin(baseTrigger, false)
+      _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
+      _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
+      _trigQToggle(_trigQToggleBase, false),
+      _trigShiftHold(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
+      _trigMouseRelease(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
+      _trigMouseBurst(0.5f, 0.7f, false, HoldCondition::GreaterOrEqual),
+      _trigSpin(baseTrigger, false)
 #else
       _handbreak(0.0f, 0.001f, false, HoldCondition::GreaterOrEqual),
       _aTest(0.0f, 0.001f, true, HoldCondition::GreaterOrEqual), _relax(_aTest, true)
@@ -156,26 +174,29 @@ void CommanderSrvc::init() {
     actionShootSingle.bind(RemoteDR16::instance().getSwLeft(), &_trigSingleRelease);
     actionSpinMode.bind(RemoteDR16::instance().getWheel(), &_trigSpin);
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
+    auto& videoRemote = VideoLinkRemote::instance();
 
-    // 【底盘平移】左摇杆 Y轴 -> 前后(X)；左摇杆 X轴 -> 左右(Y)
-    actionMoveX.bind(VideoLinkRemote::instance().getRightY(), &_joystickDeadzone);
-    actionYaw.bind(VideoLinkRemote::instance().getRightX(), &_joystickDeadzone);
+    // 底盘输入：保留摇杆 Action，同时引入键盘轴 Action
+    actionMoveX.bind(videoRemote.getRightY(), &_joystickDeadzone);
+    actionMoveY.bind(videoRemote.getRightX(), &_joystickDeadzone);
+    actionMoveXKey.bind(videoRemote.getAxisKeyWS());
+    actionMoveYKey.bind(videoRemote.getAxisKeyAD());
 
-    // 【底盘旋转】右摇杆 X轴 -> 旋转(Spin)
-    //  Spin.bind(RemoteDR16::instance().getRightX(), &_joystickDeadzone);
-
-    // 【云台控制】右摇杆 Y轴 -> Pitch俯仰
-    actionYaw.bind(VideoLinkRemote::instance().getLeftY(), &_joystickDeadzone);
-    actionPitch.bind(VideoLinkRemote::instance().getLeftX(), &_joystickDeadzone);
+    // 云台输入：鼠标增量
+    actionYaw.bind(videoRemote.getAxis(AxisID::ViewYaw), &_joystickDeadzone);
+    actionPitch.bind(videoRemote.getAxis(AxisID::ViewPitch), &_joystickDeadzone);
+    actionMouseYaw.bind(videoRemote.getMouseX(), &_joystickDeadzone);
+    actionMousePitch.bind(videoRemote.getMouseY(), &_joystickDeadzone);
+    actionMouseLeftRaw.bind(videoRemote.getMouseLeft());
 
     // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
-    actionCtrlMode.bind(VideoLinkRemote::instance().getModeSw(), &_work);
+    actionCtrlMode.bind(videoRemote.getModeSw(), &_work);
 
 
-    actionFricToggle.bind(VideoLinkRemote::instance().getFn2(), &_trigFricToggle);
-    actionShootBurst.bind(VideoLinkRemote::instance().getTrigger(), &_triggerBurst);
-    actionShootSingle.bind(VideoLinkRemote::instance().getTrigger(), &_trigSingleRelease);
-    actionSpinMode.bind(VideoLinkRemote::instance().getPause(), &_trigSpin);
+    actionFricToggle.bind(videoRemote.getKeyQ(), &_trigQToggle);
+    actionShootBurst.bind(videoRemote.getMouseLeft(), &_trigMouseBurst);
+    actionShootSingle.bind(videoRemote.getMouseLeft(), &_trigMouseRelease);
+    actionSpinMode.bind(videoRemote.getKeyShift(), &_trigShiftHold);
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
     // 前进和右扳机绑定
     actionMoveX.bind(BluetoothGamepad::instance().getRightTrigger(), &_joystickDeadzone);
@@ -234,10 +255,13 @@ void CommanderSrvc::run() {
     actionCtrlMode.update(dt);
     actionSateStop.update(dt);
     actionMoveX.update(dt);
+    actionMoveY.update(dt);
+    actionMoveXKey.update(dt);
+    actionMoveYKey.update(dt);
     actionYaw.update(dt);
     actionSpin.update(dt);
-    actionYaw.update(dt);
     actionPitch.update(dt);
+    actionMouseLeftRaw.update(dt);
     actionFricToggle.update(dt);
     actionShootBurst.update(dt);
     actionShootSingle.update(dt);
@@ -327,15 +351,23 @@ void CommanderSrvc::run() {
             } else {
                 comm.msg.mode = CHASSIS_RELAX;
             }
-            comm.msg.vx                = actionMoveX.getValue() * Config::Algorithm::Chassis::MAX_VX * 10;
+
+#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
+            const float moveXInput = composeAxis(actionMoveX.getValue(), actionMoveXKey.getValue());
+            const float moveYInput = composeAxis(actionMoveY.getValue(), actionMoveYKey.getValue());
+            const float yawInput = composeAxis(actionMouseYaw.getValue(), actionYaw.getValue());
+            const float pitchInput = composeAxis(actionPitch.getValue(), actionPitch.getValue());
+#else
+            const float moveXInput = actionMoveX.getValue();
+            const float moveYInput = actionMoveY.getValue();
+#endif
+
+            comm.msg.vx = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
             // 运动计算坐标系和遥控器方向相反
-            comm.msg.vy                = -actionMoveY.getValue() * Config::Algorithm::Chassis::MAX_VY * 10;
+            comm.msg.vy = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
 
 
             gCmd.mode           = GIMBAL_NORMAL;
-            float yawInput                = actionYaw.getValue();
-            float pitchInput              = actionPitch.getValue();
-
             // 遥控器的Y轴与标准正方向（左）相反, X轴与标准正方向(下)相反
             gCmd.yawVel         = -yawInput * Config::Algorithm::Gimbal::MAX_YAW_SPEED;
             gCmd.targetYawSpeed = 0;
@@ -343,6 +375,49 @@ void CommanderSrvc::run() {
 
 
             // 发射事件映射
+#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
+            static bool lastFricToggleState = false;
+            const bool fricToggleState = actionFricToggle.isTriggered();
+            const bool fricToggleEdge = (fricToggleState != lastFricToggleState);
+            lastFricToggleState = fricToggleState;
+
+            static bool lastBurstState = false;
+            const bool burstState = actionShootBurst.isTriggered();
+            const bool burstStartEdge = burstState && !lastBurstState;
+            const bool burstStopEdge = !burstState && lastBurstState;
+            lastBurstState = burstState;
+            sCmd.state.burstShot = burstState ? 1 : 0;
+
+            static bool lastMousePressed = false;
+            static bool pendingSingleCheck = false;
+            static bool burstHappenedThisPress = false;
+            const bool mousePressed = actionMouseLeftRaw.getValue() > 0.5f;
+
+            if (mousePressed && !lastMousePressed) {
+                pendingSingleCheck = false;
+                burstHappenedThisPress = false;
+            }
+            if (burstState) {
+                burstHappenedThisPress = true;
+            }
+            if (!mousePressed && lastMousePressed) {
+                pendingSingleCheck = true;
+            }
+            lastMousePressed = mousePressed;
+
+            if (fricToggleEdge) {
+                sCmd.event = ShootEvent::FRIC_TOGGLE;
+            } else if (burstStartEdge) {
+                sCmd.event = ShootEvent::BURST_START;
+            } else if (burstStopEdge) {
+                sCmd.event = ShootEvent::BURST_STOP;
+            } else if (pendingSingleCheck && actionShootSingle.isTriggered()) {
+                pendingSingleCheck = false;
+                if (!burstHappenedThisPress) {
+                    sCmd.event = ShootEvent::SINGLE_FIRE;
+                }
+            }
+#else
             if (actionFricToggle.isTriggered()) {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;
             } else if (actionShootBurst.isTriggered()) {
@@ -350,6 +425,7 @@ void CommanderSrvc::run() {
             } else if (actionShootSingle.isTriggered()) {
                 sCmd.event = ShootEvent::SINGLE_FIRE;
             }
+#endif
 
         } break;
 

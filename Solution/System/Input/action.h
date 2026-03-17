@@ -29,8 +29,6 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
-#include <vector>
-#include <functional>
 #include "triggers.h"
 
 
@@ -49,47 +47,33 @@ struct ActionBinding {
 
 class InputAction {
 public:
-    InputAction() : m_state(TriggerState::None){}
+    InputAction() : m_binding{nullptr, nullptr}, m_state(TriggerState::None), m_value(0.0f) {}
 
-    // 绑定物理输入源，并挂载触发器
+    // 一个 Action 只绑定一个输入源和一个触发器
     void bind(IInputControl* input_source, InputTrigger* trigger = nullptr) {
-        m_bindings.push_back({input_source, trigger});
+        m_binding.control = input_source;
+        m_binding.trigger = trigger;
     }
 
-    // 更新所有绑定 (由 Input_Task 调用)
+    // 更新绑定 (由 Input_Task 调用)
     void update(float dt) {
-        float finalOutput = 0.0f; // 最终要输出的值
-        TriggerState combinedState = TriggerState::None;
-
-        for (auto& bind : m_bindings) {
-            finalOutput = bind.control->get();
-
-            if (bind.trigger != nullptr) {
-                // 1. 假设你的 Trigger 以后支持修改数值（比如死区把小数值改为 0）
-                // processed_val = bind.trigger->process(raw_val);
-
-                // 2. 更新状态
-                combinedState = bind.trigger->update(finalOutput, dt);
-
-            }
+        if (m_binding.control == nullptr) {
+            m_value = 0.0f;
+            m_state = TriggerState::None;
+            return;
         }
 
-        m_state = combinedState;
-        m_value = finalOutput; // 输出干净的数据
+        m_value = m_binding.control->get();
+        m_state = (m_binding.trigger != nullptr) ? m_binding.trigger->update(m_value, dt) : TriggerState::None;
     }
 
     bool isTriggered() const { return m_state == TriggerState::Triggered; }
     float getValue() const { return m_value; }
 
 private:
-    struct Binding {
-        const float* source;    // 指向 RemoteBase 里的 m_val
-        InputTrigger* trigger;  // 策略对象
-    };
-
-    std::vector<ActionBinding> m_bindings;
-    TriggerState m_state = TriggerState::None;
-    float m_value = 0.0f;
+    ActionBinding m_binding;
+    TriggerState m_state;
+    float m_value;
 };
 
 

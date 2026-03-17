@@ -111,7 +111,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     // 5. stream or message
 
     // 6. event group
-    InputAction _actions[12];
+    InputAction _actions[16];
 
 
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
@@ -121,41 +121,51 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     TriggerHold _trigFricToggle;
     TriggerHold _triggerBurst;
     TriggerHold _trigSingleRelease;
-     TriggerHold baseTrigger = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
+    TriggerHold _trigQToggleBase;
+    TriggerToggle _trigQToggle;
+    TriggerHold _trigShiftHold;
+    TriggerHold _trigMouseRelease;
+    TriggerHold _trigMouseBurst;
+    TriggerHold baseTrigger = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
     TriggerToggle _trigSpin;
 
 
 
     // 1. 系统级意图 (仲裁器专用)
 
-    InputAction& actionCtrlMode    = _actions[0]; // 控制源切换 (DR16, 视觉, 键盘)
-    InputAction& actionSateStop    = _actions[1]; // 物理急停
+    InputAction& actionCtrlMode     = _actions[0]; // 控制源切换 (DR16, 视觉, 键盘)
+    InputAction& actionSateStop     = _actions[1]; // 物理急停
 
     // 2. 底盘意图 (底盘任务专用)
-    InputAction& actionMoveX       = _actions[2];
-    InputAction& actionMoveY       = _actions[3];
-    InputAction& actionSpin        = _actions[4];
+    InputAction& actionMoveX        = _actions[2];
+    InputAction& actionMoveY        = _actions[3];
+    InputAction& actionSpin         = _actions[4];
+    InputAction& actionMoveXKey     = _actions[5];
+    InputAction& actionMoveYKey     = _actions[6];
 
     // 3. 云台意图 (云台任务专用)
-    InputAction& actionYaw         = _actions[5];
-    InputAction& actionPitch      = _actions[6];
+    InputAction& actionYaw          = _actions[7];
+    InputAction& actionPitch        = _actions[8];
+    InputAction& actionMouseYaw     = _actions[9];
+    InputAction& actionMousePitch   = _actions[10];
+    InputAction& actionMouseLeftRaw = _actions[11];
 
     // 1. 定义 Action (意图)
-    InputAction& actionFricToggle  = _actions[8];
-    InputAction& actionShootBurst  = _actions[9];
-    InputAction& actionShootSingle = _actions[10];
-    InputAction& actionSpinMode    = _actions[11];
+    InputAction& actionFricToggle   = _actions[12];
+    InputAction& actionShootBurst   = _actions[13];
+    InputAction& actionShootSingle  = _actions[14];
+    InputAction& actionSpinMode     = _actions[15];
 #else
     TriggerLinear _joystickDeadzone;
     TriggerHold _handbreak;
     TriggerHold _aTest;
     TriggerToggle _relax;
 
-    InputAction& actionRelax = _actions[0];
+    InputAction& actionRelax          = _actions[0];
     InputAction& actionHandbrakeDepth = _actions[1];
-    InputAction& actionMoveX = _actions[2];
-    InputAction& actionYaw = _actions[3];
-    InputAction& actionBreak = _actions[4];
+    InputAction& actionMoveX          = _actions[2];
+    InputAction& actionYaw            = _actions[3];
+    InputAction& actionBreak          = _actions[4];
 #endif
 };
 #endif

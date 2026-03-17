@@ -31,6 +31,8 @@
 
 #include "../control.h"
 
+#include <cmath>
+
 
 
 /*-------- 2. enum and define ----------------------------------------------------------------------------------------*/
@@ -91,6 +93,27 @@ public:
 
 private:
     Config _cfg;
+    float _val;
+};
+
+class ControlMaskAxis : public IInputControl {
+public:
+    ControlMaskAxis(uint8_t posBitOffset, uint8_t negBitOffset)
+        : _posBit(posBitOffset), _negBit(negBitOffset), _val(0.0f) {}
+
+    float get() const override { return _val; }
+
+    bool isActive() const override { return std::abs(_val) > 0.0f; }
+
+    void updateRaw(int rawMask) override {
+        const int pos = (rawMask >> _posBit) & 0x01;
+        const int neg = (rawMask >> _negBit) & 0x01;
+        _val = static_cast<float>(pos - neg);
+    }
+
+private:
+    uint8_t _posBit;
+    uint8_t _negBit;
     float _val;
 };
 

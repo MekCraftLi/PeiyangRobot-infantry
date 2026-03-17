@@ -80,6 +80,25 @@ typedef struct __attribute__((packed)) {
     uint16_t crc16;
 } VideoLinkRawData;
 
+enum class VideoLinkKeyBit : uint8_t {
+    W = 0,
+    S = 1,
+    A = 2,
+    D = 3,
+    Shift = 4,
+    Ctrl = 5,
+    Q = 6,
+    E = 7,
+    R = 8,
+    F = 9,
+    G = 10,
+    Z = 11,
+    X = 12,
+    C = 13,
+    V = 14,
+    B = 15
+};
+
 /**
  * @brief 图传链路遥控器驱动类
  */
@@ -119,10 +138,29 @@ class VideoLinkRemote : public RemoteBase, public Singleton<VideoLinkRemote> {
     IInputControl* getMouseZ() { return &_mouseZ; }
     IInputControl* getMouseLeft() { return &_mouseLeft; }
     IInputControl* getMouseRight() { return &_mouseRight; }
-    IInputControl* getKeyControl(uint16_t keyBitMask) {
-        // TODO: 可在此处扩充根据掩码获取键盘特定按键的逻辑
-        return nullptr;
-    }
+    IInputControl* getMouseMiddle() { return &_mouseMiddle; }
+
+    IInputControl* getAxisKeyWS() { return &_axisKeyWS; }
+    IInputControl* getAxisKeyAD() { return &_axisKeyAD; }
+
+    IInputControl* getKeyW() { return &_keyW; }
+    IInputControl* getKeyS() { return &_keyS; }
+    IInputControl* getKeyA() { return &_keyA; }
+    IInputControl* getKeyD() { return &_keyD; }
+    IInputControl* getKeyShift() { return &_keyShift; }
+    IInputControl* getKeyCtrl() { return &_keyCtrl; }
+    IInputControl* getKeyQ() { return &_keyQ; }
+    IInputControl* getKeyE() { return &_keyE; }
+    IInputControl* getKeyR() { return &_keyR; }
+    IInputControl* getKeyF() { return &_keyF; }
+    IInputControl* getKeyG() { return &_keyG; }
+    IInputControl* getKeyZ() { return &_keyZ; }
+    IInputControl* getKeyX() { return &_keyX; }
+    IInputControl* getKeyC() { return &_keyC; }
+    IInputControl* getKeyV() { return &_keyV; }
+    IInputControl* getKeyB() { return &_keyB; }
+
+    IInputControl* getKeyControl(uint16_t keyBitMask);
 
   private:
     friend class Singleton<VideoLinkRemote>;
@@ -147,6 +185,28 @@ class VideoLinkRemote : public RemoteBase, public Singleton<VideoLinkRemote> {
     ControlSwitch _mouseLeft;
     ControlSwitch _mouseRight;
     ControlSwitch _mouseMiddle;
+
+    // 键盘虚拟轴
+    ControlMaskAxis _axisKeyWS;
+    ControlMaskAxis _axisKeyAD;
+
+    // 键盘按键 bit0~bit15
+    ControlSwitch _keyW;
+    ControlSwitch _keyS;
+    ControlSwitch _keyA;
+    ControlSwitch _keyD;
+    ControlSwitch _keyShift;
+    ControlSwitch _keyCtrl;
+    ControlSwitch _keyQ;
+    ControlSwitch _keyE;
+    ControlSwitch _keyR;
+    ControlSwitch _keyF;
+    ControlSwitch _keyG;
+    ControlSwitch _keyZ;
+    ControlSwitch _keyX;
+    ControlSwitch _keyC;
+    ControlSwitch _keyV;
+    ControlSwitch _keyB;
 
     TickType_t _lastUpdateTick;
 };
