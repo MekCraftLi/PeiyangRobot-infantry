@@ -228,7 +228,7 @@ void MovtionCtrlApp::run() {
 
     float kv           = 1.0f;
 
-    float dynamicLimit = PowerLimiter::getDynamicPowerLimit(refState.chassisPowerLimit, powerHeatState.bufferEnergy);
+    float dynamicLimit = PowerLimiter::getDynamicPowerLimit(40, powerHeatState.bufferEnergy);
     kv                 = PowerLimiter::instance().calculateVelocityScale(idealDriveSpd, filteredTorque, dynamicLimit);
 
 

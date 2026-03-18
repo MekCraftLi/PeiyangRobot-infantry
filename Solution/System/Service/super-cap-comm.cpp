@@ -126,12 +126,16 @@ void SuperCapCommSrvc::run() {
 
 
 
+    _txFrame.header.sof = 0x55;
+
+    Crc::appendCrc8((uint8_t*)&_txFrame, 1); // 计算帧头 CRC8，假设仅涵盖 SOF 字节
+
     // 2. 将业务数据打包至底层协议结构体
-    _txFrame.data.power_referee = (uint16_t)(scOut.refereePower * 100.0f); // 假设扩大100倍发送，视电容方代码而定
+    _txFrame.data.power_referee = 0; // 假设扩大100倍发送，视电容方代码而定
     _txFrame.data.power_limit_referee = robotStatus.chassisPowerLimit;
     _txFrame.data.power_buffer_referee = powerHeatData.bufferEnergy;
     _txFrame.data.power_buffer_limit_referee = 60; // 根据比赛规则写死或动态传入
-    _txFrame.data.use_cap = 1;
+    _txFrame.data.use_cap = 0;
     _txFrame.data.kill_chassis_user = 0;
     _txFrame.data.speed_up_user_now = 0;
 

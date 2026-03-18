@@ -87,9 +87,9 @@ constexpr float PITCH_K_GRAVITY_COS = -0.8f; // 水平方向质心补偿
 constexpr float PITCH_K_GRAVITY_SIN = -0.5f; // 垂直方向质心补偿
 
 #if IDENTITY == DOG
-constexpr float DM_MOT_PITCH_KP = 65.0f;
-constexpr float DM_MOT_PITCH_KI = 0.0f;
-constexpr float DM_MOT_PITCH_KD = 2.8f;
+constexpr float DM_MOT_PITCH_KP = 68.0f;
+constexpr float DM_MOT_PITCH_KI = 1.2f;
+constexpr float DM_MOT_PITCH_KD = 2.3f;
 #elif IDENTITY == MYSELF
 constexpr float DM_MOT_PITCH_KP = 65.0f;
 constexpr float DM_MOT_PITCH_KI = 0.0f;

@@ -97,6 +97,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size) {
 extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
     // 1. 禁用 UART DMA
     HAL_UART_DMAStop(huart);
+
     // 2. 清除 UART 错误标志
     __HAL_UART_CLEAR_FEFLAG(huart);  // 帧错误
     __HAL_UART_CLEAR_NEFLAG(huart);  // 噪声错误

@@ -189,7 +189,8 @@ void CommanderSrvc::init() {
 
 
     actionFricToggle.bind(videoRemote.getKeyQ(), &_trigMouseFricEdge);
-    actionSpinMode.bind(videoRemote.getKeyShift(), &_trigShiftHold);
+    // actionSpinMode.bind(videoRemote.getKeyShift(), &_trigShiftHold);
+    actionSpinMode.bind(videoRemote.getPause(), &_trigSpin);
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
     // 前进和右扳机绑定
     actionMoveX.bind(BluetoothGamepad::instance().getRightTrigger(), &_joystickDeadzone);
@@ -330,13 +331,13 @@ void CommanderSrvc::run() {
     switch (currentSource) {
         case ControlSource::SAFE_STOP: {
             // 彻底切断底层动力
-            comm.msg.mode = (uint8_t)CHASSIS_RELAX;
-            sCmd.event    = ShootEvent::EMERGENCY_STOP;
+            comm.msg.mode        = (uint8_t)CHASSIS_RELAX;
+            sCmd.event           = ShootEvent::EMERGENCY_STOP;
             sCmd.state.burstShot = 0;
-            gCmd.mode     = GIMBAL_RELAX;
+            gCmd.mode            = GIMBAL_RELAX;
 
-            gCmd.yawVel   = 0;
-            gCmd.pitchVel = 0;
+            gCmd.yawVel          = 0;
+            gCmd.pitchVel        = 0;
 
 
         } break;
@@ -364,9 +365,9 @@ void CommanderSrvc::run() {
 #endif
 
             static float vx, vy;
-            vx = comm.msg.vx         = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
+            vx = comm.msg.vx = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
             // 运动计算坐标系和遥控器方向相反
-            vy = comm.msg.vy         = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
+            vy = comm.msg.vy    = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
 
 
             gCmd.mode           = GIMBAL_NORMAL;
@@ -382,7 +383,7 @@ void CommanderSrvc::run() {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;
             }
 
-            const float mouseVal             = actionMouseLeftRaw.getValue();
+            const float mouseVal                = actionMouseLeftRaw.getValue();
             const TriggerState burstHoldState   = _trigMouseBurst.update(mouseVal, dt);
             const TriggerState singleClickState = _trigMouseSingle.update(mouseVal, dt);
 
@@ -390,7 +391,7 @@ void CommanderSrvc::run() {
             const TriggerState burstEdgeState   = _trigMouseBurstEdge.update(isBurstingNow ? 1.0f : 0.0f, dt);
 
             // 持续态每帧同步，避免事件丢失后连发状态与输入脱节。
-            sCmd.state.burstShot = isBurstingNow ? 1 : 0;
+            sCmd.state.burstShot                = isBurstingNow ? 1 : 0;
 
             if (burstEdgeState == TriggerState::Triggered) {
                 sCmd.event = isBurstingNow ? ShootEvent::BURST_START : ShootEvent::BURST_STOP;
@@ -420,15 +421,16 @@ void CommanderSrvc::run() {
             Blackboard::instance().visionCmd.read(vCmd);
 
             // 2. 将视觉指令映射到云台控制结构体
-            gCmd.targetYaw             = vCmd.targetYaw;
-            gCmd.targetPitch           = -vCmd.targetPitch;
-            gCmd.targetYawSpeed        = vCmd.targetYawSpeed;
-            gCmd.targetYawAcceleration = vCmd.targetYawAcceleration;
+            gCmd.targetYaw                     = vCmd.targetYaw;
+            gCmd.targetPitch                   = -vCmd.targetPitch;
+            gCmd.targetYawSpeed                = vCmd.targetYawSpeed;
+            gCmd.pitchVel                      = -vCmd.targetPitchSpeed;
+            gCmd.targetYawAcceleration         = vCmd.targetYawAcceleration;
 
-            const uint8_t curFire = vCmd.fireCommand;
-            const uint8_t curSingle = vCmd.isSingleShot;
+            const uint8_t curFire              = vCmd.fireCommand;
+            const uint8_t curSingle            = vCmd.isSingleShot;
 
-            const bool isFiring = (curFire == 1U);
+            const bool isFiring                = (curFire == 1U);
             const TriggerState vBurstEdgeState = _visionBurstEdge.update(isFiring ? 1.0f : 0.0f, dt);
 
             if (actionFricToggle.isTriggered()) {
@@ -440,7 +442,7 @@ void CommanderSrvc::run() {
                     sCmd.event = ShootEvent::SINGLE_FIRE;
                 }
                 if (sCmd.state.burstShot == 1U) {
-                    sCmd.event = ShootEvent::BURST_STOP;
+                    sCmd.event           = ShootEvent::BURST_STOP;
                     sCmd.state.burstShot = 0;
                 }
             } else {
