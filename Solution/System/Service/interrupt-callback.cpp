@@ -32,6 +32,7 @@
 #include "commander.h"
 #include "main.h"
 #include "referee.h"
+#include "super-cap-comm.h"
 #include "vision-comm.h"
 
 
@@ -69,10 +70,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size) {
 #elifdef CHASSIS
             RefereeSrvc::instance().onUartRxEventCallback(size);
 #endif
-        }
+        } break;
         case UART7_BASE: {
 #if REMOTE_DEVICE == REMOTE_GAMEPAD && defined(GIMBAL)
             CommanderSrvc::instance().onUartRxEventCallback(size);
+#endif
+#ifdef CHASSIS
+            SuperCapCommSrvc::instance().onUartRxEventCallback(size);
 #endif
         } break;
 
@@ -107,6 +111,7 @@ extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
 #endif
 #elifdef CHASSIS
             RefereeSrvc::instance().onUartErrCallback();
+
 #endif
 
         } break;
@@ -116,6 +121,13 @@ extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
 #if REMOTE_DEVICE == REMOTE_DR16
             CommanderSrvc::instance().onUartErrCallback();
 #endif
+#endif
+
+        } break;
+
+        case UART7_BASE: {
+#ifdef CHASSIS
+            SuperCapCommSrvc::instance().onUartErrCallback();
 #endif
 
         } break;

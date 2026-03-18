@@ -287,7 +287,7 @@ void FireCtrlApp::StateReady::enter(FireCtrlCtx& ctx) {
 
     // 2. 获取当前的绝对连续编码器位置
     int32_t currentEcd          = ctx.fdb.triggerEcd + ctx.fdb.triggerRound * 8192 - ctx.triggerOffset;
-    int32_t ecdPerBullet        = 8192 * 36 / 8; // M2006 单发跨度
+    int32_t ecdPerBullet        = 8192 * 36 / 8; // M2006 单发跨度*/
 
     // 3. 核心计算：四舍五入对齐到最近的物理槽位
     // 利用 (x + step/2) / step * step 实现整数四舍五入
@@ -299,26 +299,30 @@ void FireCtrlApp::StateReady::execute(FireCtrlCtx& ctx) {
         request_switch(&instance()._statePassive);
         return;
     }
-
+    //
     // if (ctx.transientEvent == ShootEvent::SINGLE_FIRE) {
     //     if (!ctx.isCalibrated)
     //         request_switch(&instance()._stateCaliReverse);
     //     else
     //         request_switch(&instance()._stateSingleFire);
-    // } else
-    if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
+    // } else if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
+    //
+    //     if (ctx.heatController.isApproachingHeatLimit()) {
+    //         if (ctx.heatController.canShootSingle()) {
+    //             // 【修改】：热量警戒，进入角度环连发！
+    //             request_switch(&instance()._stateSafeBurst);
+    //         }
+    //     } else {
+    //         // 热量健康，进入传统速度环连发
+    //         ctx.isCalibrated = false;
+    //         request_switch(&instance()._stateBurstFire);
+    //     }
+    // }
 
-        if (ctx.heatController.isApproachingHeatLimit()) {
-            if (ctx.heatController.canShootSingle()) {
-                // 【修改】：热量警戒，进入角度环连发！
-                request_switch(&instance()._stateSafeBurst);
-            }
-        } else {
-            // 热量健康，进入传统速度环连发
-            ctx.isCalibrated = false;
-            request_switch(&instance()._stateBurstFire);
-        }
+    if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
+        request_switch(&instance()._stateBurstFire);
     }
+
 }
 
 
@@ -481,16 +485,19 @@ void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
     }
 
     // 【新增逻辑】：热量逼近警戒线时，强制退出纯速度环的连发模式
-    if (ctx.heatController.isApproachingHeatLimit()) {
-        request_switch(&instance()._stateSafeBurst);
-        return;
-    }
+    //
+    // if (ctx.heatController.isApproachingHeatLimit()) {
+    //     request_switch(&instance()._stateSafeBurst);
+    //     return;
+    // }
+
 
     // 【核心修改】：通过热控器获取当前允许的最大安全射频
     // 假设 Config::Hardware::MotorTopo::TRIGGER_SPEED 是你的极致爆射转速（如 8000.0f）
     // 第二个参数 36.0f 是你的拨弹电机减速比
-    ctx.targetTriggerSpeed = ctx.heatController.getSafeBurstRpm(Config::Hardware::MotorTopo::TRIGGER_SPEED, 36.0f);
+    // ctx.targetTriggerSpeed = ctx.heatController.getSafeBurstRpm(Config::Hardware::MotorTopo::TRIGGER_SPEED, 36.0f);
 
+    ctx.targetTriggerSpeed = Config::Hardware::MotorTopo::TRIGGER_SPEED;
     if (std::abs(ctx.fdb.trigger.vel) < 10.0f && ctx.targetTriggerSpeed > 100.0f) {
         ctx.blockTimer++;
         if (ctx.blockTimer > 50) {

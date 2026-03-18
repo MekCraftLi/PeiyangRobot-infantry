@@ -133,6 +133,22 @@ struct MotorState {
     bool online;
 };
 
+// 在合适位置添加业务层结构体
+struct SuperCapState {
+    float voltage;        // 转换为真实电压 (V)
+    float capPower;       // 充放电功率 (W)
+    float chassisPower;   // 底盘功率 (W)
+    bool  isCapLow;       // 没电标志
+    bool  isError;        // 错误标志
+    bool  isOnline;       // 离线检测标志
+};
+
+struct SuperCapOutput {
+    float    refereePower;        // 当前消耗功率
+    uint8_t  powerLimit;          // 功率上限
+    uint8_t  powerBuffer;         // 缓冲能量 (J)
+    bool     enableCap;           // 是否允许超级电容放电
+};
 // 舵轮模块组合状态
 struct SwerveModuleState {
     MotorState drive; // 动力轮

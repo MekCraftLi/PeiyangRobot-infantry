@@ -267,7 +267,8 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
-        stm32cubemx
+
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/stm32cubemx"
 
         # Add user defined libraries
         CMSISDSP

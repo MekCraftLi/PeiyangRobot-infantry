@@ -69,19 +69,22 @@ public:
     // ----------------------------------------
     SeqVariable<ImuState>     imuState;
     SeqVariable<ChassisState> chassisState;
+    SeqVariable<ChassisTelemetry> chassisTelem;
+    SeqVariable<SuperCapState> capState;
 
     // ----------------------------------------
     // [输出区] (主要由 核心控制算法任务 写入)
     // ----------------------------------------
     SeqVariable<ChassisOutput> chassisOut;
-    SeqVariable<GimbalOutput>  gimbal_out;
+    SeqVariable<GimbalOutput>  gimbalOut;
+    SeqVariable<SuperCapOutput>  capOut;
 
     // ----------------------------------------
     // [中间区] (主要由 核心控制算法任务 同步写入)
     // ----------------------------------------
-    SeqVariable<ChassisTelemetry> chassisTelem;
 
-private:
+
+  private:
 
 };
 

@@ -150,7 +150,7 @@ void CommanderSrvc::init() {
 
     // 【底盘平移】左摇杆 Y轴 -> 前后(X)；左摇杆 X轴 -> 左右(Y)
     actionMoveX.bind(RemoteDR16::instance().getLeftY(), &_joystickDeadzone);
-    actionYaw.bind(RemoteDR16::instance().getLeftX(), &_joystickDeadzone);
+    actionMoveY.bind(RemoteDR16::instance().getLeftX(), &_joystickDeadzone);
 
     // 【底盘旋转】右摇杆 X轴 -> 旋转(Spin)
     //  Spin.bind(RemoteDR16::instance().getRightX(), &_joystickDeadzone);

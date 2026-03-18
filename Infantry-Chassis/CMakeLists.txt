@@ -147,6 +147,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/System/Service/real-time-comm.cpp"
         "../Solution/System/Service/referee.cpp"
         "../Solution/System/Service/interrupt-callback.cpp"
+        "../Solution/System/Service/super-cap-comm.cpp"
 
         "../Solution/tools/crc.cpp"
 

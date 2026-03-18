@@ -32,7 +32,7 @@
 #define DOG 0x0D00
 #define MYSELF 0x0721
 
-#define IDENTITY MYSELF
+#define IDENTITY DOG
 
 #ifdef CHASSIS
 #include "Chassis/algo-config.h"

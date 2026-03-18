@@ -88,6 +88,7 @@ namespace Comms {
 inline constexpr UART_HandleTypeDef& REMOTE_UART  = huart5;
 inline constexpr UART_HandleTypeDef& REFEREE_UART = huart1;
 inline constexpr FDCAN_HandleTypeDef& BOARD_COMM_CAN = hfdcan3;
+inline constexpr UART_HandleTypeDef& SUPER_CAP_UART = huart7;
 } // namespace Comms
 
 
