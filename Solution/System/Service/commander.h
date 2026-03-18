@@ -58,8 +58,9 @@
 #endif
 
 
-#include "Config/Chassis/algo-config.h"
 #include "System/Input/TriggerImpl/trigger-decorator-toggle.h"
+#include "System/Input/TriggerImpl/trigger-impl-click.h"
+#include "System/Input/TriggerImpl/trigger-impl-edge.h"
 #include "usart.h"
 
 /* V. standard lib */
@@ -129,6 +130,11 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     TriggerHold baseTrigger = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
     TriggerToggle _trigSpin;
 
+    TriggerEdge _trigMouseFricEdge{0.5f, EdgeType::Rising};
+    TriggerEdge _trigMouseBurstEdge{0.5f, EdgeType::Both};
+    TriggerClick _trigMouseSingle{0.5f, 0.7f};
+    TriggerEdge _visionBurstEdge{0.5f, EdgeType::Both};
+
 
 
     // 1. 系统级意图 (仲裁器专用)
@@ -192,3 +198,4 @@ extern "C" {
 /*-------- 5. factories ----------------------------------------------------------------------------------------------*/
 
 #endif
+

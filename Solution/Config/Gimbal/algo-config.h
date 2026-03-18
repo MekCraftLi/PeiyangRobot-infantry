@@ -65,17 +65,6 @@ constexpr float DM_MOTOR_PMAX = 12.5f;
 constexpr float DM_MOTOR_VMAX = 30.0f;
 constexpr float DM_MOTOR_TMAX = 10.0f;
 
-
-#if IDENTITY == DOG
-constexpr float DM_MOTOR_KP = 220.1f;
-constexpr float DM_MOTOR_KI = 1.0f;
-constexpr float DM_MOTOR_KD = 3.0f;
-#elif IDENTITY == MYSELF
-constexpr float DM_MOTOR_KP = 50.0f;
-constexpr float DM_MOTOR_KI = 1.0f;
-constexpr float DM_MOTOR_KD = 1.5f;
-#endif
-
 }
 
 namespace Gimbal {
@@ -94,7 +83,18 @@ constexpr float PITCH_DEPRESSION_LIMIT = 0.821f; // 低头下限 (rad)
 #endif
 
 
-constexpr float PITCH_K_GRAVITY = -0.06f;
+constexpr float PITCH_K_GRAVITY_COS = -0.8f; // 水平方向质心补偿
+constexpr float PITCH_K_GRAVITY_SIN = -0.5f; // 垂直方向质心补偿
+
+#if IDENTITY == DOG
+constexpr float DM_MOT_PITCH_KP = 65.0f;
+constexpr float DM_MOT_PITCH_KI = 0.0f;
+constexpr float DM_MOT_PITCH_KD = 2.8f;
+#elif IDENTITY == MYSELF
+constexpr float DM_MOT_PITCH_KP = 65.0f;
+constexpr float DM_MOT_PITCH_KI = 0.0f;
+constexpr float DM_MOT_PITCH_KD = 1.8f;
+#endif
 
 }
 
@@ -108,6 +108,9 @@ constexpr float JOYSTICK_DEADZONE = 0.02f; // 摇杆 2% 死区，防漂移
 constexpr float SW_DOWN_THRESHOLD =  0.25f; // 拨杆在下 (安全/急停)
 constexpr float SW_UP_THRESHOLD   = -0.50f; // 拨杆在上 (视觉/自动)
 // 介于两者之间则为拨杆在中 (遥控器模式)
+
+constexpr float Y_SENSITIVITY = 100.0f;
+constexpr float X_SENSITIVITY = 100.0f;
 }
 
 namespace Imu {

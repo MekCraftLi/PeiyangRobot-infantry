@@ -305,6 +305,8 @@ void MovtionCtrlApp::run() {
         telem.targetYawRad    = imuState.yaw;
         telem.targetPitchRad  = imuState.pitch;
         output.targetPitchPos = gimbalState.pitch.pos;
+        output.targetPitchSpeed = 0.0f;
+        output.pitchFeedforwardTorque = 0.0f;
         output.pitchEn        = false;
 
         Blackboard::instance().gimbalTelem.write(telem);
@@ -346,20 +348,22 @@ void MovtionCtrlApp::run() {
 
         telem.targetPitchRad          = targetMotorRaw + offsetPitch;
 
-        // 重力补偿前馈 + PID 力矩 + 视觉动态加速度前馈
-        static float kGravity         = 0.0f;
-        // float gravityFf           = Config::Algorithm::Gimbal::PITCH_K_GRAVITY * std::cos(imuState.pitch);
-        float gravityFf               = kGravity * arm_cos_f32(imuState.pitch);
+        // 重力补偿前馈 + PID 力矩
+        static float gravityK;
+        float gravityFf               = gravityK * arm_cos_f32(imuState.pitch);
         float pitchIntegralTorque     = pitchPosPid.calculate(telem.targetPitchRad, imuState.pitch);
         float totalFf                 = gravityFf + pitchIntegralTorque; // 【融合前馈力矩】
 
         // 更新数据
         output.targetPitchPos         = targetMotorRaw;
+        output.targetPitchSpeed       = cmd.pitchVel;
         output.pitchFeedforwardTorque = totalFf;
         output.pitchEn                = true;
     } else {
         telem.targetPitchRad = imuState.pitch;
         pitchPosPid.clear();
+        output.targetPitchSpeed = 0.0f;
+        output.pitchFeedforwardTorque = 0.0f;
         output.pitchEn = false;
     }
 

@@ -195,13 +195,13 @@ IInputControl* VideoLinkRemote::getKeyControl(uint16_t keyBitMask) {
 IInputControl* VideoLinkRemote::getAxis(AxisID id) {
     switch (id) {
         case AxisID::MoveX:
-            return &_axisLeftY;   // 左摇杆Y轴控制底盘前后
+            return &_axisRightY;   // 左摇杆Y轴控制底盘前后
         case AxisID::MoveY:
-            return &_axisLeftX;   // 左摇杆X轴控制底盘左右
+            return &_axisRightX;   // 左摇杆X轴控制底盘左右
         case AxisID::ViewYaw:
-            return &_axisRightX;  // 右摇杆X轴控制云台Yaw
+            return &_axisLeftY;  // 右摇杆X轴控制云台Yaw
         case AxisID::ViewPitch:
-            return &_axisRightY;  // 右摇杆Y轴控制云台Pitch
+            return &_axisLeftX;  // 右摇杆Y轴控制云台Pitch
         case AxisID::Aux1:
             return &_wheel;       // 辅助拨轮
         default:

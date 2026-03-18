@@ -268,7 +268,7 @@ void FireCtrlApp::StateSpinUp::execute(FireCtrlCtx& ctx) {
         // else
         //     request_switch(&instance()._stateSingleFire);
 
-    } else if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot) {
+    } else if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
         ctx.isCalibrated = false;
         request_switch(&instance()._stateBurstFire);
     }
@@ -306,7 +306,7 @@ void FireCtrlApp::StateReady::execute(FireCtrlCtx& ctx) {
     //     else
     //         request_switch(&instance()._stateSingleFire);
     // } else
-    if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot) {
+    if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
 
         if (ctx.heatController.isApproachingHeatLimit()) {
             if (ctx.heatController.canShootSingle()) {

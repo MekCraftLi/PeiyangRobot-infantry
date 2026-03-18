@@ -171,6 +171,7 @@ struct ChassisOutput {
 struct GimbalOutput {
     float yawVoltage;
     float targetPitchPos;
+    float targetPitchSpeed;
     float pitchFeedforwardTorque;
     bool pitchEn;
 };

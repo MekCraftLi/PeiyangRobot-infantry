@@ -69,6 +69,9 @@ __attribute__((section(".dma_pool"))) static uint8_t rxbuf[32] = {0};
 
 
 #ifdef GIMBAL
+#if REMOTE_DEVICE == REMOTE_DR16
+static RemoteDR16 _remoteDR16;
+#endif
 #if REMOTE_DEVICE == REMOTE_VIDEO_LINK
 static VideoLinkRawData _videoLinkRawData;
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
@@ -80,7 +83,7 @@ static Dr16Data _dr16Data;
 
 // --- 宏观运动参数限制 ---
 // 宏观运动限制 (可根据机械结构调整)
-//RemoteDR16& remote = RemoteDR16::instance();
+// RemoteDR16& remote = RemoteDR16::instance();
 
 /* ------- application attribute -------------------------------------------------------------------------------------*/
 
@@ -111,17 +114,10 @@ static StackType_t appStack[APPLICATION_STACK_SIZE];
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 
 namespace {
-inline float clampUnit(float v) {
-    return std::max(-1.0f, std::min(1.0f, v));
-}
+inline float clampUnit(float v) { return std::max(-1.0f, std::min(1.0f, v)); }
 
-inline float composeAxis(float joystick, float keyboard) {
-    return clampUnit(joystick + keyboard);
-}
-}
-
-
-
+inline float composeAxis(float joystick, float keyboard) { return clampUnit(joystick + keyboard); }
+} // namespace
 
 
 CommanderSrvc::CommanderSrvc()
@@ -132,12 +128,10 @@ CommanderSrvc::CommanderSrvc()
       _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _triggerBurst(0.5f, 1.0f, true, HoldCondition::GreaterOrEqual),
       _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
-      _trigQToggle(_trigQToggleBase, false),
+      _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual), _trigQToggle(_trigQToggleBase, false),
       _trigShiftHold(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
       _trigMouseRelease(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _trigMouseBurst(0.5f, 0.7f, false, HoldCondition::GreaterOrEqual),
-      _trigSpin(baseTrigger, false)
+      _trigMouseBurst(0.5f, 0.7f, false, HoldCondition::GreaterOrEqual), _trigSpin(baseTrigger, false)
 #else
       _handbreak(0.0f, 0.001f, false, HoldCondition::GreaterOrEqual),
       _aTest(0.0f, 0.001f, true, HoldCondition::GreaterOrEqual), _relax(_aTest, true)
@@ -189,13 +183,12 @@ void CommanderSrvc::init() {
     actionMousePitch.bind(videoRemote.getMouseY(), &_joystickDeadzone);
     actionMouseLeftRaw.bind(videoRemote.getMouseLeft());
 
+
     // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
     actionCtrlMode.bind(videoRemote.getModeSw(), &_work);
 
 
-    actionFricToggle.bind(videoRemote.getKeyQ(), &_trigQToggle);
-    actionShootBurst.bind(videoRemote.getMouseLeft(), &_trigMouseBurst);
-    actionShootSingle.bind(videoRemote.getMouseLeft(), &_trigMouseRelease);
+    actionFricToggle.bind(videoRemote.getKeyQ(), &_trigMouseFricEdge);
     actionSpinMode.bind(videoRemote.getKeyShift(), &_trigShiftHold);
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
     // 前进和右扳机绑定
@@ -239,6 +232,7 @@ void CommanderSrvc::run() {
 #if REMOTE_DEVICE == REMOTE_DR16
     RemoteDR16::instance().updateRaw(_dr16Data);
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
+    // 遥控器数据更新
     VideoLinkRemote::instance().updateRaw(_videoLinkRawData);
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
     BluetoothGamepad::instance().updateRaw(_gamepadRawData);
@@ -259,6 +253,8 @@ void CommanderSrvc::run() {
     actionMoveXKey.update(dt);
     actionMoveYKey.update(dt);
     actionYaw.update(dt);
+    actionMouseYaw.update(dt);
+    actionMousePitch.update(dt);
     actionSpin.update(dt);
     actionPitch.update(dt);
     actionMouseLeftRaw.update(dt);
@@ -334,8 +330,9 @@ void CommanderSrvc::run() {
     switch (currentSource) {
         case ControlSource::SAFE_STOP: {
             // 彻底切断底层动力
-            comm.msg.mode        = (uint8_t)CHASSIS_RELAX;
-            sCmd.event     = ShootEvent::EMERGENCY_STOP;
+            comm.msg.mode = (uint8_t)CHASSIS_RELAX;
+            sCmd.event    = ShootEvent::EMERGENCY_STOP;
+            sCmd.state.burstShot = 0;
             gCmd.mode     = GIMBAL_RELAX;
 
             gCmd.yawVel   = 0;
@@ -349,22 +346,27 @@ void CommanderSrvc::run() {
             if (actionSpinMode.isTriggered()) {
                 comm.msg.mode = CHASSIS_SPIN;
             } else {
-                comm.msg.mode = CHASSIS_RELAX;
+                comm.msg.mode = CHASSIS_NORMAL;
             }
 
 #if REMOTE_DEVICE == REMOTE_VIDEO_LINK
             const float moveXInput = composeAxis(actionMoveX.getValue(), actionMoveXKey.getValue());
             const float moveYInput = composeAxis(actionMoveY.getValue(), actionMoveYKey.getValue());
-            const float yawInput = composeAxis(actionMouseYaw.getValue(), actionYaw.getValue());
-            const float pitchInput = composeAxis(actionPitch.getValue(), actionPitch.getValue());
+            const float yawInput =
+                composeAxis(actionMouseYaw.getValue() * Config::Algorithm::Input::Y_SENSITIVITY, actionYaw.getValue());
+            const float pitchInput = composeAxis(actionMousePitch.getValue() * Config::Algorithm::Input::X_SENSITIVITY,
+                                                 actionPitch.getValue());
 #else
             const float moveXInput = actionMoveX.getValue();
             const float moveYInput = actionMoveY.getValue();
+            const float yawInput   = actionYaw.getValue();
+            const float pitchInput = actionPitch.getValue();
 #endif
 
-            comm.msg.vx = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
+            static float vx, vy;
+            vx = comm.msg.vx         = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
             // 运动计算坐标系和遥控器方向相反
-            comm.msg.vy = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
+            vy = comm.msg.vy         = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
 
 
             gCmd.mode           = GIMBAL_NORMAL;
@@ -376,46 +378,24 @@ void CommanderSrvc::run() {
 
             // 发射事件映射
 #if REMOTE_DEVICE == REMOTE_VIDEO_LINK
-            static bool lastFricToggleState = false;
-            const bool fricToggleState = actionFricToggle.isTriggered();
-            const bool fricToggleEdge = (fricToggleState != lastFricToggleState);
-            lastFricToggleState = fricToggleState;
-
-            static bool lastBurstState = false;
-            const bool burstState = actionShootBurst.isTriggered();
-            const bool burstStartEdge = burstState && !lastBurstState;
-            const bool burstStopEdge = !burstState && lastBurstState;
-            lastBurstState = burstState;
-            sCmd.state.burstShot = burstState ? 1 : 0;
-
-            static bool lastMousePressed = false;
-            static bool pendingSingleCheck = false;
-            static bool burstHappenedThisPress = false;
-            const bool mousePressed = actionMouseLeftRaw.getValue() > 0.5f;
-
-            if (mousePressed && !lastMousePressed) {
-                pendingSingleCheck = false;
-                burstHappenedThisPress = false;
-            }
-            if (burstState) {
-                burstHappenedThisPress = true;
-            }
-            if (!mousePressed && lastMousePressed) {
-                pendingSingleCheck = true;
-            }
-            lastMousePressed = mousePressed;
-
-            if (fricToggleEdge) {
+            if (actionFricToggle.isTriggered()) {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;
-            } else if (burstStartEdge) {
-                sCmd.event = ShootEvent::BURST_START;
-            } else if (burstStopEdge) {
-                sCmd.event = ShootEvent::BURST_STOP;
-            } else if (pendingSingleCheck && actionShootSingle.isTriggered()) {
-                pendingSingleCheck = false;
-                if (!burstHappenedThisPress) {
-                    sCmd.event = ShootEvent::SINGLE_FIRE;
-                }
+            }
+
+            const float mouseVal             = actionMouseLeftRaw.getValue();
+            const TriggerState burstHoldState   = _trigMouseBurst.update(mouseVal, dt);
+            const TriggerState singleClickState = _trigMouseSingle.update(mouseVal, dt);
+
+            const bool isBurstingNow            = (burstHoldState == TriggerState::Triggered);
+            const TriggerState burstEdgeState   = _trigMouseBurstEdge.update(isBurstingNow ? 1.0f : 0.0f, dt);
+
+            // 持续态每帧同步，避免事件丢失后连发状态与输入脱节。
+            sCmd.state.burstShot = isBurstingNow ? 1 : 0;
+
+            if (burstEdgeState == TriggerState::Triggered) {
+                sCmd.event = isBurstingNow ? ShootEvent::BURST_START : ShootEvent::BURST_STOP;
+            } else if (singleClickState == TriggerState::Triggered) {
+                sCmd.event = ShootEvent::SINGLE_FIRE;
             }
 #else
             if (actionFricToggle.isTriggered()) {
@@ -425,14 +405,15 @@ void CommanderSrvc::run() {
             } else if (actionShootSingle.isTriggered()) {
                 sCmd.event = ShootEvent::SINGLE_FIRE;
             }
+            sCmd.state.burstShot = 0;
 #endif
 
         } break;
 
         case ControlSource::VISION: {
             // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            comm.msg.mode    = CHASSIS_NORMAL; // 视觉通常也需要底盘跟随
-            gCmd.mode = GIMBAL_AUTO;
+            comm.msg.mode = CHASSIS_NORMAL; // 视觉通常也需要底盘跟随
+            gCmd.mode     = GIMBAL_AUTO;
 
             // 1. 读取视觉指令
             VisionCommand vCmd{};
@@ -444,48 +425,35 @@ void CommanderSrvc::run() {
             gCmd.targetYawSpeed        = vCmd.targetYawSpeed;
             gCmd.targetYawAcceleration = vCmd.targetYawAcceleration;
 
-            // 3. 构建高鲁棒性的射击触发器状态机 (处理边缘跳变)
-            static uint8_t lastFire              = 0;
-            static uint8_t fricActive            = 0;
-            static bool isBursting               = false; // 记录当前是否处于连发持续状态
+            const uint8_t curFire = vCmd.fireCommand;
+            const uint8_t curSingle = vCmd.isSingleShot;
 
-            uint8_t curFire                      = vCmd.fireCommand;
-            uint8_t curSingle                    = vCmd.isSingleShot;
-            // 发射事件映射
+            const bool isFiring = (curFire == 1U);
+            const TriggerState vBurstEdgeState = _visionBurstEdge.update(isFiring ? 1.0f : 0.0f, dt);
 
             if (actionFricToggle.isTriggered()) {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;
-                fricActive          = !fricActive;
             }
-            if (curSingle == 1) {
-                // 【单发逻辑】
-                if (lastFire == 0 && curFire == 1) { // 发生 0->1 跳变
+
+            if (curSingle == 1U) {
+                if (vBurstEdgeState == TriggerState::Triggered && isFiring) {
                     sCmd.event = ShootEvent::SINGLE_FIRE;
                 }
-                // 防暴走保护：如果在连发中途，视觉突然把 isSingleShot 置 1，必须立刻截断连发
-                if (isBursting) {
+                if (sCmd.state.burstShot == 1U) {
                     sCmd.event = ShootEvent::BURST_STOP;
-                    isBursting          = false;
-                }
-            } else {
-                // 【连发逻辑】
-                if (curFire == 1) { // 发生 0->1 跳变
-                    sCmd.state.burstShot = 1;
-                } else if (curFire == 0) { // 发生 1->0 跳变
                     sCmd.state.burstShot = 0;
                 }
+            } else {
+                // 持续态每帧同步，事件丢失也不会导致状态机卡死。
+                sCmd.state.burstShot = isFiring ? 1 : 0;
+                if (vBurstEdgeState == TriggerState::Triggered) {
+                    if (isFiring) {
+                        sCmd.event = ShootEvent::BURST_START;
+                    } else {
+                        sCmd.event = ShootEvent::BURST_STOP;
+                    }
+                }
             }
-
-            if (actionShootBurst.isTriggered()) {
-                sCmd.event           = ShootEvent::BURST_START;
-                sCmd.state.burstShot = 1;
-            } else if (actionShootSingle.isTriggered()) {
-                sCmd.event           = ShootEvent::SINGLE_FIRE;
-                sCmd.state.burstShot = 0;
-            }
-
-            // 更新历史状态供下一帧边缘检测使用
-            lastFire   = curFire;
 
         } break;
         default:
@@ -501,16 +469,17 @@ void CommanderSrvc::run() {
     Blackboard::instance().gimbalCmd.read(gCmd);
 
     if (actionRelax.isTriggered()) {
-        gCmd.mode = GIMBAL_RELAX;
+        gCmd.mode     = GIMBAL_RELAX;
         comm.msg.mode = CHASSIS_RELAX;
-        gCmd.yawVel = 0;
+        gCmd.yawVel   = 0;
         gCmd.pitchVel = 0;
     } else {
-        gCmd.mode = GIMBAL_NORMAL;
+        gCmd.mode     = GIMBAL_NORMAL;
         comm.msg.mode = CHASSIS_NORMAL;
-        gCmd.yawVel = actionYaw.getValue();
+        gCmd.yawVel   = actionYaw.getValue();
         float pureVel = actionMoveX.getValue() - actionBreak.getValue();
-        if (pureVel < 0) pureVel = 0;
+        if (pureVel < 0)
+            pureVel = 0;
 
         comm.msg.vx = pureVel * Config::Algorithm::Chassis::MAX_VX * 10;
     }
@@ -520,7 +489,7 @@ void CommanderSrvc::run() {
     Blackboard::instance().g2cOutput.write(comm);
     Blackboard::instance().gimbalCmd.write(gCmd);
     Blackboard::instance().shootCmd.write(sCmd);
-#elifdef CHASSIS
+#elif defined(CHASSIS)
     GimbalToChassisComm comm{};
     ChassisCmd cmd{};
     Blackboard::instance().rComm.read(comm);
@@ -552,7 +521,7 @@ void CommanderSrvc::onUartRxEventCallback(size_t size) {
     memcpy(&_gamepadRawData, rxbuf, size);
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
     BluetoothGamepad::instance().onDataReceived();
-    #endif
+#endif
 }
 void CommanderSrvc::onUartErrCallback() {
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));

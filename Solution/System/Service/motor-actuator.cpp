@@ -159,8 +159,8 @@ void MotActSrvc::init() {
                            Config::Algorithm::Chassis::DM_MOTOR_TMAX); // 设定扭矩限位 (N.m)
 
     // 设置 MIT 模式下的阻抗参数 (若使用串级PID输出扭矩，Kp和Kd必须设为0)
-    pitch.set_runtime_kp(Config::Algorithm::Chassis::DM_MOTOR_KP);
-    pitch.set_runtime_kd(Config::Algorithm::Chassis::DM_MOTOR_KD);
+    pitch.set_runtime_kp(Config::Algorithm::Gimbal::DM_MOT_PITCH_KP);
+    pitch.set_runtime_kd(Config::Algorithm::Gimbal::DM_MOT_PITCH_KD);
 
     // 发送使能指令 (0xFC)
     pitch.enable();
@@ -292,7 +292,7 @@ void MotActSrvc::run() {
     // 提示：如果你上一轮修改了 dm_motor_drv_t 并增加了 send_mit_ctrl(pos, vel, t_ff)
     // 并且希望使用满血的电机内部阻抗控制，这里可以改为：
     if (gout.pitchEn) {
-        pitch.send_mit_ctrl(gout.targetPitchPos, 0.0f, gout.pitchFeedforwardTorque);
+        pitch.send_mit_ctrl(gout.targetPitchPos, gout.targetPitchSpeed, gout.pitchFeedforwardTorque);
     }
 }
 
