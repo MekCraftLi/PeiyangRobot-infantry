@@ -77,7 +77,7 @@
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
 
 class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> {
-  public:
+public:
     CommanderSrvc();
 
     void init() override;
@@ -91,7 +91,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
 
 
 
-  private:
+private:
 #ifdef GIMBAL
 #if REMOTE_DEVICE == REMOTE_DR16
     RemoteBase& remote = RemoteDR16::instance();
@@ -112,7 +112,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     // 5. stream or message
 
     // 6. event group
-    InputAction _actions[19];
+    InputAction _actions[20];
 
 
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
@@ -121,6 +121,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     TriggerHold _work;
     TriggerHold _trigFricToggle;
     TriggerHold _triggerBurst;
+    TriggerHold _trigPress;
     TriggerHold _trigSingleRelease;
     TriggerHold _trigQToggleBase;
     TriggerToggle _trigQToggle;
@@ -128,7 +129,9 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     TriggerHold _trigMouseRelease;
     TriggerHold _trigMouseBurst;
     TriggerHold baseTrigger = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
+    TriggerHold baseTriggerCap = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
     TriggerToggle _trigSpin;
+    TriggerToggle _trigCap;
 
     TriggerEdge _trigMouseFricEdge{0.5f, EdgeType::Rising};
     TriggerEdge _trigMouseBurstEdge{0.5f, EdgeType::Both};
@@ -154,15 +157,16 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     InputAction& actionPitch        = _actions[8];
     InputAction& actionMouseYaw     = _actions[9];
     InputAction& actionMousePitch   = _actions[10];
-    InputAction& actionMouseLeftRaw = _actions[11];
+    InputAction& actionMouseBurst = _actions[11];
 
     // 1. 定义 Action (意图)
     InputAction& actionFricToggle   = _actions[12];
     InputAction& actionShootBurst   = _actions[13];
     InputAction& actionShootSingle  = _actions[14];
     InputAction& actionSpinMode     = _actions[15];
+    InputAction& actionKeySpin = _actions[19];
 
-    InputAction& actionMouseBurst   = _actions[16];
+    InputAction& actionMouseSingle   = _actions[16];
     InputAction& actionKeyboardFric = _actions[17];
 
     InputAction& actionCapSwitch    = _actions[18];

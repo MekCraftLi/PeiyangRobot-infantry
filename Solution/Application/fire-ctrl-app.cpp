@@ -75,13 +75,13 @@ struct HeatDebugOzone {
 
 // 专供 Ozone 示波器实时采样的弹速观测探针
 volatile struct SpeedDebugOzone {
-    float ref_bullet_speed;     // 裁判系统回传的真实弹速 (m/s)
-    float target_bullet_speed;  // 期望压制的安全弹速 (m/s)，固定值参考
-    float base_fric_target;     // 基础摩擦轮设定转速 (开环值)
-    float final_fric_target;    // 经过闭环补偿后的最终目标转速
-    float fric_left_real;       // 左摩擦轮实际反馈转速
-    float comp_integration;     // 补偿器内部积攒的补偿量 (rad/s 或 rpm)
-    uint8_t physical_shot;      // 物理发弹脉冲 (每次打出一发跳变一次，用于时间轴对齐)
+    float ref_bullet_speed;    // 裁判系统回传的真实弹速 (m/s)
+    float target_bullet_speed; // 期望压制的安全弹速 (m/s)，固定值参考
+    float base_fric_target;    // 基础摩擦轮设定转速 (开环值)
+    float final_fric_target;   // 经过闭环补偿后的最终目标转速
+    float fric_left_real;      // 左摩擦轮实际反馈转速
+    float comp_integration;    // 补偿器内部积攒的补偿量 (rad/s 或 rpm)
+    uint8_t physical_shot;     // 物理发弹脉冲 (每次打出一发跳变一次，用于时间轴对齐)
 } g_speed_debug;
 /* ------- application attribute -------------------------------------------------------------------------------------*/
 
@@ -193,24 +193,24 @@ void FireCtrlApp::run() {
     calculateCurrents(finalOut);
 
     // 给 Ozone 探针赋值
-    g_heat_debug.local_heat       = _ctx.heatController.getLocalHeat();
-    g_heat_debug.referee_heat     = c2gData.msg.shooter17mmBarrelHeat;
-    g_heat_debug.heat_limit       = c2gData.msg.heatLimit;
-    g_heat_debug.safe_margin_line = c2gData.msg.heatLimit - HeatController::SAFE_MARGIN;
-    g_heat_debug.target_rpm       = _ctx.targetTriggerSpeed;
+    g_heat_debug.local_heat           = _ctx.heatController.getLocalHeat();
+    g_heat_debug.referee_heat         = c2gData.msg.shooter17mmBarrelHeat;
+    g_heat_debug.heat_limit           = c2gData.msg.heatLimit;
+    g_heat_debug.safe_margin_line     = c2gData.msg.heatLimit - HeatController::SAFE_MARGIN;
+    g_heat_debug.target_rpm           = _ctx.targetTriggerSpeed;
 
 
-    g_speed_debug.ref_bullet_speed = (float)c2gData.msg.initialSpeedX100 / 100.0f;
+    g_speed_debug.ref_bullet_speed    = (float)c2gData.msg.initialSpeedX100 / 100.0f;
     g_speed_debug.target_bullet_speed = 23.5f; // 与补偿器内部设置的目标值保持一致
 
     if (currentContinuousEcd - lastShotContinuousEcd >= ECD_PER_BULLET) {
         _ctx.heatController.recordBulletShot(current_time_ms);
         lastShotContinuousEcd += ECD_PER_BULLET;
 
-        g_heat_debug.physical_shot = 50;
+        g_heat_debug.physical_shot  = 50;
         g_speed_debug.physical_shot = 50; // 同步发弹脉冲
     } else {
-        g_heat_debug.physical_shot = 0;
+        g_heat_debug.physical_shot  = 0;
         g_speed_debug.physical_shot = 0;
     }
     // 5. 将计算好的电流写入黑板
@@ -305,24 +305,27 @@ void FireCtrlApp::StateReady::execute(FireCtrlCtx& ctx) {
     //         request_switch(&instance()._stateCaliReverse);
     //     else
     //         request_switch(&instance()._stateSingleFire);
-    // } else if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
-    //
-    //     if (ctx.heatController.isApproachingHeatLimit()) {
-    //         if (ctx.heatController.canShootSingle()) {
-    //             // 【修改】：热量警戒，进入角度环连发！
-    //             request_switch(&instance()._stateSafeBurst);
-    //         }
-    //     } else {
-    //         // 热量健康，进入传统速度环连发
-    //         ctx.isCalibrated = false;
-    //         request_switch(&instance()._stateBurstFire);
-    //     }
-    // }
+    // } else
+
 
     if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
-        request_switch(&instance()._stateBurstFire);
-    }
 
+        // if (ctx.heatController.isApproachingHeatLimit()) {
+        //     if (ctx.heatController.canShootSingle()) {
+        //         // 【修改】：热量警戒，进入角度环连发！
+        //         request_switch(&instance()._stateSafeBurst);
+        //     }
+        // } else
+        {
+            // 热量健康，进入传统速度环连发
+            ctx.isCalibrated = false;
+            request_switch(&instance()._stateBurstFire);
+        }
+    }
+    //
+    // if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
+    //     request_switch(&instance()._stateBurstFire);
+    // }
 }
 
 
@@ -485,7 +488,7 @@ void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
     }
 
     // 【新增逻辑】：热量逼近警戒线时，强制退出纯速度环的连发模式
-    //
+
     // if (ctx.heatController.isApproachingHeatLimit()) {
     //     request_switch(&instance()._stateSafeBurst);
     //     return;
@@ -495,9 +498,8 @@ void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
     // 【核心修改】：通过热控器获取当前允许的最大安全射频
     // 假设 Config::Hardware::MotorTopo::TRIGGER_SPEED 是你的极致爆射转速（如 8000.0f）
     // 第二个参数 36.0f 是你的拨弹电机减速比
-    // ctx.targetTriggerSpeed = ctx.heatController.getSafeBurstRpm(Config::Hardware::MotorTopo::TRIGGER_SPEED, 36.0f);
+    ctx.targetTriggerSpeed = ctx.heatController.getSafeBurstRpm(Config::Hardware::MotorTopo::TRIGGER_SPEED, 36.0f);
 
-    ctx.targetTriggerSpeed = Config::Hardware::MotorTopo::TRIGGER_SPEED;
     if (std::abs(ctx.fdb.trigger.vel) < 10.0f && ctx.targetTriggerSpeed > 100.0f) {
         ctx.blockTimer++;
         if (ctx.blockTimer > 50) {
@@ -596,16 +598,16 @@ void FireCtrlApp::updateTransientEvent() {
 void FireCtrlApp::calculateCurrents(BoosterOutput& out) {
     // 【新增接入】：获取经过弹速闭环补偿后的最终目标转速
     // 如果 compensator 没有误差，它将原样返回 _ctx.targetFricSpeed
-    float finalFricTargetSpeed = _ctx.speedCompensator.getCompensatedRadPerSec(_ctx.targetFricSpeed);
+    float finalFricTargetSpeed      = _ctx.speedCompensator.getCompensatedRadPerSec(_ctx.targetFricSpeed);
 
     // 记录控制环关键数据到探针
-    g_speed_debug.base_fric_target = _ctx.targetFricSpeed;
+    g_speed_debug.base_fric_target  = _ctx.targetFricSpeed;
     g_speed_debug.final_fric_target = finalFricTargetSpeed;
-    g_speed_debug.comp_integration = finalFricTargetSpeed - _ctx.targetFricSpeed; // 实际补偿增量
-    g_speed_debug.fric_left_real = _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_LEFT_ID].vel;
+    g_speed_debug.comp_integration  = finalFricTargetSpeed - _ctx.targetFricSpeed; // 实际补偿增量
+    g_speed_debug.fric_left_real    = _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_LEFT_ID].vel;
 
     // 【修改】：使用补偿后的 finalFricTargetSpeed 进行 PID 计算
-    out.fricLeftCurrent = _fricLeftSpdPid.calculate(
+    out.fricLeftCurrent             = _fricLeftSpdPid.calculate(
         finalFricTargetSpeed, _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_LEFT_ID].vel);
 
     // 右摩擦轮通常反向安装，因此目标速度取反

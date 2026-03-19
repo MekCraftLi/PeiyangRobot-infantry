@@ -127,11 +127,15 @@ CommanderSrvc::CommanderSrvc()
       _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual),
       _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _triggerBurst(0.5f, 1.0f, true, HoldCondition::GreaterOrEqual),
+        _trigPress(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
       _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual), _trigQToggle(_trigQToggleBase, false),
       _trigShiftHold(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
       _trigMouseRelease(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _trigMouseBurst(0.5f, 0.7f, false, HoldCondition::GreaterOrEqual), _trigSpin(baseTrigger, false)
+      _trigMouseBurst(0.5f, 0.7f, false, HoldCondition::GreaterOrEqual),
+_trigSpin(baseTrigger, false),
+_trigCap(baseTriggerCap, false)
+
 #else
       _handbreak(0.0f, 0.001f, false, HoldCondition::GreaterOrEqual),
       _aTest(0.0f, 0.001f, true, HoldCondition::GreaterOrEqual), _relax(_aTest, true)
@@ -181,10 +185,11 @@ void CommanderSrvc::init() {
     actionPitch.bind(videoRemote.getAxis(AxisID::ViewPitch), &_joystickDeadzone);
     actionMouseYaw.bind(videoRemote.getMouseX(), &_joystickDeadzone);
     actionMousePitch.bind(videoRemote.getMouseY(), &_joystickDeadzone);
-    actionMouseLeftRaw.bind(videoRemote.getMouseLeft());
+    actionMouseBurst.bind(videoRemote.getMouseLeft(), &_triggerBurst);
+    actionMouseSingle.bind(videoRemote.getMouseLeft(), &_trigSingleRelease);
     actionShootBurst.bind(videoRemote.getTrigger(), &_triggerBurst);
     actionShootSingle.bind(videoRemote.getTrigger(), &_trigSingleRelease);
-    actionCapSwitch.bind(videoRemote.getKeyC(), &_trigSpin);
+    actionCapSwitch.bind(videoRemote.getKeyC(), &_trigCap);
 
 
     // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
@@ -192,6 +197,7 @@ void CommanderSrvc::init() {
     actionFricToggle.bind(videoRemote.getFn2(), &_trigFricToggle);
 
     actionKeyboardFric.bind(videoRemote.getKeyQ(), &_trigFricToggle);
+    actionKeySpin.bind(videoRemote.getKeyShift(), &_trigShiftHold);
 
 
     actionSpinMode.bind(videoRemote.getPause(), &_trigSpin);
@@ -262,11 +268,14 @@ void CommanderSrvc::run() {
     actionMousePitch.update(dt);
     actionSpin.update(dt);
     actionPitch.update(dt);
-    actionMouseLeftRaw.update(dt);
+    actionKeySpin.update(dt);
+    actionMouseBurst.update(dt);
+    actionMouseSingle.update(dt);
     actionFricToggle.update(dt);
+    actionCapSwitch.update(dt);
     actionShootBurst.update(dt);
     actionShootSingle.update(dt);
-    actionSpinMode.update(dt);
+   // actionSpinMode.update(dt);
     actionKeyboardFric.update(dt);
 #else
     actionHandbrakeDepth.update(dt);
@@ -343,13 +352,11 @@ void CommanderSrvc::run() {
 
             gCmd.yawVel          = 0;
             gCmd.pitchVel        = 0;
-
-
         } break;
 
         case ControlSource::REMOTE: {
             // 遥控器映射
-            if (actionSpinMode.isTriggered()) {
+            if (actionSpinMode.isTriggered() || actionKeySpin.isTriggered()) {
                 comm.msg.mode = CHASSIS_SPIN;
             } else {
                 comm.msg.mode = CHASSIS_NORMAL;
@@ -395,7 +402,7 @@ void CommanderSrvc::run() {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;
             }
 
-            const float mouseVal                = actionMouseLeftRaw.getValue();
+            const float mouseVal                = actionMouseBurst.getValue();
             const TriggerState burstHoldState   = _trigMouseBurst.update(mouseVal, dt);
             const TriggerState singleClickState = _trigMouseSingle.update(mouseVal, dt);
 
@@ -405,10 +412,10 @@ void CommanderSrvc::run() {
             // 持续态每帧同步，避免事件丢失后连发状态与输入脱节。
             sCmd.state.burstShot                = isBurstingNow ? 1 : 0;
 
-            if (actionShootBurst.isTriggered()) {
+            if (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered()) {
                 sCmd.event = ShootEvent::BURST_START ;
             }
-            if (actionShootSingle.isTriggered()) {
+            if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
                 sCmd.event = ShootEvent::SINGLE_FIRE;
             }
 #else

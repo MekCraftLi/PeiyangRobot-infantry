@@ -150,7 +150,7 @@ void MovtionCtrlApp::run() {
     static uint32_t dwtCnt;
     float dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
 
-    if (cmd.mode == CHASSIS_RELAX) {
+    if ((cmd.mode & 0x03) == CHASSIS_RELAX) {
         // [新增] 模式切换时清空内部状态，防止切回正常模式时暴走
         vxPlanner.reset();
         vyPlanner.reset();
@@ -251,7 +251,12 @@ void MovtionCtrlApp::run() {
 
     float kv           = 1.0f;
 
-    float dynamicLimit = PowerLimiter::getDynamicPowerLimit(refState.chassisPowerLimit * 0.5f, powerHeatState.bufferEnergy);
+    uint16_t powerLimit = refState.chassisPowerLimit * 0.5f;
+    if (cmd.mode & 0x04) {
+        powerLimit += 40;
+    }
+
+    float dynamicLimit = PowerLimiter::getDynamicPowerLimit(powerLimit, powerHeatState.bufferEnergy);
     kv                 = PowerLimiter::instance().calculateVelocityScale(idealDriveSpd, filteredTorque, dynamicLimit);
 
 
