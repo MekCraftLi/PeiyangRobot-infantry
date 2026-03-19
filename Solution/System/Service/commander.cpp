@@ -126,7 +126,7 @@ CommanderSrvc::CommanderSrvc()
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
       _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual),
       _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _triggerBurst(0.5f, 1.0f, false, HoldCondition::GreaterOrEqual),
+      _triggerBurst(0.5f, 1.0f, true, HoldCondition::GreaterOrEqual),
       _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual), _trigQToggle(_trigQToggleBase, false),
       _trigShiftHold(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
@@ -183,14 +183,17 @@ void CommanderSrvc::init() {
     actionMousePitch.bind(videoRemote.getMouseY(), &_joystickDeadzone);
     actionMouseLeftRaw.bind(videoRemote.getMouseLeft());
     actionShootBurst.bind(videoRemote.getTrigger(), &_triggerBurst);
+    actionShootSingle.bind(videoRemote.getTrigger(), &_trigSingleRelease);
+    actionCapSwitch.bind(videoRemote.getKeyC(), &_trigSpin);
 
 
     // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
     actionCtrlMode.bind(videoRemote.getModeSw(), &_work);
-
     actionFricToggle.bind(videoRemote.getFn2(), &_trigFricToggle);
-    // actionFricToggle.bind(videoRemote.getKeyQ(), &_trigMouseFricEdge);
-    // actionSpinMode.bind(videoRemote.getKeyShift(), &_trigShiftHold);
+
+    actionKeyboardFric.bind(videoRemote.getKeyQ(), &_trigFricToggle);
+
+
     actionSpinMode.bind(videoRemote.getPause(), &_trigSpin);
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
     // 前进和右扳机绑定
@@ -264,6 +267,7 @@ void CommanderSrvc::run() {
     actionShootBurst.update(dt);
     actionShootSingle.update(dt);
     actionSpinMode.update(dt);
+    actionKeyboardFric.update(dt);
 #else
     actionHandbrakeDepth.update(dt);
     actionBreak.update(dt);
@@ -351,6 +355,13 @@ void CommanderSrvc::run() {
                 comm.msg.mode = CHASSIS_NORMAL;
             }
 
+            // 开启电容标志位
+            if (actionCapSwitch.isTriggered()) {
+                comm.msg.mode |= 0x04;
+            } else {
+                comm.msg.mode &= ~0x04;
+            }
+
 #if REMOTE_DEVICE == REMOTE_VIDEO_LINK
             const float moveXInput = composeAxis(actionMoveX.getValue(), actionMoveXKey.getValue());
             const float moveYInput = composeAxis(actionMoveY.getValue(), actionMoveYKey.getValue());
@@ -380,7 +391,7 @@ void CommanderSrvc::run() {
 
             // 发射事件映射
 #if REMOTE_DEVICE == REMOTE_VIDEO_LINK
-            if (actionFricToggle.isTriggered()) {
+            if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;
             }
 
@@ -396,8 +407,9 @@ void CommanderSrvc::run() {
 
             if (actionShootBurst.isTriggered()) {
                 sCmd.event = ShootEvent::BURST_START ;
-            } else {
-                : ShootEvent::BURST_STOP;
+            }
+            if (actionShootSingle.isTriggered()) {
+                sCmd.event = ShootEvent::SINGLE_FIRE;
             }
 #else
             if (actionFricToggle.isTriggered()) {

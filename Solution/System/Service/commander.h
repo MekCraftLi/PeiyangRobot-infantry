@@ -112,7 +112,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     // 5. stream or message
 
     // 6. event group
-    InputAction _actions[16];
+    InputAction _actions[19];
 
 
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
@@ -161,6 +161,12 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     InputAction& actionShootBurst   = _actions[13];
     InputAction& actionShootSingle  = _actions[14];
     InputAction& actionSpinMode     = _actions[15];
+
+    InputAction& actionMouseBurst   = _actions[16];
+    InputAction& actionKeyboardFric = _actions[17];
+
+    InputAction& actionCapSwitch    = _actions[18];
+
 #else
     TriggerLinear _joystickDeadzone;
     TriggerHold _handbreak;
@@ -198,4 +204,3 @@ extern "C" {
 /*-------- 5. factories ----------------------------------------------------------------------------------------------*/
 
 #endif
-
