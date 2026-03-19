@@ -29,6 +29,7 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
+#include "../config.h"
 
 
 
@@ -91,9 +92,9 @@ constexpr float DM_MOT_PITCH_KP = 68.0f;
 constexpr float DM_MOT_PITCH_KI = 1.2f;
 constexpr float DM_MOT_PITCH_KD = 2.3f;
 #elif IDENTITY == MYSELF
-constexpr float DM_MOT_PITCH_KP = 65.0f;
-constexpr float DM_MOT_PITCH_KI = 0.0f;
-constexpr float DM_MOT_PITCH_KD = 1.8f;
+constexpr float DM_MOT_PITCH_KP = 68.0f;
+constexpr float DM_MOT_PITCH_KI = 2.4f;
+constexpr float DM_MOT_PITCH_KD = 2.3f;
 #endif
 
 }

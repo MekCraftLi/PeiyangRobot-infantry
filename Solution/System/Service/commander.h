@@ -121,6 +121,7 @@ private:
     TriggerHold _work;
     TriggerHold _trigFricToggle;
     TriggerHold _triggerBurst;
+    TriggerHold _triggerMouseBurst;
     TriggerHold _trigPress;
     TriggerHold _trigSingleRelease;
     TriggerHold _trigQToggleBase;

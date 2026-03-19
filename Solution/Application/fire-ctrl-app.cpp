@@ -260,17 +260,9 @@ void FireCtrlApp::StateSpinUp::execute(FireCtrlCtx& ctx) {
         return;
     }
 
-    if (ctx.transientEvent == ShootEvent::SINGLE_FIRE) {
-        // 【新增安全拦截】：只有热量安全，才允许切入发弹状态
 
-        // if (!ctx.isCalibrated)
-        //     request_switch(&instance()._stateSingleFire);
-        // else
-        //     request_switch(&instance()._stateSingleFire);
-
-    } else if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
-        ctx.isCalibrated = false;
-        request_switch(&instance()._stateBurstFire);
+    if (abs(ctx.fdb.fric[0].vel - ctx.targetFricSpeed) < 0.1f || abs(ctx.fdb.fric[1].vel - ctx.targetFricSpeed) < 0.1f) {
+        request_switch(&instance()._stateReady);
     }
 }
 
@@ -300,15 +292,15 @@ void FireCtrlApp::StateReady::execute(FireCtrlCtx& ctx) {
         return;
     }
     //
-    // if (ctx.transientEvent == ShootEvent::SINGLE_FIRE) {
-    //     if (!ctx.isCalibrated)
-    //         request_switch(&instance()._stateCaliReverse);
-    //     else
-    //         request_switch(&instance()._stateSingleFire);
-    // } else
+    if (ctx.transientEvent == ShootEvent::SINGLE_FIRE) {
+        // if (!ctx.isCalibrated)
+        //     request_switch(&instance()._stateCaliReverse);
+        // else
+            request_switch(&instance()._stateSingleFire);
+    } else
 
 
-    if (ctx.transientEvent == ShootEvent::BURST_START || ctx.cmd.state.burstShot == 1) {
+    if (ctx.cmd.state.burstShot) {
 
         // if (ctx.heatController.isApproachingHeatLimit()) {
         //     if (ctx.heatController.canShootSingle()) {
@@ -478,7 +470,7 @@ void FireCtrlApp::StateBurstFire::enter(FireCtrlCtx& ctx) {
 }
 
 void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
-    if (ctx.transientEvent == ShootEvent::BURST_STOP || ctx.transientEvent == ShootEvent::SINGLE_FIRE) {
+    if (ctx.transientEvent == ShootEvent::BURST_STOP || ctx.transientEvent == ShootEvent::SINGLE_FIRE || ctx.cmd.state.burstShot == 0) {
         request_switch(&instance()._stateReady);
         return;
     }

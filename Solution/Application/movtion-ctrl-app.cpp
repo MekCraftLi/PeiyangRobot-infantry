@@ -404,6 +404,9 @@ void MovtionCtrlApp::run() {
         float totalFf                 = gravityFf + pitchIntegralTorque; // 【融合前馈力矩】
 
         // 更新数据
+        if (abs(cmd.pitchVel) > 0.1f) {
+            cmd.pitchVel = (cmd.pitchVel / cmd.pitchVel) * 0.1f;
+        }
         output.targetPitchPos         = targetMotorRaw;
         output.targetPitchSpeed       = cmd.pitchVel;
         output.pitchFeedforwardTorque = totalFf;

@@ -126,14 +126,15 @@ CommanderSrvc::CommanderSrvc()
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
       _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual),
       _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _triggerBurst(0.5f, 1.0f, true, HoldCondition::GreaterOrEqual),
+      _triggerBurst(0.5f, 1.0f, false, HoldCondition::GreaterOrEqual),
+      _triggerMouseBurst(0.5f, 1.0f, false, HoldCondition::GreaterOrEqual),
       _trigPress(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
       _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual), _trigQToggle(_trigQToggleBase, false),
       _trigShiftHold(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
       _trigMouseRelease(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigMouseBurst(0.5f, 0.7f, false, HoldCondition::GreaterOrEqual),
-      _trigVision(0.5f, 0.001, false, HoldCondition::GreaterOrEqual), _trigSpin(baseTrigger, false),
+      _trigVision(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual), _trigSpin(baseTrigger, false),
       _trigCap(baseTriggerCap, false)
 
 #else
@@ -185,7 +186,7 @@ void CommanderSrvc::init() {
     actionPitch.bind(videoRemote.getAxis(AxisID::ViewPitch), &_joystickDeadzone);
     actionMouseYaw.bind(videoRemote.getMouseX(), &_joystickDeadzone);
     actionMousePitch.bind(videoRemote.getMouseY(), &_joystickDeadzone);
-    actionMouseBurst.bind(videoRemote.getMouseLeft(), &_triggerBurst);
+    actionMouseBurst.bind(videoRemote.getMouseLeft(), &_triggerMouseBurst);
     actionMouseSingle.bind(videoRemote.getMouseLeft(), &_trigSingleRelease);
     actionShootBurst.bind(videoRemote.getTrigger(), &_triggerBurst);
     actionShootSingle.bind(videoRemote.getTrigger(), &_trigSingleRelease);
@@ -361,7 +362,7 @@ void CommanderSrvc::run() {
             if (actionSpinMode.isTriggered() || actionKeySpin.isTriggered()) {
                 comm.msg.mode = CHASSIS_SPIN;
             } else {
-                comm.msg.mode = CHASSIS_NORMAL;
+                comm.msg.mode = CHASSIS_RELAX;
             }
 
             // 开启电容标志位
@@ -403,22 +404,14 @@ void CommanderSrvc::run() {
             if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;
             }
-
-            const float mouseVal                = actionMouseBurst.getValue();
-            const TriggerState burstHoldState   = _trigMouseBurst.update(mouseVal, dt);
-            const TriggerState singleClickState = _trigMouseSingle.update(mouseVal, dt);
-
-            const bool isBurstingNow            = (burstHoldState == TriggerState::Triggered);
-            const TriggerState burstEdgeState   = _trigMouseBurstEdge.update(isBurstingNow ? 1.0f : 0.0f, dt);
-
-            // 持续态每帧同步，避免事件丢失后连发状态与输入脱节。
-            sCmd.state.burstShot                = isBurstingNow ? 1 : 0;
-
             if (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered()) {
-                sCmd.event = ShootEvent::BURST_START;
+                sCmd.state.burstShot = 1;
+            } else {
+                sCmd.state.burstShot = 0;
             }
             if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
-                sCmd.event = ShootEvent::SINGLE_FIRE;
+                sCmd.event           = ShootEvent::SINGLE_FIRE;
+                sCmd.state.burstShot = 0;
             }
 #else
             if (actionFricToggle.isTriggered()) {
@@ -435,7 +428,7 @@ void CommanderSrvc::run() {
 
         case ControlSource::VISION: {
             // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            comm.msg.mode = CHASSIS_NORMAL; // 视觉通常也需要底盘跟随
+            comm.msg.mode = CHASSIS_RELAX; // 视觉通常也需要底盘跟随
             gCmd.mode     = GIMBAL_AUTO;
 
             // 1. 读取视觉指令
@@ -449,35 +442,37 @@ void CommanderSrvc::run() {
             gCmd.pitchVel                      = -vCmd.targetPitchSpeed;
             gCmd.targetYawAcceleration         = vCmd.targetYawAcceleration;
 
-            const uint8_t curFire              = vCmd.fireCommand;
-            const uint8_t curSingle            = vCmd.isSingleShot;
-
-            const bool isFiring                = (curFire == 1U);
-            const TriggerState vBurstEdgeState = _visionBurstEdge.update(isFiring ? 1.0f : 0.0f, dt);
-
-            if (actionFricToggle.isTriggered()) {
+            if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;
             }
 
-            if (curSingle == 1U) {
-                if (vBurstEdgeState == TriggerState::Triggered && isFiring) {
-                    sCmd.event = ShootEvent::SINGLE_FIRE;
-                }
-                if (sCmd.state.burstShot == 1U) {
-                    sCmd.event           = ShootEvent::BURST_STOP;
-                    sCmd.state.burstShot = 0;
-                }
+            if (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered() || vCmd.fireCommand) {
+                sCmd.state.burstShot = 1;
             } else {
-                // 持续态每帧同步，事件丢失也不会导致状态机卡死。
-                sCmd.state.burstShot = isFiring ? 1 : 0;
-                if (vBurstEdgeState == TriggerState::Triggered) {
-                    if (isFiring) {
-                        sCmd.event = ShootEvent::BURST_START;
-                    } else {
-                        sCmd.event = ShootEvent::BURST_STOP;
-                    }
-                }
+                sCmd.state.burstShot = 0;
             }
+            if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
+                sCmd.event = ShootEvent::SINGLE_FIRE;
+            }
+            //
+            // if (curSingle == 1U) {
+            //     if (vBurstEdgeState == TriggerState::Triggered && isFiring) {
+            //         sCmd.event = ShootEvent::SINGLE_FIRE;
+            //     }
+            //     if (sCmd.state.burstShot == 1U) {
+            //         sCmd.event           = ShootEvent::BURST_STOP;
+            //         sCmd.state.burstShot = 0;
+            //     }
+            // } else {
+            //
+            //     if (vBurstEdgeState == TriggerState::Triggered) {
+            //         if (isFiring) {
+            //             sCmd.event = ShootEvent::BURST_START;
+            //         } else {
+            //             sCmd.event = ShootEvent::BURST_STOP;
+            //         }
+            //     }
+            // }
 
         } break;
         default:
