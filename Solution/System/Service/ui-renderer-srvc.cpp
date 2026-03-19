@@ -81,8 +81,8 @@ void UiRendererSrvc::run() {
     // 2.1 获取当前机器人 ID 与操作手客户端 ID (此处需根据您项目的实际获取方式调整)
     RMRobotStatus robotStatus{};
     RefereeDataHub::instance().robotStatus.read(robotStatus);
-    uint16_t senderId   = robotStatus.robotId;
-    uint16_t receiverId = robotStatus.robotId + 0x0100; // 规则: 操作手客户端 ID = 机器人 ID + 0x0100
+    uint16_t senderId   = 3;
+    uint16_t receiverId = 3 + 0x0100; // 规则: 操作手客户端 ID = 机器人 ID + 0x0100
 
     uint32_t offset = 0;
 
@@ -119,6 +119,7 @@ void UiRendererSrvc::run() {
 
     // --- 3. 触发底层串口 DMA 发送 ---
     // (需替换为您 config.h 中实际的裁判系统 UART 外设句柄)
+
     HAL_UART_Transmit_DMA(&Config::Hardware::Comms::REFEREE_UART, uiTxBuffer, frameTotalLength);
 }
 
