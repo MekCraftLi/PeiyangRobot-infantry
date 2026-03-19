@@ -133,6 +133,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/Algorithm/Power/power-limiter.cpp"
 
         "../Solution/Application/movtion-ctrl-app.cpp"
+        "../Solution/Application/ui-maker-app.cpp"
 
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
         "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
@@ -148,6 +149,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/System/Service/referee.cpp"
         "../Solution/System/Service/interrupt-callback.cpp"
         "../Solution/System/Service/super-cap-comm.cpp"
+        "../Solution/System/Service/ui-renderer-srvc.cpp"
 
         "../Solution/tools/crc.cpp"
 
