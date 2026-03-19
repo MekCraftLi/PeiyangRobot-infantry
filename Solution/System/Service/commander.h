@@ -112,7 +112,7 @@ private:
     // 5. stream or message
 
     // 6. event group
-    InputAction _actions[20];
+    InputAction _actions[21];
 
 
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
@@ -132,6 +132,7 @@ private:
     TriggerHold baseTriggerCap = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
     TriggerToggle _trigSpin;
     TriggerToggle _trigCap;
+    TriggerHold _trigVision;
 
     TriggerEdge _trigMouseFricEdge{0.5f, EdgeType::Rising};
     TriggerEdge _trigMouseBurstEdge{0.5f, EdgeType::Both};
@@ -158,6 +159,7 @@ private:
     InputAction& actionMouseYaw     = _actions[9];
     InputAction& actionMousePitch   = _actions[10];
     InputAction& actionMouseBurst = _actions[11];
+    InputAction& actionMouseVision = _actions[20];
 
     // 1. 定义 Action (意图)
     InputAction& actionFricToggle   = _actions[12];

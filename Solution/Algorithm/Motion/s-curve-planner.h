@@ -97,6 +97,9 @@ public:
         _current_v = current_real_v;
         _current_a = 0.0f;
     }
+    // 【新增】：暴露内部状态供 Ozone 示波器读取
+    float getCurrentV() const { return _current_v; }
+    float getCurrentA() const { return _current_a; }
 
 private:
     float _max_v;

@@ -136,8 +136,8 @@ constexpr float TEMP_MAX_SAFE          = 55.0f; // 目标温度提高了，安�
 
 
 // 正常模式下使用的零偏补偿值 (这些值应通过开启 IMU_CALIBRATION_MODE 测量后填入)
-constexpr float GYRO_BIAS_X = 0.0f;
-constexpr float GYRO_BIAS_Y = 0.0f;
+constexpr float GYRO_BIAS_X = -7.45578509e-05;
+constexpr float GYRO_BIAS_Y = -0.00112679054f;
 constexpr float GYRO_BIAS_Z = 0.000561155f;
 
 constexpr float ACCEL_BIAS_X = 0.0f;

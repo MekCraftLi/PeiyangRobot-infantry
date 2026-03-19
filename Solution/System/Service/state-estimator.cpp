@@ -141,7 +141,7 @@ void ImuApp::init() {
     _bmi088.init(Bmi088AccRange::RANGE_3G, Bmi088AccODR::ODR_200_HZ, Bmi088AccWidth::OSR2,
                  Bmi088GyroRange::RANGE_500_DPS, Bmi088GyroWidth::ODR_1000HZ_BW_116HZ);
 
-    IMU_QuaternionEKF_Init(10.0f, 0.001f, 10000000.0f, 0.9996f, 0);
+    IMU_QuaternionEKF_Init(10.0f, 0.001f, 10000000.0f, 0.9996f, 1 / (2 * M_PI));
 }
 
 

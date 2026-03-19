@@ -63,17 +63,28 @@
 
 // 专供 Ozone 示波器实时采样的底盘功率观测探针
 volatile struct PowerDebugOzone {
-    float ref_power_limit;     // 裁判系统：当前功率上限 (W)
-    float ref_real_power;      // 裁判系统：底盘实际消耗功率 (W)
-    float ref_buffer_energy;   // 裁判系统：剩余缓冲能量 (J)
+    float ref_power_limit;   // 裁判系统：当前功率上限 (W)
+    float ref_real_power;    // 裁判系统：底盘实际消耗功率 (W)
+    float ref_buffer_energy; // 裁判系统：剩余缓冲能量 (J)
 
-    float cap_voltage;         // 超级电容：当前电压 (V)
-    float cap_power;           // 超级电容：当前输出功率 (W)
+    float cap_voltage; // 超级电容：当前电压 (V)
+    float cap_power;   // 超级电容：当前输出功率 (W)
 
-    float pre_limit_torque;    // 算法：限幅前，底盘四大电机期望扭矩/电流绝对值之和
-    float post_limit_torque;   // 算法：限幅后，实际下发的总扭矩/电流
-    float scale_factor;        // 算法：功率控制器算出的缩放系数 (通常在 0.0 ~ 1.0 之间)
+    float pre_limit_torque;  // 算法：限幅前，底盘四大电机期望扭矩/电流绝对值之和
+    float post_limit_torque; // 算法：限幅后，实际下发的总扭矩/电流
+    float scale_factor;      // 算法：功率控制器算出的缩放系数 (通常在 0.0 ~ 1.0 之间)
 } g_power_debug;
+
+// 专供 Ozone 示波器实时采样的 S曲线观测探针
+volatile struct SCurveDebugOzone {
+    float target_vx;   // 遥控器输入的原始阶跃速度期望 (m/s)
+    float smooth_vx;   // S曲线规划器输出的平滑速度 (m/s)
+    float current_ax;  // S曲线规划器当前计算出的实际加速度 (m/s^2)
+
+    // 如果你想同时看 Vy，可以继续加
+    // float target_vy;
+    // float smooth_vy;
+} g_scurve_debug;
 
 
 /* ------- application attribute -------------------------------------------------------------------------------------*/
@@ -161,48 +172,57 @@ void MovtionCtrlApp::run() {
 
 
 
-    // --- 1. 坐标转换与宏观仲裁 (与原代码一致) ---
-    float theta                 = -state.yaw.pos;
-    float cosTheta              = std::cos(theta);
-    float sinTheta              = std::sin(theta);
-    float rawChassisVx          = cmd.vx * cosTheta - cmd.vy * sinTheta;
-    float rawChassisVy          = cmd.vx * sinTheta + cmd.vy * cosTheta;
-    float rawChassisVw          = (cmd.mode == CHASSIS_NORMAL) ? yawPosPid.calculate(0.0f, state.yaw.pos) : cmd.vw;
+    // =========================================================
+    // 1. 【核心修复】：S型速度曲线规划必须作用于云台/世界坐标系
+    // =========================================================
+    // 过滤掉操作手摇杆的无限大加速度和 Jerk，生成平滑的云台系期望速度
+    float smoothCmdVx  = vxPlanner.calculate(cmd.vx, dt);
+    float smoothCmdVy  = vyPlanner.calculate(cmd.vy, dt);
+    // 【新增埋点】：将 S 曲线的输入、输出和加速度送入探针
+    g_scurve_debug.target_vx  = cmd.vx;                 // 遥控器的原始猛烈突变
+    g_scurve_debug.smooth_vx  = smoothCmdVx;            // 也就是 vxPlanner.getCurrentV()
+    g_scurve_debug.current_ax = vxPlanner.getCurrentA(); // 观察真实的物理加速度变化
+    // 【强烈建议解锁】：给小陀螺的旋转也加上 S 曲线，防止开启/关闭小陀螺瞬间电机狂抽
+    // float smoothCmdVw = vwPlanner.calculate(cmd.vw, dt);
+
+    // --- 2. 坐标转换 (将平滑后的云台期望速度纯数学投影到底盘系) ---
+    float theta        = -state.yaw.pos;
+    float cosTheta     = std::cos(theta);
+    float sinTheta     = std::sin(theta);
+
+    // 纯数学映射，这之后绝对不能再加任何改变向量方向和比例的滤波器！
+    float chassisVx    = smoothCmdVx * cosTheta - smoothCmdVy * sinTheta;
+    float chassisVy    = smoothCmdVx * sinTheta + smoothCmdVy * cosTheta;
+
+    float rawChassisVw = ((cmd.mode & 0x03) == CHASSIS_NORMAL) ? yawPosPid.calculate(0.0f, state.yaw.pos) : cmd.vw;
+    float chassisVw    = rawChassisVw; // 如果上面启用了 smoothCmdVw，这里替换为对应变量
+
 
     // 2. 赋值裁判系统与物理状态
-    g_power_debug.ref_power_limit = refState.chassisPowerLimit;
-    g_power_debug.ref_real_power  = capState.chassisPower;
+    g_power_debug.ref_power_limit   = refState.chassisPowerLimit;
+    g_power_debug.ref_real_power    = capState.chassisPower;
     g_power_debug.ref_buffer_energy = powerHeatState.bufferEnergy;
-    g_power_debug.cap_voltage = capState.voltage;
-    g_power_debug.cap_power   = capState.capPower;
+    g_power_debug.cap_voltage       = capState.voltage;
+    g_power_debug.cap_power         = capState.capPower;
 
-
-    // =========================================================
-    // 2. 【核心神技】：S型速度曲线规划 (Jerk 限制)
-    // =========================================================
-    // 通过 S 曲线，过滤掉无限大的加速度和 Jerk，生成完全符合物理底线的平滑速度
-    float chassisVx             = vxPlanner.calculate(rawChassisVx, dt);
-    float chassisVy             = vyPlanner.calculate(rawChassisVy, dt);
-    // float chassisVw = vwPlanner.calculate(rawChassisVw, dt);
-    float chassisVw             = rawChassisVw;
 
     // --- 2. 运动学解算 (仅算出目标速度，不跑PID) ---
-    float halfL                 = Config::Hardware::Chassis::WHEEL_BASE / 2.0f;
-    float halfW                 = Config::Hardware::Chassis::TRACK_WIDTH / 2.0f;
-    float vyFront               = chassisVy + chassisVw * halfL;
-    float vyRear                = chassisVy - chassisVw * halfL;
-    float vxLeft                = chassisVx - chassisVw * halfW;
-    float vxRight               = chassisVx + chassisVw * halfW;
+    float halfL                     = Config::Hardware::Chassis::WHEEL_BASE / 2.0f;
+    float halfW                     = Config::Hardware::Chassis::TRACK_WIDTH / 2.0f;
+    float vyFront                   = chassisVy + chassisVw * halfL;
+    float vyRear                    = chassisVy - chassisVw * halfL;
+    float vxLeft                    = chassisVx - chassisVw * halfW;
+    float vxRight                   = chassisVx + chassisVw * halfW;
 
-    float targetVx[4]           = {vxRight, vxLeft, vxLeft, vxRight};
-    float targetVy[4]           = {vyFront, vyFront, vyRear, vyRear};
+    float targetVx[4]               = {vxRight, vxLeft, vxLeft, vxRight};
+    float targetVy[4]               = {vyFront, vyFront, vyRear, vyRear};
 
     // 存储中间状态数组
-    float idealDriveSpd[4]      = {0};
-    float realDriveVel[4]       = {0};
-    float filteredTorque[4]     = {0}; // 低通滤波后的负载电流
+    float idealDriveSpd[4]          = {0};
+    float realDriveVel[4]           = {0};
+    float filteredTorque[4]         = {0}; // 低通滤波后的负载电流
 
-    static float s_lpfTorque[4] = {0}; // 静态滤波器记忆
+    static float s_lpfTorque[4]     = {0}; // 静态滤波器记忆
 
     for (int i = 0; i < 4; i++) {
         float tgtSpeed  = std::hypot(targetVx[i], targetVy[i]);
@@ -249,9 +269,10 @@ void MovtionCtrlApp::run() {
     // =========================================================
 
 
-    float kv           = 1.0f;
+    float kv            = 1.0f;
 
     uint16_t powerLimit = refState.chassisPowerLimit * 0.5f;
+
     if (cmd.mode & 0x04) {
         powerLimit += 40;
     }
@@ -330,12 +351,12 @@ void MovtionCtrlApp::run() {
 
     // 1. 无力模式判断
     if (cmd.mode == GIMBAL_RELAX) {
-        telem.targetYawRad    = imuState.yaw;
-        telem.targetPitchRad  = imuState.pitch;
-        output.targetPitchPos = gimbalState.pitch.pos;
-        output.targetPitchSpeed = 0.0f;
+        telem.targetYawRad            = imuState.yaw;
+        telem.targetPitchRad          = imuState.pitch;
+        output.targetPitchPos         = gimbalState.pitch.pos;
+        output.targetPitchSpeed       = 0.0f;
         output.pitchFeedforwardTorque = 0.0f;
-        output.pitchEn        = false;
+        output.pitchEn                = false;
 
         Blackboard::instance().gimbalTelem.write(telem);
         Blackboard::instance().gimbalOut.write(output);
@@ -374,7 +395,7 @@ void MovtionCtrlApp::run() {
             targetMotorRaw = Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT;
         }
 
-        telem.targetPitchRad          = targetMotorRaw + offsetPitch;
+        telem.targetPitchRad = targetMotorRaw + offsetPitch;
 
         // 重力补偿前馈 + PID 力矩
         static float gravityK;
@@ -388,11 +409,11 @@ void MovtionCtrlApp::run() {
         output.pitchFeedforwardTorque = totalFf;
         output.pitchEn                = true;
     } else {
-        telem.targetPitchRad = imuState.pitch;
+        telem.targetPitchRad = telem.targetPitchRad;
         pitchPosPid.clear();
-        output.targetPitchSpeed = 0.0f;
+        output.targetPitchSpeed       = 0.0f;
         output.pitchFeedforwardTorque = 0.0f;
-        output.pitchEn = false;
+        output.pitchEn                = false;
     }
 
 
@@ -408,19 +429,19 @@ void MovtionCtrlApp::run() {
 
         // 2. 模式处理与期望值计算
         if (cmd.mode == GIMBAL_AUTO && abs(cmd.targetYaw) < M_PI) {
-            telem.targetYawRad   = cmd.targetYaw;
+            telem.targetYawRad = cmd.targetYaw;
             // 加速度转化为前馈力矩 (需在 config.h 中标定转动惯量系数 INERTIA_K)
-            ffYawTorque          = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.targetYawSpeed;
+            ffYawTorque        = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.targetYawSpeed;
 
         } else {
             // 手动模式：遥控器输入的是速度
             telem.targetYawRad = wrapAngle(telem.targetYawRad + cmd.yawVel * dt);
-            ffYawTorque = 0.0f;
+            ffYawTorque        = 0.0f;
         }
 
 
         // 手动模式下也可以利用遥控器指令做简单的速度前馈
-        ffYawTorque        = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.yawVel;
+        ffYawTorque           = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.yawVel;
 
 
         float alignedTgtYaw   = imuState.yaw + wrapAngle(telem.targetYawRad - imuState.yaw);

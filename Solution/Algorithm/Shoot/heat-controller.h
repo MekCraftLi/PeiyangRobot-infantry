@@ -42,7 +42,7 @@ class HeatController {
   public:
     static constexpr float HEAT_PER_BULLET     = 10.0f;
     static constexpr float BULLETS_PER_CIRCLE  = 8.0f;
-    static constexpr float SAFE_MARGIN         = 20.0f;
+    static constexpr float SAFE_MARGIN         = 30.0f;
 
     // 裁判系统最大延迟容忍时间 (毫秒)。通常 10Hz 更新对应 100ms，这里给 200ms 绝对安全
     static constexpr uint32_t REFEREE_DELAY_MS = 200;

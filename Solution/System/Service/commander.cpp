@@ -127,14 +127,14 @@ CommanderSrvc::CommanderSrvc()
       _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual),
       _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _triggerBurst(0.5f, 1.0f, true, HoldCondition::GreaterOrEqual),
-        _trigPress(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
+      _trigPress(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
       _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual), _trigQToggle(_trigQToggleBase, false),
       _trigShiftHold(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
       _trigMouseRelease(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigMouseBurst(0.5f, 0.7f, false, HoldCondition::GreaterOrEqual),
-_trigSpin(baseTrigger, false),
-_trigCap(baseTriggerCap, false)
+      _trigVision(0.5f, 0.001, false, HoldCondition::GreaterOrEqual), _trigSpin(baseTrigger, false),
+      _trigCap(baseTriggerCap, false)
 
 #else
       _handbreak(0.0f, 0.001f, false, HoldCondition::GreaterOrEqual),
@@ -190,6 +190,7 @@ void CommanderSrvc::init() {
     actionShootBurst.bind(videoRemote.getTrigger(), &_triggerBurst);
     actionShootSingle.bind(videoRemote.getTrigger(), &_trigSingleRelease);
     actionCapSwitch.bind(videoRemote.getKeyC(), &_trigCap);
+    actionMouseVision.bind(videoRemote.getMouseRight(), &_trigVision);
 
 
     // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
@@ -275,7 +276,8 @@ void CommanderSrvc::run() {
     actionCapSwitch.update(dt);
     actionShootBurst.update(dt);
     actionShootSingle.update(dt);
-   // actionSpinMode.update(dt);
+    actionSpinMode.update(dt);
+    actionMouseVision.update(dt);
     actionKeyboardFric.update(dt);
 #else
     actionHandbrakeDepth.update(dt);
@@ -317,7 +319,7 @@ void CommanderSrvc::run() {
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
         if (swState < 0) {
             currentSource = ControlSource::SAFE_STOP;
-        } else if (swState > 0) {
+        } else if (swState > 0 || actionMouseVision.isTriggered()) {
             currentSource = ControlSource::VISION;
         } else {
             currentSource = ControlSource::REMOTE;
@@ -413,7 +415,7 @@ void CommanderSrvc::run() {
             sCmd.state.burstShot                = isBurstingNow ? 1 : 0;
 
             if (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered()) {
-                sCmd.event = ShootEvent::BURST_START ;
+                sCmd.event = ShootEvent::BURST_START;
             }
             if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
                 sCmd.event = ShootEvent::SINGLE_FIRE;
@@ -518,9 +520,9 @@ void CommanderSrvc::run() {
     cmd.mode = comm.msg.mode;
     cmd.vx   = (float)comm.msg.vx / 10;
     cmd.vy   = (float)comm.msg.vy / 10;
-    if (cmd.mode == CHASSIS_NORMAL) {
+    if ((cmd.mode & 0x03) == CHASSIS_NORMAL) {
         cmd.vw = 0;
-    } else if (cmd.mode == CHASSIS_SPIN) {
+    } else if ((cmd.mode & 0x03) == CHASSIS_SPIN) {
         cmd.vw = Config::Algorithm::Chassis::MAX_VW;
     }
 
