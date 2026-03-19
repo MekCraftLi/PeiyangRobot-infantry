@@ -135,19 +135,19 @@ struct MotorState {
 
 // 在合适位置添加业务层结构体
 struct SuperCapState {
-    float voltage;        // 转换为真实电压 (V)
-    float capPower;       // 充放电功率 (W)
-    float chassisPower;   // 底盘功率 (W)
-    bool  isCapLow;       // 没电标志
-    bool  isError;        // 错误标志
-    bool  isOnline;       // 离线检测标志
+    float voltage;      // 转换为真实电压 (V)
+    float capPower;     // 充放电功率 (W)
+    float chassisPower; // 底盘功率 (W)
+    bool isCapLow;      // 没电标志
+    bool isError;       // 错误标志
+    bool isOnline;      // 离线检测标志
 };
 
 struct SuperCapOutput {
-    float    refereePower;        // 当前消耗功率
-    uint8_t  powerLimit;          // 功率上限
-    uint8_t  powerBuffer;         // 缓冲能量 (J)
-    bool     enableCap;           // 是否允许超级电容放电
+    float refereePower;  // 当前消耗功率
+    uint8_t powerLimit;  // 功率上限
+    uint8_t powerBuffer; // 缓冲能量 (J)
+    bool enableCap;      // 是否允许超级电容放电
 };
 // 舵轮模块组合状态
 struct SwerveModuleState {
@@ -206,6 +206,12 @@ union GimbalToChassisComm {
         uint32_t mode : 4;
     } msg;
 
+    __attribute__((packed)) struct {
+        uint32_t enabled      : 1;  // 摩擦轮使能
+        uint32_t shooting     : 1;  // 开火
+        uint32_t visionEnable : 1;  // 视觉介入
+    } shootState;
+
     uint8_t buffer[8];
 };
 // ==========================================
@@ -217,8 +223,8 @@ union ChassisToGimbalComm {
         uint16_t initialSpeedX100;      // 弹丸初速度 * 100 (2 Bytes)
         uint16_t shooter17mmBarrelHeat; // 17mm 枪口当前热量 (2 Bytes)
         uint16_t heatLimit;             // 热量上限 (如 150, 240, 360) (2 Bytes)
-        uint8_t  coolingRate;           // 冷却速率 (如 40, 60, 80) (1 Byte)
-        uint8_t  robotId;               // 机器人 ID (1 Byte)
+        uint8_t coolingRate;            // 冷却速率 (如 40, 60, 80) (1 Byte)
+        uint8_t robotId;                // 机器人 ID (1 Byte)
     } msg;
     uint8_t buffer[8];
 };
