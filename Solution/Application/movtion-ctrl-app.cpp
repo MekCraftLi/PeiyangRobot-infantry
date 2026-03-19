@@ -61,6 +61,19 @@
 
 [[maybe_unused]] static auto& forceInit = MovtionCtrlApp::instance();
 
+// 专供 Ozone 示波器实时采样的底盘功率观测探针
+volatile struct PowerDebugOzone {
+    float ref_power_limit;     // 裁判系统：当前功率上限 (W)
+    float ref_real_power;      // 裁判系统：底盘实际消耗功率 (W)
+    float ref_buffer_energy;   // 裁判系统：剩余缓冲能量 (J)
+
+    float cap_voltage;         // 超级电容：当前电压 (V)
+    float cap_power;           // 超级电容：当前输出功率 (W)
+
+    float pre_limit_torque;    // 算法：限幅前，底盘四大电机期望扭矩/电流绝对值之和
+    float post_limit_torque;   // 算法：限幅后，实际下发的总扭矩/电流
+    float scale_factor;        // 算法：功率控制器算出的缩放系数 (通常在 0.0 ~ 1.0 之间)
+} g_power_debug;
 
 
 /* ------- application attribute -------------------------------------------------------------------------------------*/
@@ -121,8 +134,11 @@ void MovtionCtrlApp::run() {
     static ChassisState state;
     static RMRobotStatus refState; // [新增]
     static RMPowerHeatData powerHeatState;
+    static SuperCapState capState;
+
     Blackboard::instance().chassisCmd.read(cmd);
     Blackboard::instance().chassisState.read(state);
+    Blackboard::instance().capState.read(capState);
     RefereeDataHub::instance().robotStatus.read(refState); // [新增]
     RefereeDataHub::instance().powerHeat.read(powerHeatState);
 
@@ -152,6 +168,13 @@ void MovtionCtrlApp::run() {
     float rawChassisVx          = cmd.vx * cosTheta - cmd.vy * sinTheta;
     float rawChassisVy          = cmd.vx * sinTheta + cmd.vy * cosTheta;
     float rawChassisVw          = (cmd.mode == CHASSIS_NORMAL) ? yawPosPid.calculate(0.0f, state.yaw.pos) : cmd.vw;
+
+    // 2. 赋值裁判系统与物理状态
+    g_power_debug.ref_power_limit = refState.chassisPowerLimit;
+    g_power_debug.ref_real_power  = capState.chassisPower;
+    g_power_debug.ref_buffer_energy = powerHeatState.bufferEnergy;
+    g_power_debug.cap_voltage = capState.voltage;
+    g_power_debug.cap_power   = capState.capPower;
 
 
     // =========================================================
@@ -228,7 +251,7 @@ void MovtionCtrlApp::run() {
 
     float kv           = 1.0f;
 
-    float dynamicLimit = PowerLimiter::getDynamicPowerLimit(40, powerHeatState.bufferEnergy);
+    float dynamicLimit = PowerLimiter::getDynamicPowerLimit(refState.chassisPowerLimit, powerHeatState.bufferEnergy);
     kv                 = PowerLimiter::instance().calculateVelocityScale(idealDriveSpd, filteredTorque, dynamicLimit);
 
 

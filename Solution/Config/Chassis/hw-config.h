@@ -76,7 +76,8 @@ constexpr pyro::dji_motor_tx_frame_t::register_id_t YAW_ID     = pyro::dji_motor
 constexpr pyro::dji_motor_tx_frame_t::register_id_t TRIGGER_ID = pyro::dji_motor_tx_frame_t::id_3;
 
 constexpr uint16_t STEER_ECD_OFFSET[4]                         = {1122, 7202, 4052, 2474+4096};
-constexpr uint16_t YAW_OFFSET                                  = 1526;
+constexpr uint16_t YAW_OFFSET                                  = 0x051b
+;
 
 } // namespace MotorTopo
 

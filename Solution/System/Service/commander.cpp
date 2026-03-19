@@ -126,7 +126,7 @@ CommanderSrvc::CommanderSrvc()
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
       _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual),
       _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _triggerBurst(0.5f, 1.0f, true, HoldCondition::GreaterOrEqual),
+      _triggerBurst(0.5f, 1.0f, false, HoldCondition::GreaterOrEqual),
       _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual), _trigQToggle(_trigQToggleBase, false),
       _trigShiftHold(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
@@ -182,13 +182,14 @@ void CommanderSrvc::init() {
     actionMouseYaw.bind(videoRemote.getMouseX(), &_joystickDeadzone);
     actionMousePitch.bind(videoRemote.getMouseY(), &_joystickDeadzone);
     actionMouseLeftRaw.bind(videoRemote.getMouseLeft());
+    actionShootBurst.bind(videoRemote.getTrigger(), &_triggerBurst);
 
 
     // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
     actionCtrlMode.bind(videoRemote.getModeSw(), &_work);
 
-
-    actionFricToggle.bind(videoRemote.getKeyQ(), &_trigMouseFricEdge);
+    actionFricToggle.bind(videoRemote.getFn2(), &_trigFricToggle);
+    // actionFricToggle.bind(videoRemote.getKeyQ(), &_trigMouseFricEdge);
     // actionSpinMode.bind(videoRemote.getKeyShift(), &_trigShiftHold);
     actionSpinMode.bind(videoRemote.getPause(), &_trigSpin);
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
@@ -393,10 +394,10 @@ void CommanderSrvc::run() {
             // 持续态每帧同步，避免事件丢失后连发状态与输入脱节。
             sCmd.state.burstShot                = isBurstingNow ? 1 : 0;
 
-            if (burstEdgeState == TriggerState::Triggered) {
-                sCmd.event = isBurstingNow ? ShootEvent::BURST_START : ShootEvent::BURST_STOP;
-            } else if (singleClickState == TriggerState::Triggered) {
-                sCmd.event = ShootEvent::SINGLE_FIRE;
+            if (actionShootBurst.isTriggered()) {
+                sCmd.event = ShootEvent::BURST_START ;
+            } else {
+                : ShootEvent::BURST_STOP;
             }
 #else
             if (actionFricToggle.isTriggered()) {

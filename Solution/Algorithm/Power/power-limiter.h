@@ -40,6 +40,7 @@
 
 /*-------- 3. interface ----------------------------------------------------------------------------------------------*/
 
+
 class PowerLimiter : public Singleton<PowerLimiter> {
 public:
     struct ModelParam {

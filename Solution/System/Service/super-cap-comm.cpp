@@ -135,7 +135,7 @@ void SuperCapCommSrvc::run() {
     _txFrame.data.power_limit_referee = robotStatus.chassisPowerLimit;
     _txFrame.data.power_buffer_referee = powerHeatData.bufferEnergy;
     _txFrame.data.power_buffer_limit_referee = 60; // 根据比赛规则写死或动态传入
-    _txFrame.data.use_cap = 0;
+    _txFrame.data.use_cap = 1;
     _txFrame.data.kill_chassis_user = 0;
     _txFrame.data.speed_up_user_now = 0;
 
