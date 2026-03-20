@@ -36,6 +36,10 @@
 
 #include "ui-maker-app.h"
 
+#include "System/DataHub/blackboard.h"
+#include "System/DataHub/data-def.h"
+#include "System/DataHub/referee-data-hub.h"
+#include "System/DataHub/referee-protocol.h"
 #include "System/DataHub/ui-protocol.h"
 #include "System/Service/ui-renderer-srvc.h"
 
@@ -101,28 +105,82 @@ UiMakerApp::UiMakerApp()
 
 void UiMakerApp::init() {
     /* driver object initialize */
-    // 初始化测试图形属性
-    _dashboardCfg = {{'T', 'S', 'T'}, GraphicAction::Add, 0, UiColor::Green, 2, 0, 0};
+    // 初始状态全部默认配置为 Add
+    _capBoxCfg  = {{'C','P','B'}, GraphicAction::Add, 0, UiColor::White, 2, 860, 450};
+    _capBarCfg  = {{'C','P','L'}, GraphicAction::Add, 1, UiColor::Green, 16, 860, 450};
+    _capTextCfg = {{'C','P','T'}, GraphicAction::Add, 1, UiColor::Green, 2, 960, 470};
 }
 
-
 void UiMakerApp::run() {
-    // -------------------------------------------------------------
-    // 【阶段 1 通信测试】：每秒钟在屏幕中央画一个圆，测试链路封装是否正确。
-    // 如果屏幕上成功出现绿色的圆圈，说明底层 Frame、CRC、DMA 全部打通！
-    // -------------------------------------------------------------
-    // 1. 配置上层图形属性 (对应底层 15 字节载荷中的通用属性)
-    GraphicProperties centerLineProps = {
-        {'L', 'I', 'N'},       // name:      图形索引名为 "LIN"
-        GraphicAction::Add,    // action:    操作类型为 "增加" (1)
-        0,                     // layer:     图层号为 0
-        UiColor::White,        // color:     颜色为 "白色" (8)
-        3,                     // lineWidth: 线宽为 3 像素
-        860,                   // startX:    起点 X 坐标 (屏幕中心偏左)
-        540                    // startY:    起点 Y 坐标 (屏幕绝对垂直中心)
-    };
+    auto& ui = UiRendererSrvc::instance();
 
-    // 2. 将属性和终点坐标传给渲染管线
-    // 这里的 1060 和 540 分别对应底层的 endX 和 endY
-    UiRendererSrvc::instance().drawLine(centerLineProps, 1060, 540);
+    // -------------------------------------------------------------
+    // 1. 掉线重连与上线检测 (RM 实战防弹机制)
+    // -------------------------------------------------------------
+    RMRobotStatus robotStatus{};
+    RefereeDataHub::instance().robotStatus.read(robotStatus);
+
+    if (robotStatus.robotId == 0) return; // 裁判系统未连通，直接退出
+
+    // 检测到 ID 从 0 突变为有效值，说明客户端刚连上，必须重新 Add
+    if (_lastRobotId == 0 && robotStatus.robotId != 0) {
+        _uiNeedsInit = true;
+    }
+    _lastRobotId = robotStatus.robotId;
+
+    // -------------------------------------------------------------
+    // 2. 状态机路由
+    // -------------------------------------------------------------
+    if (_uiNeedsInit) {
+        /* ========== 阶段 A：全量 Add (只执行一帧) ========== */
+
+        // 强制确保所有属性恢复为 Add
+        _capBoxCfg.action  = GraphicAction::Add;
+        _capBarCfg.action  = GraphicAction::Add;
+        _capTextCfg.action = GraphicAction::Add;
+
+        // 1. 绘制静态背景图层 (只发这一次，绝不进入高频循环)
+        ui.drawRectangle(_capBoxCfg, 1060, 470);
+
+        // 2. 绘制动态图形的初次 Add
+        drawDynamicGraphics();
+
+        // 3. 核心魔法：将动态图形的 Action 自动翻转为 Update
+        _capBarCfg.action  = GraphicAction::Update;
+        _capTextCfg.action = GraphicAction::Update;
+
+        // 4. 退出初始化状态
+        _uiNeedsInit = false;
+
+    } else {
+        /* ========== 阶段 B：高频 Update (常态循环) ========== */
+
+        // 直接调用，此时 _capBarCfg.action 已经是 Update 了
+        drawDynamicGraphics();
+    }
+}
+
+// -------------------------------------------------------------
+// 抽离出的纯动态逻辑（不关心当前是 Add 还是 Update）
+// -------------------------------------------------------------
+void UiMakerApp::drawDynamicGraphics() {
+    auto& ui = UiRendererSrvc::instance();
+    SuperCapState capState{};
+    Blackboard::instance().capState.read(capState);
+    // 计算电容数据
+    float currentV = capState.voltage;
+    uint16_t barEndX = 860 + static_cast<uint16_t>((currentV - 15.0f) / 13.0f * 200.0f);
+
+    // 变色逻辑
+    if(currentV > 24.0f) {
+        _capBarCfg.color = UiColor::Green; _capTextCfg.color = UiColor::Green;
+    } else if(currentV > 16.0f) {
+        _capBarCfg.color = UiColor::Yellow; _capTextCfg.color = UiColor::Yellow;
+    } else {
+        _capBarCfg.color = UiColor::Orange; _capTextCfg.color = UiColor::Orange;
+    }
+
+    // 推入渲染管线 (底层的 Action 会跟随状态机自动变化)
+    ui.drawLine(_capBarCfg, barEndX, 450);
+    ui.drawFloat(_capTextCfg, 15, currentV);
 }

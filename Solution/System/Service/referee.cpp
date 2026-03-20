@@ -134,14 +134,14 @@ RefereeSrvc::RefereeSrvc()
 void RefereeSrvc::init() {
     /* driver object initialize */
 
-    HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REFEREE_UART, usart1RxBuf, sizeof(usart1RxBuf));
+    HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REFEREE_SYSTEM_UART, usart1RxBuf, sizeof(usart1RxBuf));
 }
 
 
 void RefereeSrvc::run() {
     // 1. 获取当前 DMA 的写指针位置
     // 在 STM32 中，DMA 计数器 NDTR 递减，计算出实际写入的偏移量
-    uint16_t writePtr = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(Config::Hardware::Comms::REFEREE_UART.hdmarx);
+    uint16_t writePtr = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(Config::Hardware::Comms::REFEREE_SYSTEM_UART.hdmarx);
 
     // 2. 只要读指针没追上写指针，就说明有新数据
     while (_readPtr != writePtr) {

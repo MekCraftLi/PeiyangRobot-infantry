@@ -126,8 +126,8 @@ CommanderSrvc::CommanderSrvc()
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
       _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual),
       _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _triggerBurst(0.5f, 1.0f, false, HoldCondition::GreaterOrEqual),
-      _triggerMouseBurst(0.5f, 1.0f, false, HoldCondition::GreaterOrEqual),
+      _triggerBurst(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
+      _triggerMouseBurst(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
       _trigPress(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
       _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual), _trigQToggle(_trigQToggleBase, false),
@@ -362,7 +362,7 @@ void CommanderSrvc::run() {
             if (actionSpinMode.isTriggered() || actionKeySpin.isTriggered()) {
                 comm.msg.mode = CHASSIS_SPIN;
             } else {
-                comm.msg.mode = CHASSIS_RELAX;
+                comm.msg.mode = CHASSIS_NORMAL;
             }
 
             // 开启电容标志位
@@ -428,7 +428,7 @@ void CommanderSrvc::run() {
 
         case ControlSource::VISION: {
             // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            comm.msg.mode = CHASSIS_RELAX; // 视觉通常也需要底盘跟随
+            comm.msg.mode = CHASSIS_NORMAL; // 视觉通常也需要底盘跟随
             gCmd.mode     = GIMBAL_AUTO;
 
             // 1. 读取视觉指令

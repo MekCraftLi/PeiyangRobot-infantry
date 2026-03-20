@@ -120,7 +120,7 @@ void UiRendererSrvc::run() {
     // --- 3. 触发底层串口 DMA 发送 ---
     // (需替换为您 config.h 中实际的裁判系统 UART 外设句柄)
 
-    HAL_UART_Transmit_DMA(&Config::Hardware::Comms::REFEREE_UART, uiTxBuffer, frameTotalLength);
+    HAL_UART_Transmit_DMA(&Config::Hardware::Comms::REFEREE_SYSTEM_UART, uiTxBuffer, frameTotalLength);
 }
 
 // -----------------------------------------------------------------------------

@@ -74,10 +74,17 @@ class UiMakerApp final : public PeriodicApp, public Singleton<UiMakerApp> {
 
 
   private:
-    // --- 基础图形属性配置预设 (Config Presets) ---
-    GraphicProperties _dashboardCfg;
-    GraphicProperties _telemetryCfg;
-    GraphicProperties _crosshairCfg;
+    // 状态机核心标志位
+    bool _uiNeedsInit = true;      // 是否需要进行全量 Add 初始化
+    uint16_t _lastRobotId = 0;     // 用于检测裁判系统是否掉线重连
+
+    // 将属性定义为类成员
+    GraphicProperties _capBoxCfg;
+    GraphicProperties _capBarCfg;
+    GraphicProperties _capTextCfg;
+
+    // 抽离动态绘制函数
+    void drawDynamicGraphics();
     /* message interface */
 
     // 1. message queue
