@@ -36,6 +36,7 @@
 
 #include "real-time-comm.h"
 
+#include "Application/fire-ctrl-app.h"
 #include "Config/Chassis/hw-config.h"
 #include "System/DataHub/blackboard.h"
 #include "System/DataHub/data-def.h"
@@ -132,6 +133,7 @@ void RealTimeCommApp::run() {
 
 #ifdef GIMBAL
     Blackboard::instance().g2cOutput.read(output);
+    output.msg.shootEn = static_cast<uint8_t>(FireCtrlApp::instance().getFireState()) > 0;
 
 
     HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, output.buffer);

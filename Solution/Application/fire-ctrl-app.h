@@ -171,11 +171,12 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
 
     /************ setter & getter ***********/
 
-
+    FireState getFireState();
 
   private:
     void updateTransientEvent();
     void calculateCurrents(BoosterOutput& out);
+
 
     // FSM 实例与上下文
     pyro::fsm_t<FireCtrlCtx> _fsm;

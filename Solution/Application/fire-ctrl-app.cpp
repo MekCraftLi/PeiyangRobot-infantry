@@ -648,3 +648,6 @@ void FireCtrlApp::calculateCurrents(BoosterOutput& out) {
         // out.triggerCurrent = 0;
     }
 }
+FireCtrlApp::FireState FireCtrlApp::getFireState() {
+    return _ctx.state;
+}
