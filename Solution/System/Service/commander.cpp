@@ -131,11 +131,11 @@ CommanderSrvc::CommanderSrvc()
       _trigPress(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
       _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual), _trigQToggle(_trigQToggleBase, false),
-      _trigShiftHold(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
+      _trigShiftHold(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
       _trigMouseRelease(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
       _trigMouseBurst(0.5f, 0.7f, false, HoldCondition::GreaterOrEqual),
       _trigVision(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual), _trigSpin(baseTrigger, false),
-      _trigCap(baseTriggerCap, false)
+      _trigSpinKey(_trigShiftHold, false), _trigCap(baseTriggerCap, false)
 
 #else
       _handbreak(0.0f, 0.001f, false, HoldCondition::GreaterOrEqual),
@@ -190,7 +190,7 @@ void CommanderSrvc::init() {
     actionMouseSingle.bind(videoRemote.getMouseLeft(), &_trigSingleRelease);
     actionShootBurst.bind(videoRemote.getTrigger(), &_triggerBurst);
     actionShootSingle.bind(videoRemote.getTrigger(), &_trigSingleRelease);
-    actionCapSwitch.bind(videoRemote.getKeyC(), &_trigCap);
+    actionCapSwitch.bind(videoRemote.getKeyC(), &baseTriggerCap);
     actionMouseVision.bind(videoRemote.getMouseRight(), &_trigVision);
 
 
@@ -199,7 +199,7 @@ void CommanderSrvc::init() {
     actionFricToggle.bind(videoRemote.getFn2(), &_trigFricToggle);
 
     actionKeyboardFric.bind(videoRemote.getKeyQ(), &_trigFricToggle);
-    actionKeySpin.bind(videoRemote.getKeyShift(), &_trigShiftHold);
+    actionKeySpin.bind(videoRemote.getKeyShift(), &_trigSpinKey);
 
 
     actionSpinMode.bind(videoRemote.getPause(), &_trigSpin);
@@ -385,11 +385,9 @@ void CommanderSrvc::run() {
             const float yawInput   = actionYaw.getValue();
             const float pitchInput = actionPitch.getValue();
 #endif
-
-            static float vx, vy;
-            vx = comm.msg.vx = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
+            comm.msg.vx = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
             // 运动计算坐标系和遥控器方向相反
-            vy = comm.msg.vy    = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
+            comm.msg.vy    = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
 
 
             gCmd.mode           = GIMBAL_NORMAL;
@@ -427,20 +425,52 @@ void CommanderSrvc::run() {
         } break;
 
         case ControlSource::VISION: {
-            // 切换为自动模式标志位，底层算法任务接收到此 Mode 后将使用视觉逻辑
-            comm.msg.mode = CHASSIS_NORMAL; // 视觉通常也需要底盘跟随
-            gCmd.mode     = GIMBAL_AUTO;
+            // 遥控器映射
+            if (actionSpinMode.isTriggered() || actionKeySpin.isTriggered()) {
+                comm.msg.mode = CHASSIS_SPIN;
+            } else {
+                comm.msg.mode = CHASSIS_NORMAL;
+            }
+
+            // 开启电容标志位
+            if (actionCapSwitch.isTriggered()) {
+                comm.msg.mode |= 0x04;
+            } else {
+                comm.msg.mode &= ~0x04;
+            }
+
+#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
+            const float moveXInput = composeAxis(actionMoveX.getValue(), actionMoveXKey.getValue());
+            const float moveYInput = composeAxis(actionMoveY.getValue(), actionMoveYKey.getValue());
+            const float yawInput =
+                composeAxis(actionMouseYaw.getValue() * Config::Algorithm::Input::Y_SENSITIVITY, actionYaw.getValue());
+            const float pitchInput = composeAxis(actionMousePitch.getValue() * Config::Algorithm::Input::X_SENSITIVITY,
+                                                 actionPitch.getValue());
+#else
+            const float moveXInput = actionMoveX.getValue();
+            const float moveYInput = actionMoveY.getValue();
+            const float yawInput   = actionYaw.getValue();
+            const float pitchInput = actionPitch.getValue();
+#endif
+            comm.msg.vx = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
+            // 运动计算坐标系和遥控器方向相反
+            comm.msg.vy    = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
+
+
+            gCmd.mode           = GIMBAL_NORMAL;
+
+            gCmd.mode = GIMBAL_AUTO;
 
             // 1. 读取视觉指令
             VisionCommand vCmd{};
             Blackboard::instance().visionCmd.read(vCmd);
 
             // 2. 将视觉指令映射到云台控制结构体
-            gCmd.targetYaw                     = vCmd.targetYaw;
-            gCmd.targetPitch                   = -vCmd.targetPitch;
-            gCmd.targetYawSpeed                = vCmd.targetYawSpeed;
-            gCmd.pitchVel                      = -vCmd.targetPitchSpeed;
-            gCmd.targetYawAcceleration         = vCmd.targetYawAcceleration;
+            gCmd.targetYaw             = vCmd.targetYaw;
+            gCmd.targetPitch           = -vCmd.targetPitch;
+            gCmd.targetYawSpeed        = vCmd.targetYawSpeed;
+            gCmd.pitchVel              = -vCmd.targetPitchSpeed;
+            gCmd.targetYawAcceleration = vCmd.targetYawAcceleration;
 
             if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;

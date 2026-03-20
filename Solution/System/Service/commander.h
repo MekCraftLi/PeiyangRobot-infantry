@@ -130,8 +130,9 @@ private:
     TriggerHold _trigMouseRelease;
     TriggerHold _trigMouseBurst;
     TriggerHold baseTrigger = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
-    TriggerHold baseTriggerCap = TriggerHold(0.5f, 0.001, true, HoldCondition::GreaterOrEqual);
+    TriggerHold baseTriggerCap = TriggerHold(0.5f, 0.001, false, HoldCondition::GreaterOrEqual);
     TriggerToggle _trigSpin;
+    TriggerToggle _trigSpinKey;
     TriggerToggle _trigCap;
     TriggerHold _trigVision;
 

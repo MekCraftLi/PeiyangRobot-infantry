@@ -207,9 +207,9 @@ union GimbalToChassisComm {
     } msg;
 
     __attribute__((packed)) struct {
-        uint32_t enabled      : 1;  // 摩擦轮使能
-        uint32_t shooting     : 1;  // 开火
-        uint32_t visionEnable : 1;  // 视觉介入
+        uint32_t enabled      : 1; // 摩擦轮使能
+        uint32_t shooting     : 1; // 开火
+        uint32_t visionEnable : 1; // 视觉介入
     } shootState;
 
     uint8_t buffer[8];
@@ -220,11 +220,12 @@ union GimbalToChassisComm {
 union ChassisToGimbalComm {
     __attribute__((packed)) struct {
         // 将 float (4字节) 压缩为 uint16_t (2字节) 传初速度，乘以 100 发送，云台除以 100
-        uint16_t initialSpeedX100;      // 弹丸初速度 * 100 (2 Bytes)
-        uint16_t shooter17mmBarrelHeat; // 17mm 枪口当前热量 (2 Bytes)
-        uint16_t heatLimit;             // 热量上限 (如 150, 240, 360) (2 Bytes)
-        uint8_t coolingRate;            // 冷却速率 (如 40, 60, 80) (1 Byte)
-        uint8_t robotId;                // 机器人 ID (1 Byte)
+        uint32_t initialSpeedX100      : 7; // 弹丸初速度 * 100 (2 Bytes)
+        uint32_t shooter17mmBarrelHeat : 9; // 17mm 枪口当前热量 (2 Bytes)
+        uint32_t heatLimit             : 9; // 热量上限 (如 150, 240, 360)
+        uint32_t coolingRate           : 7; // 冷却速率 (如 40, 60, 80)
+        uint8_t robotId;                    // 机器人 ID (1 Byte)
+        int8_t chassisYawSpeed;
     } msg;
     uint8_t buffer[8];
 };

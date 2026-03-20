@@ -444,8 +444,12 @@ void MovtionCtrlApp::run() {
 
 
         // 手动模式下也可以利用遥控器指令做简单的速度前馈
-        ffYawTorque           = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.yawVel;
-
+        ChassisToGimbalComm comm{};
+        Blackboard::instance().c2gComm.read(comm);
+        ffYawTorque           = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.yawVel ;
+        if (abs(comm.msg.chassisYawSpeed )> 0.5f) {
+            ffYawTorque +=  -0.11f * comm.msg.chassisYawSpeed;
+        }
 
         float alignedTgtYaw   = imuState.yaw + wrapAngle(telem.targetYawRad - imuState.yaw);
 
