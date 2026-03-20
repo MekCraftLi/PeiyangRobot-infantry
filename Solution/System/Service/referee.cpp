@@ -162,7 +162,7 @@ void RefereeSrvc::run() {
             case ParseState::WAIT_HEADER:
                 _unpackBuf[_unpackSize++] = byte;
                 if (_unpackSize == 5) { // 帧头长度为 5 字节
-                    // 校验 CRC8
+                    // 校验 CRC8`
 
                     if (Crc::verifyCrc8(_unpackBuf, 5)) {
                         auto* header  = reinterpret_cast<RMFrameHeader*>(_unpackBuf);

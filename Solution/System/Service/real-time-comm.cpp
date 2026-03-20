@@ -133,6 +133,7 @@ void RealTimeCommApp::run() {
 #ifdef GIMBAL
     Blackboard::instance().g2cOutput.read(output);
 
+
     HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, output.buffer);
 
 #elifdef CHASSIS

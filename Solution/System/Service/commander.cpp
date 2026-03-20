@@ -472,16 +472,16 @@ void CommanderSrvc::run() {
             gCmd.pitchVel              = -vCmd.targetPitchSpeed;
             gCmd.targetYawAcceleration = vCmd.targetYawAcceleration;
 
-            if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
+            if (actionFricToggle.isTriggered() or actionKeyboardFric.isTriggered()) {
                 sCmd.event = ShootEvent::FRIC_TOGGLE;
             }
 
-            if (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered() || vCmd.fireCommand) {
+            if ((actionShootBurst.isTriggered() or actionMouseBurst.isTriggered()) and vCmd.fireCommand) {
                 sCmd.state.burstShot = 1;
             } else {
                 sCmd.state.burstShot = 0;
             }
-            if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
+            if (actionShootSingle.isTriggered() or actionMouseSingle.isTriggered()) {
                 sCmd.event = ShootEvent::SINGLE_FIRE;
             }
             //

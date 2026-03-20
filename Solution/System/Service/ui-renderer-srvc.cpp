@@ -157,11 +157,11 @@ void UiRendererSrvc::_sendCustomPacket(uint16_t subCmdId, void* payloadData, uin
 
 void UiRendererSrvc::_applyProperties(RMInteractionFigurePayload& payload, const GraphicProperties& props, GraphicType type) {
     std::memcpy(payload.graphicName, props.name, 3);
-    payload.action = static_cast<uint32_t>(props.action);
+    payload.opt = static_cast<uint32_t>(props.action);
     payload.type   = static_cast<uint32_t>(type);
     payload.layer  = props.layer;
     payload.color  = static_cast<uint32_t>(props.color);
-    payload.lineWidth = props.lineWidth;
+    payload.width = props.lineWidth;
     payload.startX = props.startX;
     payload.startY = props.startY;
 
@@ -259,7 +259,7 @@ void UiRendererSrvc::drawInt(const GraphicProperties& props, uint16_t fontSize, 
 
 void UiRendererSrvc::clearGraphic(GraphicDelMode mode, const uint8_t* graphicName) {
     RMInteractionFigurePayload payload{};
-    payload.action = static_cast<uint32_t>(GraphicAction::Delete);
+    payload.opt = static_cast<uint32_t>(GraphicOption::Delete);
 
     switch (mode) {
         case GraphicDelMode::Name:
@@ -283,7 +283,7 @@ void UiRendererSrvc::clearGraphic(GraphicDelMode mode, const uint8_t* graphicNam
             payload.graphicName[2] = 0xFF;
 
             // 复用 action 字段，但实际上后台任务检测到 0xFF 就会拦截
-            payload.action = static_cast<uint32_t>(GraphicAction::Delete);
+            payload.opt = static_cast<uint32_t>(GraphicOption::Delete);
 
             // 将全清指令压入队列，由于刚刚 Reset 过，它一定是队列的第一个
             _submitToPipeline(payload);

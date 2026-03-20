@@ -185,7 +185,7 @@ void VisionCommSrvc::sendTxFrame() {
     telem.currentPitch = -state.pitch;
     telem.currentYaw   = state.yaw;
     telem.autoAimMode  = 1;
-
+    telem.enemyColor = comm.msg.robotId > 100;
     telem.initialSpeed = comm.msg.initialSpeedX100 / 100;
 
 

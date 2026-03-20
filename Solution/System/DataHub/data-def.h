@@ -204,13 +204,9 @@ union GimbalToChassisComm {
         int32_t vx    : 6; //  正方向： 向前
         int32_t vy    : 6; // 正方向： 向左
         uint32_t mode : 4;
+        uint32_t shootEn: 1;
+        uint32_t resetUI:1;
     } msg;
-
-    __attribute__((packed)) struct {
-        uint32_t enabled      : 1; // 摩擦轮使能
-        uint32_t shooting     : 1; // 开火
-        uint32_t visionEnable : 1; // 视觉介入
-    } shootState;
 
     uint8_t buffer[8];
 };

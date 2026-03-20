@@ -37,7 +37,7 @@ enum class GraphicType : uint8_t {
 enum class GraphicDelMode : uint8_t { Null = 0, Layer = 1, All = 2, Name = 3 };
 
 // 3. 渲染操作 (Render Action)
-enum class GraphicAction : uint8_t { Null = 0, Add = 1, Update = 2, Delete = 3 };
+enum class GraphicOption : uint8_t { Null = 0, Add = 1, Update = 2, Delete = 3 };
 
 // 4. UI 颜色预设
 enum class UiColor : uint8_t {
@@ -57,19 +57,19 @@ enum class UiColor : uint8_t {
 
 // 5. RM 官方底层图形数据载荷 (Graphic Data Payload)
 struct RMInteractionFigurePayload {
-    uint8_t graphicName[3];  // 图形索引名
-    uint32_t action    : 3;  // 对应 GraphicAction
-    uint32_t type      : 3;  // 对应 GraphicType
-    uint32_t layer     : 4;  // 图层号 (0-9)
-    uint32_t color     : 4;  // 颜色
-    uint32_t param1    : 9;  // 起始角度 / 字体大小
-    uint32_t param2    : 9;  // 终止角度
-    uint32_t lineWidth : 10; // 线宽
-    uint32_t startX    : 11; // 起点 X / 圆心 X
-    uint32_t startY    : 11; // 起点 Y / 圆心 Y
-    uint32_t param3    : 10; // 半径 X / 浮点小数部分
-    uint32_t endX      : 11; // 终点 X / 半径 Y
-    uint32_t endY      : 11; // 终点 Y / 浮点整数部分
+    uint8_t graphicName[3]; // 图形索引名
+    uint32_t opt    : 3;    // 对应 GraphicAction
+    uint32_t type   : 3;    // 对应 GraphicType
+    uint32_t layer  : 4;    // 图层号 (0-9)
+    uint32_t color  : 4;    // 颜色
+    uint32_t param1 : 9;    // 起始角度 / 字体大小
+    uint32_t param2 : 9;    // 终止角度
+    uint32_t width  : 10;   // 线宽
+    uint32_t startX : 11;   // 起点 X / 圆心 X
+    uint32_t startY : 11;   // 起点 Y / 圆心 Y
+    uint32_t param3 : 10;   // 半径 X / 浮点小数部分
+    uint32_t endX   : 11;   // 终点 X / 半径 Y
+    uint32_t endY   : 11;   // 终点 Y / 浮点整数部分
 };
 
 struct RMInteractionLayerDeletePayload {
@@ -100,7 +100,7 @@ struct RmInteractiveHeader {
 // 用于向下传参，避免每次都写重复的图层、颜色等信息
 struct GraphicProperties {
     uint8_t name[3];
-    GraphicAction action;
+    GraphicOption action;
     uint8_t layer;
     UiColor color;
     uint16_t lineWidth;
