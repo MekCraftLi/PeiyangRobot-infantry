@@ -10,6 +10,17 @@
 
 #include <cstdint>
 
+enum class RMSubCmdId : uint16_t {
+    DeleteLayer = 0x0100,
+    RenderOne   = 0x0101,
+    RenderTwo   = 0x0102,
+    RenderFive  = 0x0103,
+    RenderSeven = 0x0104,
+    RenderChar  = 0x0110,
+};
+
+
+
 // 1. 图形类型 (Shape Type)
 enum class GraphicType : uint8_t {
     Line      = 0,
@@ -45,7 +56,7 @@ enum class UiColor : uint8_t {
 #pragma pack(push, 1)
 
 // 5. RM 官方底层图形数据载荷 (Graphic Data Payload)
-struct GraphicPayload {
+struct RMInteractionFigurePayload {
     uint8_t graphicName[3];  // 图形索引名
     uint32_t action    : 3;  // 对应 GraphicAction
     uint32_t type      : 3;  // 对应 GraphicType
@@ -61,13 +72,18 @@ struct GraphicPayload {
     uint32_t endY      : 11; // 终点 Y / 浮点整数部分
 };
 
+struct RMInteractionLayerDeletePayload {
+    GraphicDelMode delMode;
+    uint8_t layer;
+};
+
 
 // 1. 裁判系统标准通信帧头 (5 Byte)
 struct RmFrameHeader {
-    uint8_t  sof;        // 起始字节 (固定为 0xA5)
+    uint8_t sof;         // 起始字节 (固定为 0xA5)
     uint16_t dataLength; // 数据段长度
-    uint8_t  seq;        // 包序号
-    uint8_t  crc8;       // 帧头 CRC8 校验
+    uint8_t seq;         // 包序号
+    uint8_t crc8;        // 帧头 CRC8 校验
 };
 
 // 2. UI 交互数据专有段头 (6 Byte)
@@ -76,6 +92,7 @@ struct RmInteractiveHeader {
     uint16_t senderId;   // 发送方 ID (本机器人 ID)
     uint16_t receiverId; // 接收方 ID (对应的操作手客户端 ID)
 };
+
 
 #pragma pack(pop)
 

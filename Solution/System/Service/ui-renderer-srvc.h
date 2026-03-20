@@ -30,6 +30,7 @@ public:
 
     void init() override;
     void run() override;
+    static void _sendCustomPacket(uint16_t subCmdId, void* payloadData, uint16_t payloadLen);
 
     // --- 图形绘制 API (标准 Draw 命名语义) ---
     void drawLine     (const GraphicProperties& props, uint16_t endX, uint16_t endY);
@@ -49,8 +50,8 @@ private:
     QueueHandle_t _renderQueue; // 渲染管线指令队列 (Render Pipeline Queue)
 
     // 内部封装
-    void _applyProperties(GraphicPayload& payload, const GraphicProperties& props, GraphicType type);
-    void _submitToPipeline(const GraphicPayload& payload); // 提交到渲染管线
+    static void _applyProperties(RMInteractionFigurePayload& payload, const GraphicProperties& props, GraphicType type);
+    void _submitToPipeline(const RMInteractionFigurePayload& payload); // 提交到渲染管线
 };
 
 #endif /* INFANTRY_REFEREE_UI_H */
