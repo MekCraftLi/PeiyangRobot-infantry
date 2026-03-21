@@ -88,11 +88,11 @@ public:
     // 这里的参数基于 RM 步兵常见调车经验，你可以通过 algo-config.h 去宏定义
     // 1. 前后平移 (Vx)：通常底盘较长，抗前倾能力较强，可以略微激进
     // 最大速度 3m/s，最大加速度 4.5m/s²(约0.45G)，加加速度 25m/s³
-    SCurveVelocityPlanner vxPlanner{3.0f, 8.8f, 500.0f};
+    SCurveVelocityPlanner vxPlanner{3.0f, 4.5f, 500.0f};
 
     // 2. 左右平移 (Vy)：麦轮左右平移效率低，且轮距通常较短，最容易侧翻！必须保守！
     // 最大速度 2.5m/s，最大加速度 3.0m/s²(约0.3G)，加加速度 15m/s³ (强制柔和起步)
-    SCurveVelocityPlanner vyPlanner{2.5f, 8.8f, 500.0f};
+    SCurveVelocityPlanner vyPlanner{2.5f, 4.5f, 500.0f};
 
     // 3. 自旋 (Vw)：“小陀螺”模式。自旋通常不会翻车，但会引起极大的离心力和功率尖峰。
     // 最大速度 6.28rad/s(约1圈/秒)，角加速度 15rad/s²，角加加速度 80rad/s³
