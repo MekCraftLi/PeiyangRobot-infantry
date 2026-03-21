@@ -28,8 +28,7 @@
 
 /* ------- include ---------------------------------------------------------------------------------------------------*/
 
-#include "System/RTOS/application-base.h"
-
+#include "System/Thread/application-base.h"
 
 
 
@@ -54,6 +53,8 @@
 /* ------- function implement ----------------------------------------------------------------------------------------*/
 
 extern "C" void ApplicationEntry() {
+
     StaticAppBase::startApplications();
+
 
 }

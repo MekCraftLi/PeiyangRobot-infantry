@@ -23,7 +23,7 @@
 #include "fdcan.h"
 #include "spi.h"
 #include "tim.h"
-#include "usb_otg.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -107,12 +107,14 @@ int main(void)
   MX_FDCAN1_Init();
   MX_FDCAN2_Init();
   MX_FDCAN3_Init();
-  MX_USB_OTG_HS_PCD_Init();
+  MX_UART5_Init();
+  MX_USART1_UART_Init();
+  MX_TIM3_Init();
+  MX_UART7_Init();
   /* USER CODE BEGIN 2 */
 
-    // if (!tusb_init()) {
-    //     Error_Handler();
-    // }
+
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
