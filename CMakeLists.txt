@@ -28,6 +28,6 @@ endif()
 
 if(BUILD_TARGET STREQUAL "GIMBAL" OR BUILD_TARGET STREQUAL "BOTH")
     message("编译云台中")
-    add_subdirectory(Infantry-Gimbal)
+    add_subdirectory(infantry-Gimbal)
 endif()
 
