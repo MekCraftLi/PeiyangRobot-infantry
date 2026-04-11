@@ -47,6 +47,15 @@ class HeatController {
     // 裁判系统最大延迟容忍时间 (毫秒)。通常 10Hz 更新对应 100ms，这里给 200ms 绝对安全
     static constexpr uint32_t REFEREE_DELAY_MS = 200;
 
+    // 热量限制开关: false 时跳过所有热量判断 (调试/测试用)
+    void setHeatLimitEnabled(bool enabled) { _heatLimitEnabled = enabled; }
+    [[nodiscard]] bool isHeatLimitEnabled() const { return _heatLimitEnabled; }
+
+    // 当热量上限为零 或 开关关闭时，视为无热量限制
+    [[nodiscard]] bool noHeatLimitSystem() const {
+        return !_heatLimitEnabled || _heatLimit <= 0.0f;
+    }
+
     HeatController()                           = default;
 
     void tickCooling(float dt) {
@@ -85,6 +94,7 @@ class HeatController {
     }
 
     [[nodiscard]] bool canShootSingle() const {
+        if (noHeatLimitSystem()) return true;
         static uint8_t canShootSingle;
         static float localHeat;
         canShootSingle = (_localHeat + HEAT_PER_BULLET) <= (_heatLimit - SAFE_MARGIN);
@@ -95,11 +105,13 @@ class HeatController {
     }
     // 【新增】连发模式是否处于高热量警戒区
     [[nodiscard]] bool isApproachingHeatLimit() const {
+        if (noHeatLimitSystem()) return false;
         // 当剩余热量不足以容纳两发子弹时，视为逼近上限 (进入警戒区)
         return (_localHeat + HEAT_PER_BULLET * 2.0f) > (_heatLimit - SAFE_MARGIN);
     }
 
     [[nodiscard]] float getSafeBurstRpm(float maxMechRpm, float gearRatio) const {
+        if (noHeatLimitSystem()) return maxMechRpm;
         if (_localHeat + HEAT_PER_BULLET > _heatLimit - SAFE_MARGIN)
             return -maxMechRpm * 0.12f;
         if (_localHeat < _heatLimit - SAFE_MARGIN - HEAT_PER_BULLET * 2.0f)
@@ -120,6 +132,9 @@ class HeatController {
 
     // 记录上一次真实打出子弹的系统时间戳
     uint32_t _lastShotTimeMs{0};
+
+    // 热量限制开关 (默认开启)
+    bool _heatLimitEnabled{true};
 };
 /*-------- 4. decorator ----------------------------------------------------------------------------------------------*/
 

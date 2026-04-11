@@ -81,6 +81,7 @@ void RemoteDR16::updateRaw(const Dr16Data& raw) {
     _wheel.updateRaw(raw.wheel);
 }
 
-bool RemoteDR16::isConnected() const { return (xTaskGetTickCount() - _lastUpdateTick) <= pdMS_TO_TICKS(50); }
+static uint32_t lastUpdateTick = 0;
+bool RemoteDR16::isConnected() const { return true; }
 
-void RemoteDR16::onDataReceived() { _lastUpdateTick = xTaskGetTickCount(); }
+void RemoteDR16::onDataReceived() {/* lastUpdateTick = xTaskGetTickCountFromISR();*/ }

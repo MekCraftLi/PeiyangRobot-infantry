@@ -106,15 +106,6 @@ target_include_directories(dsppp_lib INTERFACE
 
 
 
-
-
-
-
-
-
-
-
-
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined library search paths
@@ -133,6 +124,17 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
         "../Solution/Application/movtion-ctrl-app.cpp"
         "../Solution/Application/fire-ctrl-app.cpp"
+
+        # FireCtrl FSM states
+        "../Solution/Application/fsm/fire-state-passive.cpp"
+        "../Solution/Application/fsm/fire-state-spin-up.cpp"
+        "../Solution/Application/fsm/fire-state-ready.cpp"
+        "../Solution/Application/fsm/fire-state-cali-reverse.cpp"
+        "../Solution/Application/fsm/fire-state-cali-forward.cpp"
+        "../Solution/Application/fsm/fire-state-single-fire.cpp"
+        "../Solution/Application/fsm/fire-state-burst-fire.cpp"
+        "../Solution/Application/fsm/fire-state-safe-burst.cpp"
+        "../Solution/Application/fsm/fire-state-jam-clear.cpp"
 
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
         "../Solution/Board-Support-Pack/USB/usb-descriptors.c"

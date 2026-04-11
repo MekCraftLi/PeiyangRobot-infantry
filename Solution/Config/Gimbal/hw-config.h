@@ -54,9 +54,9 @@ constexpr uint32_t SYSTEM_CLOCK_HZ = 550000000;
 namespace MotorTopo {
 constexpr pyro::can_hub_t::which_can FRIC_LEFT_CAN                = pyro::can_hub_t::can2;
 constexpr pyro::can_hub_t::which_can FRIC_RIGHT_CAN               = pyro::can_hub_t::can2;
-constexpr pyro::can_hub_t::which_can PITCH_CAN                    = pyro::can_hub_t::can2;
+constexpr pyro::can_hub_t::which_can PITCH_CAN                    = pyro::can_hub_t::can1;
 constexpr pyro::can_hub_t::which_can YAW_CAN                      = pyro::can_hub_t::can1;
-constexpr pyro::can_hub_t::which_can TRIGGER_CAN                  = pyro::can_hub_t::can1;
+constexpr pyro::can_hub_t::which_can TRIGGER_CAN                  = pyro::can_hub_t::can2;
 
 constexpr pyro::dji_motor_tx_frame_t::register_id_t FRIC_LEFT_ID  = pyro::dji_motor_tx_frame_t::id_1;
 constexpr pyro::dji_motor_tx_frame_t::register_id_t FRIC_RIGHT_ID = pyro::dji_motor_tx_frame_t::id_2;

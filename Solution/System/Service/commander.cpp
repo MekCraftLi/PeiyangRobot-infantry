@@ -1,323 +1,284 @@
 /**
  *******************************************************************************
  * @file    commander.cpp
- * @brief   简要描述
- *******************************************************************************
- * @attention
+ * @brief   输入指挥服务 — 4 层输入管线实现
  *
- * none
+ * 管线流程 (每 tick):
+ *   1. 读取遥控器硬件缓存 (DMA → updateRaw)
+ *   2. 驱动所有 Action 更新 (控件值 → 触发器判定)
+ *   3. 仲裁控制源 (SAFE_STOP / REMOTE / VISION)
+ *   4. 根据控制源填充指令 (云台 / 底盘 / 射击)
+ *   5. 写入黑板 (Blackboard)
  *
- *******************************************************************************
- * @note
- *
- * none
- *
+ * 仲裁规则:
+ *   - 遥控器离线 → SAFE_STOP (急停)
+ *   - DR16:  右开关上/中 → REMOTE, 下 → VISION
+ *   - 图传:  开关 < 0 → SAFE_STOP, 鼠标右键 → VISION,
+ *            其余 → REMOTE
  *******************************************************************************
  * @author  MekLi
  * @date    2026/2/27
- * @version 1.0
+ * @version 2.0
  *******************************************************************************
  */
 
-
-
-
-/* ------- define ----------------------------------------------------------------------------------------------------*/
-
-
-
-
-/* ------- include ---------------------------------------------------------------------------------------------------*/
-
-
-
-/* I. header */
-
 #include "commander.h"
-
-#include "Board-Support-Pack/GamePad/bluetooth-gamepad.h"
 #include "Config/config.h"
-
 #include "System/DataHub/blackboard.h"
+#include "usart.h"
+
+#ifdef GIMBAL
+#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
+#include "Board-Support-Pack/VideoLink/video-link-remote.h"
+#elif REMOTE_DEVICE == REMOTE_GAMEPAD
+#include "Board-Support-Pack/GamePad/bluetooth-gamepad.h"
+#endif
+#endif
 
 #include <algorithm>
 
-/* II. other application */
-
-
-/* III. standard lib */
-
-
-
-
-/* ------- class prototypes-----------------------------------------------------------------------------------------*/
-
-
-
-
-/* ------- macro -----------------------------------------------------------------------------------------------------*/
-
-
-
-
-
-/* ------- variables -------------------------------------------------------------------------------------------------*/
-
-[[maybe_unused]] static auto& forceInit                        = CommanderSrvc::instance();
-
-__attribute__((section(".dma_pool"))) static uint8_t rxbuf[32] = {0};
-
-
-#ifdef GIMBAL
-#if REMOTE_DEVICE == REMOTE_DR16
-static RemoteDR16 _remoteDR16;
-#endif
-#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
-static VideoLinkRawData _videoLinkRawData;
-#elif REMOTE_DEVICE == REMOTE_GAMEPAD
-static GamepadRawData _gamepadRawData;
-#elif REMOTE_DEVICE == REMOTE_DR16
-static Dr16Data _dr16Data;
-#endif
-#endif
-
-// --- 宏观运动参数限制 ---
-// 宏观运动限制 (可根据机械结构调整)
-// RemoteDR16& remote = RemoteDR16::instance();
-
-/* ------- application attribute -------------------------------------------------------------------------------------*/
+/* -------- 应用属性 -------------------------------------------------------------------------------------------------
+ */
 
 #define APPLICATION_ENABLE     true
-
 #define APPLICATION_NAME       "Input"
-
-#define APPLICATION_STACK_SIZE 512
-
+#define APPLICATION_STACK_SIZE 1024
 #define APPLICATION_PRIORITY   4
 
 static StackType_t appStack[APPLICATION_STACK_SIZE];
 
+[[maybe_unused]] static auto& forceInit = CommanderSrvc::instance();
 
+/* -------- 遥控器 DMA 缓存 -------------------------------------------------------------------------------------------
+ */
 
-/* ------- message interface attribute -------------------------------------------------------------------------------*/
+__attribute__((section(".dma_pool"))) static uint8_t rxbuf[32] = {0};
 
+#ifdef GIMBAL
+#if REMOTE_DEVICE == REMOTE_DR16
+static Dr16Data _dr16Data;
+#elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
+static VideoLinkRawData _videoLinkRawData;
+#elif REMOTE_DEVICE == REMOTE_GAMEPAD
+static GamepadRawData _gamepadRawData;
+#endif
+#endif
 
-
-
-
-/* ------- function prototypes ---------------------------------------------------------------------------------------*/
-
-
-
-
-
-/* ------- function implement ----------------------------------------------------------------------------------------*/
+/* -------- 辅助函数 -------------------------------------------------------------------------------------------------
+ */
 
 namespace {
 inline float clampUnit(float v) { return std::max(-1.0f, std::min(1.0f, v)); }
-
-inline float composeAxis(float joystick, float keyboard) { return clampUnit(joystick + keyboard); }
+inline float composeAxis(float a, float b) { return clampUnit(a + b); }
 } // namespace
 
+/* -------- 构造 -----------------------------------------------------------------------------------------------------
+ */
 
 CommanderSrvc::CommanderSrvc()
-    : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY, 10),
-      _joystickDeadzone(0.02f),
-#if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
-      _work(-0.25f, 0.5f, false, HoldCondition::LessOrEqual),
-      _trigFricToggle(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _triggerBurst(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
-      _triggerMouseBurst(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual),
-      _trigPress(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
-      _trigSingleRelease(0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _trigQToggleBase(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual), _trigQToggle(_trigQToggleBase, false),
-      _trigShiftHold(0.5f, 0.001f, true, HoldCondition::GreaterOrEqual),
-      _trigMouseRelease(-0.5f, 0.001f, true, HoldCondition::LessOrEqual),
-      _trigMouseBurst(0.5f, 0.7f, false, HoldCondition::GreaterOrEqual),
-      _trigVision(0.5f, 0.001f, false, HoldCondition::GreaterOrEqual), _trigSpin(baseTrigger, false),
-      _trigSpinKey(_trigShiftHold, false), _trigCap(baseTriggerCap, false)
-
-#else
-      _handbreak(0.0f, 0.001f, false, HoldCondition::GreaterOrEqual),
-      _aTest(0.0f, 0.001f, true, HoldCondition::GreaterOrEqual), _relax(_aTest, true)
-
-#endif
-{
+    : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY, 10) {
+    // 所有触发器已在头文件中通过 in-class 初始化完成, 无需此处重复.
 }
 
+/* -------- 初始化: 绑定物理控件 → Action -------------------------------------------------- */
 
 void CommanderSrvc::init() {
-    /* ========================================================
-     * 1. 建立 Action 映射绑定 (物理控件 -> 触发器过滤 -> 高级意图)
-     * ======================================================== */
+    // ── 1. Action 映射绑定 (物理控件 + 触发器 → Action) ──
 
 #if REMOTE_DEVICE == REMOTE_DR16
-
-    // 【底盘平移】左摇杆 Y轴 -> 前后(X)；左摇杆 X轴 -> 左右(Y)
+    //
+    //  DR16 遥控器布局:
+    //    左摇杆 Y → 前后 (MoveX)      左摇杆 X → 左右 (MoveY)
+    //    右摇杆 X → 偏航 (Yaw)        右摇杆 Y → 俯仰 (Pitch)
+    //    右开关   → 控制源仲裁         左开关   → 射击系统
+    //    拨轮     → 小陀螺切换
+    //
     actionMoveX.bind(RemoteDR16::instance().getLeftY(), &_joystickDeadzone);
     actionMoveY.bind(RemoteDR16::instance().getLeftX(), &_joystickDeadzone);
-
-    // 【底盘旋转】右摇杆 X轴 -> 旋转(Spin)
-    //  Spin.bind(RemoteDR16::instance().getRightX(), &_joystickDeadzone);
-
-    // 【云台控制】右摇杆 Y轴 -> Pitch俯仰
     actionYaw.bind(RemoteDR16::instance().getRightX(), &_joystickDeadzone);
     actionPitch.bind(RemoteDR16::instance().getRightY(), &_joystickDeadzone);
 
-    // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
+    // 控制源仲裁: 右开关
     actionCtrlMode.bind(RemoteDR16::instance().getSwRight(), &_work);
 
-
+    // 射击: 左开关 → 摩擦轮 / 连发 / 单发
     actionFricToggle.bind(RemoteDR16::instance().getSwLeft(), &_trigFricToggle);
     actionShootBurst.bind(RemoteDR16::instance().getSwLeft(), &_triggerBurst);
     actionShootSingle.bind(RemoteDR16::instance().getSwLeft(), &_trigSingleRelease);
+
+    // 小陀螺: 拨轮 toggle
     actionSpinMode.bind(RemoteDR16::instance().getWheel(), &_trigSpin);
+
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
-    auto& videoRemote = VideoLinkRemote::instance();
+#ifdef GIMBAL
+    //
+    //  图传链路布局:
+    //    右摇杆 Y/X → 底盘前后/左右     W/S, A/D → 键盘辅助
+    //    摇杆偏航/俯仰 → 云台            鼠标 X/Y → 云台辅助
+    //    鼠标左键 → 连发/单发            鼠标右键 → 视觉瞄准
+    //    模式开关 → 控制源仲裁           Fn2 / Q → 摩擦轮切换
+    //    Pause → 小陀螺                 Shift → 键盘小陀螺
+    //
+    auto& vr = VideoLinkRemote::instance();
 
-    // 底盘输入：保留摇杆 Action，同时引入键盘轴 Action
-    actionMoveX.bind(videoRemote.getRightY(), &_joystickDeadzone);
-    actionMoveY.bind(videoRemote.getRightX(), &_joystickDeadzone);
-    actionMoveXKey.bind(videoRemote.getAxisKeyWS());
-    actionMoveYKey.bind(videoRemote.getAxisKeyAD());
+    // 底盘: 摇杆 + 键盘
+    actionMoveX.bind(vr.getRightY(), &_joystickDeadzone);
+    actionMoveY.bind(vr.getRightX(), &_joystickDeadzone);
+    actionMoveXKey.bind(vr.getAxisKeyWS());
+    actionMoveYKey.bind(vr.getAxisKeyAD());
 
-    // 云台输入：鼠标增量
-    actionYaw.bind(videoRemote.getAxis(AxisID::ViewYaw), &_joystickDeadzone);
-    actionPitch.bind(videoRemote.getAxis(AxisID::ViewPitch), &_joystickDeadzone);
-    actionMouseYaw.bind(videoRemote.getMouseX(), &_joystickDeadzone);
-    actionMousePitch.bind(videoRemote.getMouseY(), &_joystickDeadzone);
-    actionMouseBurst.bind(videoRemote.getMouseLeft(), &_triggerMouseBurst);
-    actionMouseSingle.bind(videoRemote.getMouseLeft(), &_trigSingleRelease);
-    actionShootBurst.bind(videoRemote.getTrigger(), &_triggerBurst);
-    actionShootSingle.bind(videoRemote.getTrigger(), &_trigSingleRelease);
-    actionCapSwitch.bind(videoRemote.getKeyC(), &baseTriggerCap);
-    actionMouseVision.bind(videoRemote.getMouseRight(), &_trigVision);
+    // 云台: 摇杆 + 鼠标
+    actionYaw.bind(vr.getAxis(AxisID::ViewYaw), &_joystickDeadzone);
+    actionPitch.bind(vr.getAxis(AxisID::ViewPitch), &_joystickDeadzone);
+    actionMouseYaw.bind(vr.getMouseX(), &_joystickDeadzone);
+    actionMousePitch.bind(vr.getMouseY(), &_joystickDeadzone);
 
+    // 射击: 扳机 + 鼠标
+    actionMouseBurst.bind(vr.getMouseLeft(), &_triggerMouseBurst);
+    actionMouseSingle.bind(vr.getMouseLeft(), &_triggerMouseSingle);
+    actionShootBurst.bind(vr.getTrigger(), &_triggerBurst);
+    actionShootSingle.bind(vr.getTrigger(), &_trigSingleRelease);
+    actionMouseVision.bind(vr.getMouseRight(), &_trigVision);
 
-    // 【模式切换】右开关 -> 控制模式仲裁 (传入 nullptr 代表直通，无须死区处理)
-    actionCtrlMode.bind(videoRemote.getModeSw(), &_work);
-    actionFricToggle.bind(videoRemote.getFn2(), &_trigFricToggle);
+    // 控制源 + 摩擦轮
+    actionCtrlMode.bind(vr.getModeSw(), &_work);
+    actionFricToggle.bind(vr.getFn2(), &_trigFricToggle);
+    actionKeyboardFric.bind(vr.getKeyQ(), &_trigFricToggle);
 
-    actionKeyboardFric.bind(videoRemote.getKeyQ(), &_trigFricToggle);
-    actionKeySpin.bind(videoRemote.getKeyShift(), &_trigSpinKey);
-
-
-    actionSpinMode.bind(videoRemote.getPause(), &_trigSpin);
-#elif REMOTE_DEVICE == REMOTE_GAMEPAD
-    // 前进和右扳机绑定
-    actionMoveX.bind(BluetoothGamepad::instance().getRightTrigger(), &_joystickDeadzone);
-    // 刹车和左扳机绑定
-    actionBreak.bind(BluetoothGamepad::instance().getLeftTrigger(), &_joystickDeadzone);
-    // 转向和左摇杆绑定
-    actionYaw.bind(BluetoothGamepad::instance().getAxis(AxisID::ViewYaw), &_joystickDeadzone);
-    // 下力和A键绑定
-    actionRelax.bind(BluetoothGamepad::instance().getButtonA(), &_relax);
-    // 手刹和B键绑定
-    actionHandbrakeDepth.bind(BluetoothGamepad::instance().getButtonB(), &_handbreak);
-
+    // 运动/电容
+    actionSpinMode.bind(vr.getPause(), &_trigSpin);
+    actionKeySpin.bind(vr.getKeyShift(), &_trigSpinKey);
+    actionCapSwitch.bind(vr.getKeyC(), &_baseContinuousTrigger);
 #endif
 
+#elif REMOTE_DEVICE == REMOTE_GAMEPAD
+    //
+    //  蓝牙手柄布局:
+    //    右扳机 → 前进     左扳机 → 刹车
+    //    摇杆偏航 → 转向   A 键 → 放松    B 键 → 手刹
+    //
+    actionMoveX.bind(BluetoothGamepad::instance().getRightTrigger(), &_joystickDeadzone);
+    actionBreak.bind(BluetoothGamepad::instance().getLeftTrigger(), &_joystickDeadzone);
+    actionYaw.bind(BluetoothGamepad::instance().getAxis(AxisID::ViewYaw), &_joystickDeadzone);
+    actionRelax.bind(BluetoothGamepad::instance().getButtonA(), &_relax);
+    actionHandbrakeDepth.bind(BluetoothGamepad::instance().getButtonB(), &_handbreak);
+#endif
 
-
-    /* ========================================================
-     * 2. 初始化硬件通信
-     * ======================================================== */
+    // ── 2. 初始化硬件通信 (HAL 中断方式) ──
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
 }
 
+/* -------- 私有辅助方法 ----------------------------------------------------------------------------------------------
+ */
+
+void CommanderSrvc::resolveChassisMode(bool spinRequested, bool capRequested, GimbalToChassisComm& comm) {
+    comm.msg.mode = spinRequested ? CHASSIS_SPIN : CHASSIS_NORMAL;
+
+    // 电容开关标志 (bit 2)
+    if (capRequested)
+        comm.msg.mode |= 0x04;
+    else
+        comm.msg.mode &= ~0x04;
+}
+
+void CommanderSrvc::resolveMovement(GimbalCmd& gCmd, GimbalToChassisComm& comm) {
+#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
+    // 复合轴: 摇杆 + 键盘 → 底盘速度
+    const float moveXInput = composeAxis(actionMoveX.getValue(), actionMoveXKey.getValue());
+    const float moveYInput = composeAxis(actionMoveY.getValue(), actionMoveYKey.getValue());
+    // 复合轴: 鼠标 × 灵敏度 + 摇杆 → 云台角速度
+    const float yawInput =
+        composeAxis(actionMouseYaw.getValue() * Config::Algorithm::Input::Y_SENSITIVITY, actionYaw.getValue());
+    const float pitchInput =
+        composeAxis(actionMousePitch.getValue() * Config::Algorithm::Input::X_SENSITIVITY, actionPitch.getValue());
+#else
+    // DR16: 直接摇杆映射
+    const float moveXInput = actionMoveX.getValue();
+    const float moveYInput = actionMoveY.getValue();
+    const float yawInput   = actionYaw.getValue();
+    const float pitchInput = actionPitch.getValue();
+#endif
+
+    // 遥控器方向与运动坐标系部分相反, 取负补偿
+    comm.msg.vx   = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
+    comm.msg.vy   = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
+    gCmd.yawVel   = -yawInput * Config::Algorithm::Gimbal::MAX_YAW_SPEED;
+    gCmd.pitchVel = -pitchInput * Config::Algorithm::Gimbal::MAX_PITCH_SPEED;
+}
+
+void CommanderSrvc::resolveShootEvents(ShootCmd& sCmd, bool burstAllowed) {
+    // 摩擦轮切换 (遥控器开关 或 键盘 Q)
+    if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
+        sCmd.event = ShootEvent::FRIC_TOGGLE;
+    }
+
+    // 连发: 遥控器扳机 或 鼠标左键
+    if (burstAllowed && (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered())) {
+        sCmd.state.burstShot = 1;
+    } else {
+        sCmd.state.burstShot = 0;
+    }
+
+    // 单发 (优先级高于连发)
+    if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
+        sCmd.event           = ShootEvent::SINGLE_FIRE;
+        sCmd.state.burstShot = 0;
+    }
+}
+
+/* -------- 主循环 ----------------------------------------------------------------------------------------------------
+ */
+
 void CommanderSrvc::run() {
-    /* =======================================  =================
-     * 0. 计算时间步长 (dt)，用于动作系统内部的积分或时长判定
-     * ======================================================== */
-
-    static uint32_t last_tick = xTaskGetTickCount();
-    uint32_t current_tick     = xTaskGetTickCount();
-    float dt                  = (float)(current_tick - last_tick) / 1000.0f;
-
+    // ── 0. 计算时间步长 ──
+    static uint32_t lastTick = xTaskGetTickCount();
+    uint32_t nowTick         = xTaskGetTickCount();
+    float dt                 = (float)(nowTick - lastTick) / 1000.0f;
     if (dt <= 0.0f)
-        dt = 0.001f; // 防止极高频或同Tick调用导致 dt 为 0
-    last_tick = current_tick;
+        dt = 0.001f;
+    lastTick = nowTick;
 
-    /* ========================================================
-     * 1. 硬件层：提取最新的遥控器 DMA 缓存数据
-     * ======================================================== */
+    // ── 1. 更新遥控器原始数据 ──
 #ifdef GIMBAL
 #if REMOTE_DEVICE == REMOTE_DR16
     RemoteDR16::instance().updateRaw(_dr16Data);
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
-    // 遥控器数据更新
     VideoLinkRemote::instance().updateRaw(_videoLinkRawData);
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
     BluetoothGamepad::instance().updateRaw(_gamepadRawData);
 #endif
 #endif
 
-    /* ========================================================
-     * 2. 动作层：驱动所有 Action 执行死区过滤、归一化、仲裁计算
-     * ======================================================== */
-    // for (auto& a : _actions) {
-    //     a.update(dt);
-    // }
-#if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
-    actionCtrlMode.update(dt);
-    actionSateStop.update(dt);
-    actionMoveX.update(dt);
-    actionMoveY.update(dt);
-    actionMoveXKey.update(dt);
-    actionMoveYKey.update(dt);
-    actionYaw.update(dt);
-    actionMouseYaw.update(dt);
-    actionMousePitch.update(dt);
-    actionSpin.update(dt);
-    actionPitch.update(dt);
-    actionKeySpin.update(dt);
-    actionMouseBurst.update(dt);
-    actionMouseSingle.update(dt);
-    actionFricToggle.update(dt);
-    actionCapSwitch.update(dt);
-    actionShootBurst.update(dt);
-    actionShootSingle.update(dt);
-    actionSpinMode.update(dt);
-    actionMouseVision.update(dt);
-    actionKeyboardFric.update(dt);
-#else
-    actionHandbrakeDepth.update(dt);
-    actionBreak.update(dt);
-    actionMoveX.update(dt);
-    actionYaw.update(dt);
-    actionRelax.update(dt);
-#endif
+    // ── 2. 驱动所有 Action 更新 ──
+    for (auto& action : _actions)
+        action.update(dt);
 
-    /* ========================================================
-     * 3. 仲裁层 第一阶：决断控制源 (Control Source)
-     * ======================================================== */
+    // ── 3~5. 仲裁 → 填充指令 → 写入黑板 ──
+
 #ifdef GIMBAL
-    // 默认最高安全等级，除非确认遥控器在线且给出运行指令
-    /* 3. 第一阶仲裁：决断控制权 */
 
-    ControlSource currentSource = ControlSource::SAFE_STOP;
+#if REMOTE_DEVICE != REMOTE_GAMEPAD
+    // ========================================
+    //  DR16 / VideoLink 共用仲裁逻辑
+    // ========================================
 
     GimbalCmd gCmd{};
     ShootCmd sCmd{};
     GimbalToChassisComm comm{};
-    ImuState imuState{};
 
-#if REMOTE_DEVICE != REMOTE_GAMEPAD // 非游戏手柄控制
-    if (remote.isConnected()) {
-        // 读取完美归一化后的浮点数：-1.0f(上), 0.0f(中), 1.0f(下)
+    // ── 3. 仲裁控制源 ──
+    ControlSource currentSource = ControlSource::SAFE_STOP;
+
+    if (true) {
         float swState = actionCtrlMode.getValue();
 
 #if REMOTE_DEVICE == REMOTE_DR16
+        // DR16: 右开关上方/中位 → REMOTE, 下方 → VISION
         if (actionCtrlMode.isTriggered()) {
-            if (swState > -0.5f) {
-                currentSource = ControlSource::REMOTE;
-            } else {
-                currentSource = ControlSource::VISION;
-            }
-        } else {
-            currentSource = ControlSource::SAFE_STOP;
+            currentSource = (swState > -0.5f) ? ControlSource::REMOTE : ControlSource::VISION;
         }
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
+        // VideoLink: 模式开关 < 0 → SAFE_STOP, 鼠标右键或开关 > 0 → VISION
         if (swState < 0) {
             currentSource = ControlSource::SAFE_STOP;
         } else if (swState > 0 || actionMouseVision.isTriggered()) {
@@ -326,195 +287,71 @@ void CommanderSrvc::run() {
             currentSource = ControlSource::REMOTE;
         }
 #endif
-
-    } else {
-        currentSource = ControlSource::SAFE_STOP;
     }
 
-    /* ========================================================
-     * 4. 仲裁层 第二阶：根据控制源填充控制指令
-     * ======================================================== */
-
-
-    // 【关键】先从黑板中 Read 出上一帧的历史指令。
-    // 如果后续不修改它，写回的就是历史值，天然实现“状态无缝保留”。
-
+    // ── 4. 读取黑板历史值 (未修改字段天然保留) ──
+    ImuState imuState{};
     Blackboard::instance().gimbalCmd.read(gCmd);
     Blackboard::instance().shootCmd.read(sCmd);
     Blackboard::instance().imuState.read(imuState);
+    sCmd.event               = ShootEvent::NONE;
 
+    // 预计算运动意图 (REMOTE / VISION 共用)
+    const bool spinRequested = actionSpinMode.isTriggered() || actionKeySpin.isTriggered();
+    const bool capRequested  = actionCapSwitch.isTriggered();
 
-    sCmd.event = ShootEvent::NONE;
     switch (currentSource) {
         case ControlSource::SAFE_STOP: {
-            // 彻底切断底层动力
             comm.msg.mode        = (uint8_t)CHASSIS_RELAX;
             sCmd.event           = ShootEvent::EMERGENCY_STOP;
             sCmd.state.burstShot = 0;
             gCmd.mode            = GIMBAL_RELAX;
-
             gCmd.yawVel          = 0;
             gCmd.pitchVel        = 0;
         } break;
 
         case ControlSource::REMOTE: {
-            // 遥控器映射
-            if (actionSpinMode.isTriggered() || actionKeySpin.isTriggered()) {
-                comm.msg.mode = CHASSIS_SPIN;
-            } else {
-                comm.msg.mode = CHASSIS_NORMAL;
-            }
-
-            // 开启电容标志位
-            if (actionCapSwitch.isTriggered()) {
-                comm.msg.mode |= 0x04;
-            } else {
-                comm.msg.mode &= ~0x04;
-            }
-
-#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
-            const float moveXInput = composeAxis(actionMoveX.getValue(), actionMoveXKey.getValue());
-            const float moveYInput = composeAxis(actionMoveY.getValue(), actionMoveYKey.getValue());
-            const float yawInput =
-                composeAxis(actionMouseYaw.getValue() * Config::Algorithm::Input::Y_SENSITIVITY, actionYaw.getValue());
-            const float pitchInput = composeAxis(actionMousePitch.getValue() * Config::Algorithm::Input::X_SENSITIVITY,
-                                                 actionPitch.getValue());
-#else
-            const float moveXInput = actionMoveX.getValue();
-            const float moveYInput = actionMoveY.getValue();
-            const float yawInput   = actionYaw.getValue();
-            const float pitchInput = actionPitch.getValue();
-#endif
-            comm.msg.vx = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
-            // 运动计算坐标系和遥控器方向相反
-            comm.msg.vy    = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
-
+            resolveChassisMode(spinRequested, capRequested, comm);
+            resolveMovement(gCmd, comm);
 
             gCmd.mode           = GIMBAL_NORMAL;
-            // 遥控器的Y轴与标准正方向（左）相反, X轴与标准正方向(下)相反
-            gCmd.yawVel         = -yawInput * Config::Algorithm::Gimbal::MAX_YAW_SPEED;
             gCmd.targetYawSpeed = 0;
-            gCmd.pitchVel       = -pitchInput * Config::Algorithm::Gimbal::MAX_PITCH_SPEED;
 
-
-            // 发射事件映射
-#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
-            if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
-                sCmd.event = ShootEvent::FRIC_TOGGLE;
-            }
-            if (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered()) {
-                sCmd.state.burstShot = 1;
-            } else {
-                sCmd.state.burstShot = 0;
-            }
-            if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
-                sCmd.event           = ShootEvent::SINGLE_FIRE;
-                sCmd.state.burstShot = 0;
-            }
-#else
-            if (actionFricToggle.isTriggered()) {
-                sCmd.event = ShootEvent::FRIC_TOGGLE;
-            } else if (actionShootBurst.isTriggered()) {
-                sCmd.event = ShootEvent::BURST_START;
-            } else if (actionShootSingle.isTriggered()) {
-                sCmd.event = ShootEvent::SINGLE_FIRE;
-            }
-            sCmd.state.burstShot = 0;
-#endif
-
+            resolveShootEvents(sCmd);
         } break;
 
         case ControlSource::VISION: {
-            // 遥控器映射
-            if (actionSpinMode.isTriggered() || actionKeySpin.isTriggered()) {
-                comm.msg.mode = CHASSIS_SPIN;
-            } else {
-                comm.msg.mode = CHASSIS_NORMAL;
-            }
-
-            // 开启电容标志位
-            if (actionCapSwitch.isTriggered()) {
-                comm.msg.mode |= 0x04;
-            } else {
-                comm.msg.mode &= ~0x04;
-            }
-
-#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
-            const float moveXInput = composeAxis(actionMoveX.getValue(), actionMoveXKey.getValue());
-            const float moveYInput = composeAxis(actionMoveY.getValue(), actionMoveYKey.getValue());
-            const float yawInput =
-                composeAxis(actionMouseYaw.getValue() * Config::Algorithm::Input::Y_SENSITIVITY, actionYaw.getValue());
-            const float pitchInput = composeAxis(actionMousePitch.getValue() * Config::Algorithm::Input::X_SENSITIVITY,
-                                                 actionPitch.getValue());
-#else
-            const float moveXInput = actionMoveX.getValue();
-            const float moveYInput = actionMoveY.getValue();
-            const float yawInput   = actionYaw.getValue();
-            const float pitchInput = actionPitch.getValue();
-#endif
-            comm.msg.vx = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
-            // 运动计算坐标系和遥控器方向相反
-            comm.msg.vy    = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
-
-
-            gCmd.mode           = GIMBAL_NORMAL;
+            resolveChassisMode(spinRequested, capRequested, comm);
+            resolveMovement(gCmd, comm);
 
             gCmd.mode = GIMBAL_AUTO;
 
-            // 1. 读取视觉指令
+            // 视觉指令覆盖云台目标
             VisionCommand vCmd{};
             Blackboard::instance().visionCmd.read(vCmd);
-
-            // 2. 将视觉指令映射到云台控制结构体
             gCmd.targetYaw             = vCmd.targetYaw;
             gCmd.targetPitch           = -vCmd.targetPitch;
             gCmd.targetYawSpeed        = vCmd.targetYawSpeed;
             gCmd.pitchVel              = -vCmd.targetPitchSpeed;
             gCmd.targetYawAcceleration = vCmd.targetYawAcceleration;
 
-            if (actionFricToggle.isTriggered() or actionKeyboardFric.isTriggered()) {
-                sCmd.event = ShootEvent::FRIC_TOGGLE;
-            }
-
-            if ((actionShootBurst.isTriggered() or actionMouseBurst.isTriggered()) and vCmd.fireCommand) {
-                sCmd.state.burstShot = 1;
-            } else {
-                sCmd.state.burstShot = 0;
-            }
-            if (actionShootSingle.isTriggered() or actionMouseSingle.isTriggered()) {
-                sCmd.event = ShootEvent::SINGLE_FIRE;
-            }
-            //
-            // if (curSingle == 1U) {
-            //     if (vBurstEdgeState == TriggerState::Triggered && isFiring) {
-            //         sCmd.event = ShootEvent::SINGLE_FIRE;
-            //     }
-            //     if (sCmd.state.burstShot == 1U) {
-            //         sCmd.event           = ShootEvent::BURST_STOP;
-            //         sCmd.state.burstShot = 0;
-            //     }
-            // } else {
-            //
-            //     if (vBurstEdgeState == TriggerState::Triggered) {
-            //         if (isFiring) {
-            //             sCmd.event = ShootEvent::BURST_START;
-            //         } else {
-            //             sCmd.event = ShootEvent::BURST_STOP;
-            //         }
-            //     }
-            // }
-
+            // 连发需视觉允许开火
+            resolveShootEvents(sCmd, vCmd.fireCommand);
         } break;
+
         default:
             break;
     }
-    gCmd.timestamp = current_tick;
 
-    /* ========================================================
-     * 5. 发布层：将仲裁后的最终真理写入黑板
-     * ======================================================== */
+    gCmd.timestamp = nowTick;
 
 #else
+    // ========================================
+    //  Gamepad 专用逻辑
+    // ========================================
+
+    GimbalCmd gCmd{};
+    GimbalToChassisComm comm{};
     Blackboard::instance().gimbalCmd.read(gCmd);
 
     if (actionRelax.isTriggered()) {
@@ -526,42 +363,50 @@ void CommanderSrvc::run() {
         gCmd.mode     = GIMBAL_NORMAL;
         comm.msg.mode = CHASSIS_NORMAL;
         gCmd.yawVel   = actionYaw.getValue();
+
         float pureVel = actionMoveX.getValue() - actionBreak.getValue();
         if (pureVel < 0)
             pureVel = 0;
-
         comm.msg.vx = pureVel * Config::Algorithm::Chassis::MAX_VX * 10;
     }
 #endif
 
-
+    // ── 5. 写入黑板 ──
     Blackboard::instance().g2cOutput.write(comm);
     Blackboard::instance().gimbalCmd.write(gCmd);
     Blackboard::instance().shootCmd.write(sCmd);
+
 #elif defined(CHASSIS)
+    // ========================================
+    //  底盘板逻辑: 转发云台指令 → 底盘指令
+    // ========================================
+
     GimbalToChassisComm comm{};
     ChassisCmd cmd{};
     Blackboard::instance().rComm.read(comm);
+
     cmd.mode = comm.msg.mode;
     cmd.vx   = (float)comm.msg.vx / 10;
     cmd.vy   = (float)comm.msg.vy / 10;
-    if ((cmd.mode & 0x03) == CHASSIS_NORMAL) {
+
+    if ((cmd.mode & 0x03) == CHASSIS_NORMAL)
         cmd.vw = 0;
-    } else if ((cmd.mode & 0x03) == CHASSIS_SPIN) {
+    else if ((cmd.mode & 0x03) == CHASSIS_SPIN)
         cmd.vw = Config::Algorithm::Chassis::MAX_VW;
-    }
 
     Blackboard::instance().chassisCmd.write(cmd);
 
 #endif
 }
 
+/* -------- UART 回调 (HAL 中断方式) -------------------------------------------------- */
+
 #ifdef GIMBAL
 void CommanderSrvc::onUartRxEventCallback(size_t size) {
 #if REMOTE_DEVICE == REMOTE_DR16
     memcpy(&_dr16Data, rxbuf, size);
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
-    RemoteDR16::instance().onDataReceived();
+    //RemoteDR16::instance().onDataReceived();
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
     memcpy(&_videoLinkRawData, rxbuf, size);
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
@@ -572,6 +417,7 @@ void CommanderSrvc::onUartRxEventCallback(size_t size) {
     BluetoothGamepad::instance().onDataReceived();
 #endif
 }
+
 void CommanderSrvc::onUartErrCallback() {
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
 }

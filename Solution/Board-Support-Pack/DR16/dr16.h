@@ -146,7 +146,7 @@ class RemoteDR16 : public RemoteBase, public Singleton<RemoteDR16> {
     ControlAxis _wheel;
     ControlSwitch _swleft;
     ControlSwitch _swright;
-    TickType_t _lastUpdateTick;
+    TickType_t _lastUpdateTick = 0;
 };
 
 
