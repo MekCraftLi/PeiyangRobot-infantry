@@ -61,8 +61,8 @@ void FireCtrlApp::StateSpinUp::execute(FireCtrlCtx& ctx) {
     }
 
     // --- 启动完成检测: 双摩擦轮速度均接近目标 ---
-    if (std::abs(ctx.fdb.fric[0].vel - ctx.targetFricSpeed) < 0.1f &&
-        std::abs(ctx.fdb.fric[1].vel + ctx.targetFricSpeed) < 0.1f) {
+    if (std::abs(ctx.fdb.fric[0].vel - ctx.targetFricSpeed) < 10 &&
+        std::abs(ctx.fdb.fric[1].vel + ctx.targetFricSpeed) < 10) {
         request_switch(&instance()._stateReady);
     }
 }

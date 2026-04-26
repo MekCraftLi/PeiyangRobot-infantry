@@ -54,9 +54,9 @@ constexpr uint32_t SYSTEM_CLOCK_HZ = 550000000;
 namespace MotorTopo {
 constexpr pyro::can_hub_t::which_can FRIC_LEFT_CAN                = pyro::can_hub_t::can2;
 constexpr pyro::can_hub_t::which_can FRIC_RIGHT_CAN               = pyro::can_hub_t::can2;
-constexpr pyro::can_hub_t::which_can PITCH_CAN                    = pyro::can_hub_t::can1;
+constexpr pyro::can_hub_t::which_can PITCH_CAN                    = pyro::can_hub_t::can2;
 constexpr pyro::can_hub_t::which_can YAW_CAN                      = pyro::can_hub_t::can1;
-constexpr pyro::can_hub_t::which_can TRIGGER_CAN                  = pyro::can_hub_t::can2;
+constexpr pyro::can_hub_t::which_can TRIGGER_CAN                  = pyro::can_hub_t::can1;
 
 constexpr pyro::dji_motor_tx_frame_t::register_id_t FRIC_LEFT_ID  = pyro::dji_motor_tx_frame_t::id_1;
 constexpr pyro::dji_motor_tx_frame_t::register_id_t FRIC_RIGHT_ID = pyro::dji_motor_tx_frame_t::id_2;
@@ -71,7 +71,7 @@ constexpr uint16_t YAW_OFFSET                                     = 1526;
 constexpr float PROJECTILE_TARGET_MUZZLE_VELOCITY                 = 23.5f;
 
 // 弹速调整系数
-constexpr float FRIC_ADJUST_K                                     = 0.88f;
+constexpr float FRIC_ADJUST_K                                     = 0.85f;
 // 摩擦轮半径
 constexpr float FRIC_RADIUS                                       = 0.03f;
 

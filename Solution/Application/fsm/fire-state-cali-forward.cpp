@@ -43,7 +43,7 @@
 void FireCtrlApp::StateCaliForward::enter(FireCtrlCtx& ctx) {
     // --- 切回位置环, 目标为固定偏移量 ---
     ctx.useTriggerSpeedLoopOnly = false;
-    ctx.targetTriggerEcd        = 8192 * 2;
+    ctx.targetTriggerEcd        = 41648;
     ctx.state                   = FireState::CaliForward;
 }
 
