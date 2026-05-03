@@ -57,6 +57,48 @@
 
 #include "usart.h"
 
+/*-------- Debug: 全局 Action 触发状态 (供调试器 live-watch) --------------------------------*/
+
+struct ActionDebug {
+    // 标准 Action (DR16 / VideoLink)
+    bool ctrlMode;
+    bool moveX;
+    bool moveY;
+    bool moveXKey;
+    bool moveYKey;
+    bool yaw;
+    bool pitch;
+    bool mouseYaw;
+    bool mousePitch;
+    bool mouseBurst;
+    bool mouseSingle;
+    bool mouseVision;
+    bool fricToggle;
+    bool shootBurst;
+    bool shootSingle;
+    bool spinMode;
+    bool keySpin;
+    bool capSwitch;
+    bool keyboardFric;
+    bool fn1Switch;
+    bool turboMode;
+    bool stepClimb;
+    bool selfRescue;
+    bool manualRescue;
+    bool gimbalReverse;
+    bool jump;
+    bool aimMode;
+    bool legLength;
+    bool reverseEdge;
+
+    // Gamepad
+    bool gpRelax;
+    bool gpHandbrake;
+    bool gpMoveX;
+    bool gpYaw;
+    bool gpBrake;
+};
+
 /*-------- 标准 Action 槽位 (DR16 / VideoLink 共用) -----------------------------------------*/
 
 enum StdActionSlot : uint8_t {
@@ -153,6 +195,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
 #endif
 
     TriggerConfig triggers;
+    ActionDebug debug{};
 
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
 

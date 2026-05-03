@@ -270,7 +270,7 @@ void MovtionCtrlApp::run() {
 
     uint16_t powerLimit = refState.chassisPowerLimit * 0.5f;
 
-    if (cmd.mode & 0x04) {
+    if (cmd.capSwitch) {
         powerLimit += 40;
     }
 

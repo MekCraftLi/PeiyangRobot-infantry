@@ -23,6 +23,7 @@
  */
 
 #include "commander.h"
+#include "Application/fire-ctrl-app.h"
 #include "Application/movtion-ctrl-app.h"
 #include "Config/config.h"
 #include "System/DataHub/blackboard.h"
@@ -99,13 +100,8 @@ void CommanderSrvc::init() {
  */
 
 void CommanderSrvc::resolveChassisMode(bool spinRequested, bool capRequested, GimbalToChassisComm& comm) {
-    comm.msg.mode = spinRequested ? CHASSIS_SPIN : CHASSIS_NORMAL;
-
-    // 电容开关标志 (bit 2)
-    if (capRequested)
-        comm.msg.mode |= 0x04;
-    else
-        comm.msg.mode &= ~0x04;
+    comm.msg.mode      = spinRequested ? CHASSIS_SPIN : CHASSIS_NORMAL;
+    comm.msg.capSwitch = capRequested ? 1 : 0;
 }
 
 void CommanderSrvc::resolveMovement(GimbalCmd& gCmd, GimbalToChassisComm& comm) {
@@ -183,6 +179,45 @@ void CommanderSrvc::run() {
 #else
     for (auto& action : _gpActions)
         action.update(dt);
+#endif
+
+    // ── 2.5 更新 Debug 触发状态 ──
+#if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
+    debug.ctrlMode      = actionCtrlMode.isTriggered();
+    debug.moveX         = actionMoveX.isTriggered();
+    debug.moveY         = actionMoveY.isTriggered();
+    debug.moveXKey      = actionMoveXKey.isTriggered();
+    debug.moveYKey      = actionMoveYKey.isTriggered();
+    debug.yaw           = actionYaw.isTriggered();
+    debug.pitch         = actionPitch.isTriggered();
+    debug.mouseYaw      = actionMouseYaw.isTriggered();
+    debug.mousePitch    = actionMousePitch.isTriggered();
+    debug.mouseBurst    = actionMouseBurst.isTriggered();
+    debug.mouseSingle   = actionMouseSingle.isTriggered();
+    debug.mouseVision   = actionMouseVision.isTriggered();
+    debug.fricToggle    = actionFricToggle.isTriggered();
+    debug.shootBurst    = actionShootBurst.isTriggered();
+    debug.shootSingle   = actionShootSingle.isTriggered();
+    debug.spinMode      = actionSpinMode.isTriggered();
+    debug.keySpin       = actionKeySpin.isTriggered();
+    debug.capSwitch     = actionCapSwitch.isTriggered();
+    debug.keyboardFric  = actionKeyboardFric.isTriggered();
+    debug.fn1Switch     = actionFn1Switch.isTriggered();
+    debug.turboMode     = actionTurboMode.isTriggered();
+    debug.stepClimb     = actionStepClimb.isTriggered();
+    debug.selfRescue    = actionSelfRescue.isTriggered();
+    debug.manualRescue  = actionManualRescue.isTriggered();
+    debug.gimbalReverse = actionGimbalReverse.isTriggered();
+    debug.jump          = actionJump.isTriggered();
+    debug.aimMode       = actionAimMode.isTriggered();
+    debug.legLength     = actionLegLength.isTriggered();
+    debug.reverseEdge   = actionReverseEdge.isTriggered();
+#else
+    debug.gpRelax       = actionRelax.isTriggered();
+    debug.gpHandbrake   = actionHandbrakeDepth.isTriggered();
+    debug.gpMoveX       = actionMoveX.isTriggered();
+    debug.gpYaw         = actionYaw.isTriggered();
+    debug.gpBrake       = actionBreak.isTriggered();
 #endif
 
     // ── 3~5. 仲裁 → 填充指令 → 写入黑板 ──
@@ -286,6 +321,8 @@ void CommanderSrvc::run() {
     comm.msg.manualRescue = actionManualRescue.isTriggered() ? 1 : 0;
     comm.msg.gimbalReverse= actionGimbalReverse.isTriggered() ? 1 : 0;
     comm.msg.jump         = actionJump.isTriggered() ? 1 : 0;
+    comm.msg.fireState    = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
+    comm.msg.aimMode      = triggers.aimModeCycle.getIndex();
 
 #else
     // ========================================
@@ -327,9 +364,10 @@ void CommanderSrvc::run() {
     ChassisCmd cmd{};
     Blackboard::instance().rComm.read(comm);
 
-    cmd.mode = comm.msg.mode;
-    cmd.vx   = (float)comm.msg.vx / 10;
-    cmd.vy   = (float)comm.msg.vy / 10;
+    cmd.mode      = comm.msg.mode;
+    cmd.capSwitch = comm.msg.capSwitch;
+    cmd.vx        = (float)comm.msg.vx / 10;
+    cmd.vy        = (float)comm.msg.vy / 10;
 
     if ((cmd.mode & 0x03) == CHASSIS_NORMAL)
         cmd.vw = 0;
