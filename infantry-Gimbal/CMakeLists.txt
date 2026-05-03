@@ -11,6 +11,9 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
 
 
 # Define the build type
@@ -136,12 +139,17 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/Application/fsm/fire-state-safe-burst.cpp"
         "../Solution/Application/fsm/fire-state-jam-clear.cpp"
 
+        # Motion FSM states
+        "../Solution/Application/fsm/motion-state-relax.cpp"
+        "../Solution/Application/fsm/motion-state-align.cpp"
+        "../Solution/Application/fsm/motion-state-manual.cpp"
+        "../Solution/Application/fsm/motion-state-auto.cpp"
+
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
         "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
         "../Solution/Board-Support-Pack/DR16/dr16.cpp"
         "../Solution/Board-Support-Pack/VideoLink/video-link-remote.cpp"
         "../Solution/Board-Support-Pack/USB/dev-usb.cpp"
-        "../Solution/Board-Support-Pack/USB/usb-descriptors.c"
         "../Solution/Board-Support-Pack/GamePad/bluetooth-gamepad.cpp"
 
 
@@ -164,13 +172,11 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Component/Motor/pyro_dji_motor_drv.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Component/Motor/pyro_dm_motor_drv.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Component/Motor/pyro_motor_base.cpp"
-        "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Peripheral/CAN/pyro_can_drv.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/PID/pyro_algo_pid.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/EKF/QuaternionEKF.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/OLS/pyro_algo_ols.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/KF/kalman_filter.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Peripheral/DWT/pyro_dwt_drv.cpp"
-        "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Core/FSM/pyro_core_fsm.tpp"
 
         # Tiny USB
         # Tiny USB 核心通用文件
@@ -268,10 +274,8 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
 
 # Add linked libraries
+# stm32cubemx subdirectory already links STM32_Drivers + FreeRTOS (line 128 of cmake/stm32cubemx/CMakeLists.txt)
 target_link_libraries(${CMAKE_PROJECT_NAME}
-
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake/stm32cubemx"
-
         # Add user defined libraries
         CMSISDSP
         dsppp_lib

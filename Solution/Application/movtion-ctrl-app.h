@@ -46,6 +46,8 @@
 
 #include "Algorithm/Motion/s-curve-planner.h"
 #include "Algorithm/Power/power-limiter.h"
+#include "System/DataHub/data-def.h"
+#include "pyro_core_fsm.h"
 
 
 /* IV. drivers */
@@ -59,6 +61,12 @@
 
 /*-------- 2. enum ---------------------------------------------------------------------------------------------------*/
 
+inline float wrapAngle(float angle) {
+    angle = std::fmod(angle + M_PI, 2.0f * M_PI);
+    if (angle < 0) angle += 2.0f * M_PI;
+    return angle - M_PI;
+}
+
 struct PIDParam {
     float kp;
     float ki;
@@ -70,6 +78,17 @@ struct PIDParam {
 
 
 /*-------- 3. interface ---------------------------------------------------------------------------------------------*/
+
+#ifdef GIMBAL
+struct GimbalMotionCtx {
+    GimbalCmd cmd;
+    ImuState imu;
+    GimbalState state;
+    GimbalOutput output;
+    GimbalTelemetry telem;
+    float dt;
+};
+#endif
 
 class MovtionCtrlApp final : public PeriodicApp, public Singleton<MovtionCtrlApp> {
 public:
@@ -128,6 +147,42 @@ public:
     pyro::pid_t yawPosPid = pyro::pid_t(20.0f, 0.8f, 0.0f, 10.0f, 500.0f);
     pyro::pid_t yawSpdPid = pyro::pid_t(18.0f, 0.0f, 0.0f, 0.0f, 24.0f);
     pyro::pid_t pitchPosPid = pyro::pid_t(0.0f, Config::Algorithm::Gimbal::DM_MOT_PITCH_KI, 0.0f, 12.0f, 12.0f);
+
+    void updatePitch(GimbalMotionCtx& ctx);
+    void updateYaw(GimbalMotionCtx& ctx);
+
+    // ── FSM 状态声明 (实现拆分到 fsm/) ──
+    struct StateRelax : public pyro::state_t<GimbalMotionCtx> {
+        void enter(GimbalMotionCtx& ctx) override;
+        void execute(GimbalMotionCtx& ctx) override;
+        void exit(GimbalMotionCtx&) override {}
+    };
+    struct StateAlign : public pyro::state_t<GimbalMotionCtx> {
+        void enter(GimbalMotionCtx& ctx) override;
+        void execute(GimbalMotionCtx& ctx) override;
+        void exit(GimbalMotionCtx&) override {}
+    };
+    struct StateManual : public pyro::state_t<GimbalMotionCtx> {
+        void enter(GimbalMotionCtx& ctx) override;
+        void execute(GimbalMotionCtx& ctx) override;
+        void exit(GimbalMotionCtx&) override {}
+    };
+    struct StateAuto : public pyro::state_t<GimbalMotionCtx> {
+        void enter(GimbalMotionCtx& ctx) override;
+        void execute(GimbalMotionCtx& ctx) override;
+        void exit(GimbalMotionCtx&) override {}
+    };
+
+    // ── FSM 状态实例 ──
+    StateRelax  _stateRelax;
+    StateAlign  _stateAlign;
+    StateManual _stateManual;
+    StateAuto   _stateAuto;
+
+    // ── Align 状态 ──
+    float _alignStableMs = 0.0f;
+    pyro::pid_t _alignPosPid = pyro::pid_t(47.0f, 0.2f, 0.0f, 100.0f, 500.0f); // 与 yawPosPid 相同
+    pyro::pid_t _alignSpdPid = pyro::pid_t(1.2f, 0.007f, 0.0f, 5.0f, 20.0f);  // 与 yawSpdPid 相同
 
 #endif
 

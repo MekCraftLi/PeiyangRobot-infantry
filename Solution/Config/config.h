@@ -37,7 +37,7 @@
 #ifdef CHASSIS
 #include "Chassis/algo-config.h"
 #include "Chassis/hw-config.h"
-#elifdef GIMBAL
+#elif defined(GIMBAL)
 #include "Gimbal/algo-config.h"
 #include "Gimbal/hw-config.h"
 #endif

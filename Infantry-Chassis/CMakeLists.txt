@@ -11,6 +11,9 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
 
 
 # Define the build type
@@ -37,7 +40,7 @@ enable_language(C ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
-        ../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/OLS/pyro_algo_ols.cpp
+
 )
 
 # Add STM32CubeMX generated sources
@@ -162,7 +165,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Component/Motor/pyro_dji_motor_drv.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Component/Motor/pyro_dm_motor_drv.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Component/Motor/pyro_motor_base.cpp"
-        "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Peripheral/CAN/pyro_can_drv.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/PID/pyro_algo_pid.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/EKF/QuaternionEKF.cpp"
         "../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Algorithm/OLS/pyro_algo_ols.cpp"
@@ -221,6 +223,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Debug/VOFA"
         "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/PYRo/Debug/JCOM"
 
+        "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/PYRo-uCtrl-Unity/Ported_third_lib/CMSIS-DSP/Include"
+
+        "${CMAKE_CURRENT_LIST_DIR}/../Solution/Board-Support-Pack/USB"
+
         # ---- Tiny USB ----
         "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/TinyUSB/src/"
 )
@@ -229,6 +235,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined symbols
         CHASSIS=1
+        REMOTE_DR16=1
+        REMOTE_VIDEO_LINK=2
+        REMOTE_GAMEPAD=3
+        REMOTE_DEVICE=0
 )
 
 # Remove wrong libob.a library dependency when using cpp files

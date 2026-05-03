@@ -299,7 +299,6 @@ void ImuApp::run() {
 
 
     // 3. 执行 EKF 更新 (纯数学运算，几微秒跑完)
-    uint32_t startTime = pyro::dwt_drv_t::get_current_ticks();
     IMU_QuaternionEKF_Update(input_gx, input_gy, input_gz,
                              input_ax, input_ay, input_az, dt);
 

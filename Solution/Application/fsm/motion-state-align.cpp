@@ -1,0 +1,75 @@
+/**
+ *******************************************************************************
+ * @file    motion-state-align.cpp
+ * @brief   云台运动 FSM — Align 状态 (yaw 对准编码器 0x5400)
+ *
+ * Entry actions:
+ *   - 计算到目标角度的最短路径偏移
+ *   - pitch.disable(), PID 清零
+ *
+ * 每 tick:
+ *   - 累积 yaw 变化量 (跨 ±π 边界连续)
+ *   - P + 速度环闭环驱动 yaw 对准
+ *
+ * Exit condition:
+ *   - |offset| < ±5° -> Manual
+ *   - mode == RELAX -> Relax
+ *******************************************************************************
+ * @author  MekLi
+ * @date    2026/5/3
+ * @version 1.0
+ *******************************************************************************
+ */
+
+#include "../movtion-ctrl-app.h"
+#include "System/Service/motor-actuator.h"
+
+static constexpr int32_t ALIGN_TARGET_ECD = 5400;
+static constexpr int32_t ECD_PER_REV      = 8192;
+static constexpr float   ALIGN_TOLERANCE  = 15.0f * M_PI / 180.0f;
+static constexpr float   ALIGN_STABLE_MS  = 800.0f;
+
+// 编码器最短路径 (mod 8192)
+static int32_t ecdShortestError(int32_t target, int32_t current) {
+    int32_t diff = (target - current) % ECD_PER_REV;
+    if (diff > ECD_PER_REV / 2) diff -= ECD_PER_REV;
+    if (diff < -ECD_PER_REV / 2) diff += ECD_PER_REV;
+    return diff;
+}
+
+void MovtionCtrlApp::StateAlign::enter(GimbalMotionCtx& ctx) {
+    instance()._alignStableMs = 0.0f;
+    instance()._alignPosPid.clear();
+    instance()._alignSpdPid.clear();
+    ctx.output.pitchEn    = false;
+    ctx.output.yawVoltage = 0.0f;
+    MotActSrvc::instance().pitch.disable();
+}
+
+void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
+    if (ctx.cmd.mode == GIMBAL_RELAX) {
+        request_switch(&instance()._stateRelax);
+        return;
+    }
+
+    // 编码器差值 → 弧度 (与 IMU 无关)
+    int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();
+    float errorRad = (float)ecdShortestError(ALIGN_TARGET_ECD, curEcd)
+                     / (float)ECD_PER_REV * 2.0f * M_PI;
+
+    // 专用 PID 闭环 (编码器反馈)
+    float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -errorRad);
+    ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.state.yaw.vel);
+    ctx.output.pitchEn    = false;
+
+    // 误差 < ±5° → 累计稳定时间
+    if (std::abs(errorRad) < ALIGN_TOLERANCE) {
+        instance()._alignStableMs += ctx.dt * 1000.0f;
+        if (instance()._alignStableMs >= ALIGN_STABLE_MS) {
+            ctx.telem.targetYawRad = ctx.imu.yaw;
+            request_switch(&instance()._stateManual);
+        }
+    } else {
+        instance()._alignStableMs = 0.0f;
+    }
+}

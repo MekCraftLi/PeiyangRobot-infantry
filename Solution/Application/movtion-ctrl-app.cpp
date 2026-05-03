@@ -35,6 +35,7 @@
 
 #include "../System/DataHub/blackboard.h"
 #include "Config/Gimbal/algo-config.h"
+#include "System/Service/motor-actuator.h"
 #include "System/DataHub/referee-data-hub.h"
 #include "dsp/fast_math_functions.h"
 #include "pyro_dwt_drv.h"
@@ -60,6 +61,13 @@
 /* ------- variables -------------------------------------------------------------------------------------------------*/
 
 [[maybe_unused]] static auto& forceInit = MovtionCtrlApp::instance();
+
+// --- 对准目标: 6020 编码器 0x5400 对应的角度 (rad) ---
+static constexpr float ALIGN_TARGET_RAD = (5120.0f / 8192.0f) * 2.0f * M_PI;
+static constexpr float ALIGN_TOLERANCE  = 5.0f * M_PI / 180.0f;
+
+static pyro::fsm_t<GimbalMotionCtx> motionFsm;
+static GimbalMotionCtx motionCtx;
 
 // 专供 Ozone 示波器实时采样的底盘功率观测探针
 volatile struct PowerDebugOzone {
@@ -93,7 +101,7 @@ volatile struct SCurveDebugOzone {
 
 #define APPLICATION_NAME       "MovtionCtrl"
 
-#define APPLICATION_STACK_SIZE 512
+#define APPLICATION_STACK_SIZE 1024
 
 #define APPLICATION_PRIORITY   4
 
@@ -117,18 +125,6 @@ static StackType_t appStack[APPLICATION_STACK_SIZE];
 
 MovtionCtrlApp::MovtionCtrlApp()
     : PeriodicApp(APPLICATION_ENABLE, APPLICATION_NAME, APPLICATION_STACK_SIZE, appStack, APPLICATION_PRIORITY, 1) {}
-
-// =================================================================================
-// 实用工具函数：高效角度规整到 [-PI, PI]
-// =================================================================================
-static inline float wrapAngle(float angle) {
-    // 使用 fmodf 替代 while 循环，防止极端情况下循环超时导致任务卡死
-    angle = std::fmod(angle + M_PI, 2.0f * M_PI);
-    if (angle < 0) {
-        angle += 2.0f * M_PI;
-    }
-    return angle - M_PI;
-}
 
 #ifdef CHASSIS
 // =================================================================================
@@ -328,155 +324,99 @@ void MovtionCtrlApp::run() {
 // =================================================================================
 // 云台控制逻辑
 // =================================================================================
-void MovtionCtrlApp::init() { /* driver object initialize */ }
+void MovtionCtrlApp::init() {
+    MotActSrvc::instance().waitInit();
+    motionFsm.change_state(&_stateRelax);
+    motionFsm.enter(motionCtx);
+}
 
 void MovtionCtrlApp::run() {
-    GimbalCmd cmd{};
-    ImuState imuState{};
-    GimbalState gimbalState{};
-    GimbalTelemetry telem{};
-    GimbalOutput output{};
-
-
     static uint32_t dwtCnt;
-    float dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
+    motionCtx.dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
 
+    Blackboard::instance().gimbalCmd.read(motionCtx.cmd);
+    Blackboard::instance().imuState.read(motionCtx.imu);
+    Blackboard::instance().gimbalState.read(motionCtx.state);
+    Blackboard::instance().gimbalTelem.read(motionCtx.telem);
+    Blackboard::instance().gimbalOut.read(motionCtx.output);
 
-    Blackboard::instance().gimbalCmd.read(cmd);
-    Blackboard::instance().imuState.read(imuState);
-    Blackboard::instance().gimbalState.read(gimbalState);
-    Blackboard::instance().gimbalTelem.read(telem);
-
-
-
-    // 1. 无力模式判断
-    if (cmd.mode == GIMBAL_RELAX) {
-        telem.targetYawRad            = imuState.yaw;
-        telem.targetPitchRad          = imuState.pitch;
-        output.targetPitchPos         = gimbalState.pitch.pos;
-        output.targetPitchSpeed       = 0.0f;
-        output.pitchFeedforwardTorque = 0.0f;
-        output.pitchEn                = false;
-
-        Blackboard::instance().gimbalTelem.write(telem);
-        Blackboard::instance().gimbalOut.write(output);
-        yawPosPid.clear();
-
-        yawSpdPid.clear();
-        pitchPosPid.clear();
-        return;
-    }
-    Blackboard::instance().gimbalOut.read(output);
-
-
-    // =================================================================
-    // 3. Pitch 轴解算 (针对类似 MIT 模式或内置位置环的电机)
-    // =================================================================
-    if (gimbalState.pitch.online) {
-
-        // 判断是否符合进入自瞄的条件（进入自瞄模式， 发现目标）
-        if (cmd.mode == GIMBAL_AUTO && abs(cmd.targetYaw) < M_PI) {
-            telem.targetPitchRad = cmd.targetPitch;
-        } else {
-            // 更新pitch轴目标角度
-            telem.targetPitchRad += cmd.pitchVel * dt;
-        }
-
-
-        // 自瞄数据无效的时候使用遥控器的数据
-
-        float offsetPitch    = imuState.pitch - gimbalState.pitch.pos;
-        float targetMotorRaw = telem.targetPitchRad - offsetPitch;
-
-        // 物理限位裁切
-        if (targetMotorRaw > Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT) {
-            targetMotorRaw = Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT;
-        } else if (targetMotorRaw < Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT) {
-            targetMotorRaw = Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT;
-        }
-
-        telem.targetPitchRad = targetMotorRaw + offsetPitch;
-
-        // 重力补偿前馈 + PID 力矩
-        static float gravityK;
-        float gravityFf               = gravityK * arm_cos_f32(imuState.pitch);
-        float pitchIntegralTorque     = pitchPosPid.calculate(telem.targetPitchRad, imuState.pitch);
-        float totalFf                 = gravityFf + pitchIntegralTorque; // 【融合前馈力矩】
-
-        // 更新数据
-        if (abs(cmd.pitchVel) > 0.1f) {
-            cmd.pitchVel = (cmd.pitchVel / cmd.pitchVel) * 0.1f;
-        }
-        output.targetPitchPos         = targetMotorRaw;
-        output.targetPitchSpeed       = cmd.pitchVel;
-        output.pitchFeedforwardTorque = totalFf;
-        output.pitchEn                = true;
-    } else {
-        telem.targetPitchRad = telem.targetPitchRad;
-        pitchPosPid.clear();
-        output.targetPitchSpeed       = 0.0f;
-        output.pitchFeedforwardTorque = 0.0f;
-        output.pitchEn                = false;
-    }
-
-
-    // 如果你的底层 Pitch 电机支持传入速度期望(如 MIT 模式的 v_des)，可以在此传入 cmd.targetPitchSpeed
-
-    // =================================================================
-    // 4. Yaw 轴解算 (标准双环串级 PID)
-    // =================================================================
-    if (gimbalState.yaw.online) {
-        // 前馈分量初始化
-        float ffYawTorque = 0.0f;
-
-
-        // 2. 模式处理与期望值计算
-        if (cmd.mode == GIMBAL_AUTO && abs(cmd.targetYaw) < M_PI) {
-            telem.targetYawRad = cmd.targetYaw;
-            // 加速度转化为前馈力矩 (需在 config.h 中标定转动惯量系数 INERTIA_K)
-            ffYawTorque        = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.targetYawSpeed;
-
-        } else {
-            // 手动模式：遥控器输入的是速度
-            telem.targetYawRad = wrapAngle(telem.targetYawRad + cmd.yawVel * dt);
-            ffYawTorque        = 0.0f;
-        }
-
-
-        // 手动模式下也可以利用遥控器指令做简单的速度前馈
-        ChassisToGimbalComm comm{};
-        Blackboard::instance().c2gComm.read(comm);
-        ffYawTorque           = Config::Algorithm::Gimbal::YAW_INERTIA_K * cmd.yawVel ;
-        if (abs(comm.msg.chassisYawSpeed )> 0.5f) {
-            ffYawTorque +=  -0.11f * comm.msg.chassisYawSpeed;
-        }
-
-        float alignedTgtYaw   = imuState.yaw + wrapAngle(telem.targetYawRad - imuState.yaw);
-
-        // 位置环计算 (反馈分量)
-        float yawPosOut       = yawPosPid.calculate(alignedTgtYaw, imuState.yaw);
-
-        // 【复合速度】：位置环修正输出 + 视觉预测速度前馈
-        float tgtYawSpd       = yawPosOut;
-        telem.targetYawRotate = tgtYawSpd;
-
-        // 速度环计算 (反馈分量)
-        float yawSpdOut       = yawSpdPid.calculate(tgtYawSpd, imuState.gyro[2]);
-
-        output.yawVoltage     = yawSpdOut + ffYawTorque;
-
-    } else {
-        telem.targetYawRad = imuState.yaw;
-        yawPosPid.clear();
-        yawSpdPid.clear();
-    }
-
-
+    motionFsm.execute(motionCtx);
 
 
 
     // 数据回写
-    Blackboard::instance().gimbalOut.write(output);
-    Blackboard::instance().gimbalTelem.write(telem);
+    Blackboard::instance().gimbalOut.write(motionCtx.output);
+    Blackboard::instance().gimbalTelem.write(motionCtx.telem);
+}
+
+void MovtionCtrlApp::updatePitch(GimbalMotionCtx& ctx) {
+    if (!ctx.state.pitch.online) {
+        pitchPosPid.clear();
+        ctx.output.targetPitchSpeed       = 0.0f;
+        ctx.output.pitchFeedforwardTorque = 0.0f;
+        ctx.output.pitchEn                = false;
+        return;
+    }
+
+    if (ctx.cmd.mode == GIMBAL_AUTO && abs(ctx.cmd.targetYaw) < M_PI)
+        ctx.telem.targetPitchRad = ctx.cmd.targetPitch;
+    else
+        ctx.telem.targetPitchRad += ctx.cmd.pitchVel * ctx.dt;
+
+    float offsetPitch    = ctx.imu.pitch - ctx.state.pitch.pos;
+    float targetMotorRaw = ctx.telem.targetPitchRad - offsetPitch;
+
+    if (targetMotorRaw > Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT)
+        targetMotorRaw = Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT;
+    else if (targetMotorRaw < Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT)
+        targetMotorRaw = Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT;
+
+    ctx.telem.targetPitchRad = targetMotorRaw + offsetPitch;
+
+    static float gravityK;
+    float gravityFf           = gravityK * arm_cos_f32(ctx.imu.pitch);
+    float pitchIntegralTorque = pitchPosPid.calculate(ctx.telem.targetPitchRad, ctx.imu.pitch);
+    float totalFf             = gravityFf + pitchIntegralTorque;
+
+    if (abs(ctx.cmd.pitchVel) > 0.1f)
+        ctx.cmd.pitchVel = (ctx.cmd.pitchVel / ctx.cmd.pitchVel) * 0.1f;
+
+    ctx.output.targetPitchPos         = targetMotorRaw;
+    ctx.output.targetPitchSpeed       = ctx.cmd.pitchVel;
+    ctx.output.pitchFeedforwardTorque = totalFf;
+    ctx.output.pitchEn                = true;
+}
+
+void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
+    if (!ctx.state.yaw.online) {
+        ctx.telem.targetYawRad = ctx.imu.yaw;
+        yawPosPid.clear();
+        yawSpdPid.clear();
+        ctx.output.yawVoltage = 0.0f;
+        return;
+    }
+
+    float ffYawTorque = 0.0f;
+
+    if (ctx.cmd.mode == GIMBAL_AUTO && abs(ctx.cmd.targetYaw) < M_PI) {
+        ctx.telem.targetYawRad = ctx.cmd.targetYaw;
+        ffYawTorque            = Config::Algorithm::Gimbal::YAW_INERTIA_K * ctx.cmd.targetYawSpeed;
+    } else {
+        ctx.telem.targetYawRad = wrapAngle(ctx.telem.targetYawRad + ctx.cmd.yawVel * ctx.dt);
+        ffYawTorque            = 0.0f;
+    }
+
+    ffYawTorque = Config::Algorithm::Gimbal::YAW_INERTIA_K * ctx.cmd.yawVel;
+    ChassisToGimbalComm c2g{};
+    Blackboard::instance().c2gComm.read(c2g);
+    if (abs(c2g.msg.chassisYawSpeed) > 0.5f)
+        ffYawTorque += -0.11f * c2g.msg.chassisYawSpeed;
+
+    float alignedTgtYaw   = ctx.imu.yaw + wrapAngle(ctx.telem.targetYawRad - ctx.imu.yaw);
+    float yawPosOut       = yawPosPid.calculate(alignedTgtYaw, ctx.imu.yaw);
+    float tgtYawSpd       = yawPosOut;
+    ctx.telem.targetYawRotate = tgtYawSpd;
+    float yawSpdOut       = yawSpdPid.calculate(tgtYawSpd, ctx.imu.gyro[2]);
+    ctx.output.yawVoltage = yawSpdOut + ffYawTorque;
 }
 #endif

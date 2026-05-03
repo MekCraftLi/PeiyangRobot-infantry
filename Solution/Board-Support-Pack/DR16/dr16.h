@@ -138,6 +138,7 @@ class RemoteDR16 : public RemoteBase, public Singleton<RemoteDR16> {
 
     [[nodiscard]] bool isConnected() const override;
     void onDataReceived() override;
+    void bindActions(InputAction* actions, TriggerConfig& triggers) override;
 
   private:
     // 实体化控件 (内存直接分配在 Remote 对象内)

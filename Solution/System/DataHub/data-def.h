@@ -204,8 +204,9 @@ union GimbalToChassisComm {
         int32_t vx    : 6; //  正方向： 向前
         int32_t vy    : 6; // 正方向： 向左
         uint32_t mode : 4;
-        uint32_t shootEn: 1;
-        uint32_t resetUI:1;
+        uint32_t shootEn  : 1;
+        uint32_t resetUI  : 1;
+        uint32_t fn1Switch: 1;
     } msg;
 
     uint8_t buffer[8];

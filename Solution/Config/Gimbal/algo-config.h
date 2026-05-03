@@ -79,8 +79,8 @@ constexpr float YAW_INERTIA_K = 2.3f;
 constexpr float PITCH_ELEVATION_LIMIT =  1.623f; // 抬头上限 (rad)
 constexpr float PITCH_DEPRESSION_LIMIT = 2.946f; // 低头下限 (rad)
 #elif IDENTITY == MYSELF
-constexpr float PITCH_ELEVATION_LIMIT =  -0.332f; // 抬头上限 (rad)
-constexpr float PITCH_DEPRESSION_LIMIT = 0.821f; // 低头下限 (rad)
+constexpr float PITCH_ELEVATION_LIMIT =  1.98f; // 抬头上限 (rad)
+constexpr float PITCH_DEPRESSION_LIMIT = 2.95; // 低头下限 (rad)
 #endif
 
 

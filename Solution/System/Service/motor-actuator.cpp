@@ -214,6 +214,9 @@ void MotActSrvc::run() {
 
 float kp = 0.1f;
 float kd;
+
+// 调试探针: 6020 yaw 电机原始编码器值 (0-8191)
+volatile uint32_t g_yaw_ecd_debug = 0;
 void MotActSrvc::run() {
 
     GimbalState gstate{.timestamp = xTaskGetTickCount()};
@@ -224,6 +227,7 @@ void MotActSrvc::run() {
     Blackboard::instance().boosterState.read(bstate);
 
     yaw.update_feedback();
+    g_yaw_ecd_debug = yaw.get_current_ecd();
     pitch.update_feedback();
     fric[0].update_feedback();
     fric[1].update_feedback();

@@ -24,7 +24,7 @@
  *******************************************************************************
  * @author  MekLi
  * @date    2026/2/27
- * @version 2.0
+ * @version 3.0
  *******************************************************************************
  */
 
@@ -40,24 +40,75 @@
 #include "System/Thread/application-base.h"
 #include "tools/crtp.h"
 
+#include "System/Input/action.h"
+#include "System/Input/trigger-config.h"
+
 #include "Board-Support-Pack/DR16/dr16.h"
 #include "System/Input/ControlImpl/control-impl-axis.h"
 #include "System/Input/ControlImpl/control-impl-switch.h"
-#include "System/Input/TriggerImpl/trigger-decorator-toggle.h"
-#include "System/Input/TriggerImpl/trigger-impl-click.h"
-#include "System/Input/TriggerImpl/trigger-impl-edge.h"
-#include "System/Input/TriggerImpl/trigger-impl-hold.h"
-#include "System/Input/TriggerImpl/trigger-impl-linear.h"
-#include "System/Input/TriggerImpl/trigger-impl-match.h"
-#include "System/Input/action.h"
 
 #ifdef GIMBAL
 #if REMOTE_DEVICE == REMOTE_VIDEO_LINK
 #include "Board-Support-Pack/VideoLink/video-link-remote.h"
+#elif REMOTE_DEVICE == REMOTE_GAMEPAD
+#include "Board-Support-Pack/GamePad/bluetooth-gamepad.h"
 #endif
 #endif
 
 #include "usart.h"
+
+/*-------- 标准 Action 槽位 (DR16 / VideoLink 共用) -----------------------------------------*/
+
+enum StdActionSlot : uint8_t {
+    CTRL_MODE,     // 控制源切换开关
+    MOVE_X,        // 底盘前后平移 (摇杆/扳机)
+    MOVE_Y,        // 底盘左右平移
+    MOVE_X_KEY,    // 底盘前后平移 (键盘 W/S)
+    MOVE_Y_KEY,    // 底盘左右平移 (键盘 A/D)
+    YAW,           // 云台偏航 (摇杆)
+    PITCH,         // 云台俯仰 (摇杆)
+    MOUSE_YAW,     // 云台偏航 (鼠标 X)
+    MOUSE_PITCH,   // 云台俯仰 (鼠标 Y)
+    MOUSE_BURST,   // 鼠标左键连发
+    MOUSE_SINGLE,  // 鼠标左键单发
+    MOUSE_VISION,  // 鼠标右键视觉瞄准
+    FRIC_TOGGLE,   // 摩擦轮开关切换
+    SHOOT_BURST,   // 连发触发
+    SHOOT_SINGLE,  // 单发触发
+    SPIN_MODE,     // 小陀螺模式切换
+    KEY_SPIN,      // 键盘 Shift 旋转
+    CAP_SWITCH,    // 超级电容开关
+    KEYBOARD_FRIC, // 键盘 Q 摩擦轮切换
+    FN1_SWITCH,    // Fn1 开关 (过0上升沿 toggle)
+    STD_ACTION_COUNT
+};
+
+/*-------- 触发器配置 (供 Remote::bindActions 使用) -----------------------------------------*/
+
+struct TriggerConfig {
+    // 通用
+    TriggerLinear joystickDeadzone{TriggerCfg::JOYSTICK_DEADZONE};
+    // 射击系统
+    TriggerEdge fricToggle{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerHold burstFire{TriggerCfg::BTN_THRESHOLD, TriggerCfg::BURST_HOLD_TIME, false,
+                          HoldCondition::GreaterOrEqual};
+    TriggerEdge singleRelease{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
+    TriggerHold visionAim{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
+                          HoldCondition::GreaterOrEqual};
+    // 运动/切换
+    TriggerHold instantTrigger{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, true,
+                               HoldCondition::GreaterOrEqual};
+    TriggerHold shiftHold{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, true,
+                          HoldCondition::GreaterOrEqual};
+    // Toggle 装饰器
+    TriggerToggle spinToggle{instantTrigger, false};
+    TriggerToggle spinKeyToggle{shiftHold, false};
+    TriggerEdge fn1Rise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerToggle fn1Toggle{fn1Rise, false};
+    // 持续触发 (电容)
+    TriggerHold continuousTrigger{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
+                                  HoldCondition::GreaterOrEqual};
+};
 
 /*-------- class
  * ------------------------------------------------------------------------------------------------------*/
@@ -74,45 +125,12 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     void onUartErrCallback();
 #endif
 
-  private:
-    // --- 远程设备引用 ---
-#ifdef GIMBAL
-#if REMOTE_DEVICE == REMOTE_DR16
-    RemoteBase& remote = RemoteDR16::instance();
-#elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
-    RemoteBase& remote = VideoLinkRemote::instance();
-#endif
-#endif
+    TriggerConfig triggers;
 
+  private:
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
 
-    // ── Action 槽位索引 ──────────────────────────────────────────
-    //   使用 enum 替代魔法数字, 便于维护和自动迭代.
-    // ──────────────────────────────────────────────────────────────
-    enum ActionSlot : uint8_t {
-        CTRL_MODE,     // 控制源切换开关
-        MOVE_X,        // 底盘前后平移 (摇杆/扳机)
-        MOVE_Y,        // 底盘左右平移
-        MOVE_X_KEY,    // 底盘前后平移 (键盘 W/S)
-        MOVE_Y_KEY,    // 底盘左右平移 (键盘 A/D)
-        YAW,           // 云台偏航 (摇杆)
-        PITCH,         // 云台俯仰 (摇杆)
-        MOUSE_YAW,     // 云台偏航 (鼠标 X)
-        MOUSE_PITCH,   // 云台俯仰 (鼠标 Y)
-        MOUSE_BURST,   // 鼠标左键连发
-        MOUSE_SINGLE,  // 鼠标左键单发
-        MOUSE_VISION,  // 鼠标右键视觉瞄准
-        FRIC_TOGGLE,   // 摩擦轮开关切换
-        SHOOT_BURST,   // 连发触发
-        SHOOT_SINGLE,  // 单发触发
-        SPIN_MODE,     // 小陀螺模式切换
-        KEY_SPIN,      // 键盘 Shift 旋转
-        CAP_SWITCH,    // 超级电容开关
-        KEYBOARD_FRIC, // 键盘 Q 摩擦轮切换
-        ACTION_COUNT
-    };
-
-    InputAction _actions[ACTION_COUNT];
+    InputAction _actions[STD_ACTION_COUNT];
 
     // --- 便捷别名 (指向 _actions 槽位) ---
     InputAction& actionCtrlMode     = _actions[CTRL_MODE];
@@ -134,46 +152,24 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     InputAction& actionKeySpin      = _actions[KEY_SPIN];
     InputAction& actionCapSwitch    = _actions[CAP_SWITCH];
     InputAction& actionKeyboardFric = _actions[KEYBOARD_FRIC];
-
-    // ── 触发器 ────────────────────────────────────────────────────
-    // ──────────────────────────────────────────────────────────────
-
-    // --- 通用 ---
-    TriggerLinear _joystickDeadzone{0.02f}; // 摇杆死区过滤器
-    // --- 模式仲裁 ---
-    TriggerHold _work{-0.25f, 0.5f, false, HoldCondition::LessOrEqual}; // 控制源开关判定
-    // --- 射击系统 ---
-    TriggerEdge _trigFricToggle{-0.5f, EdgeType::Rising};                        // 摩擦轮切换 (上升沿)
-    TriggerHold _triggerBurst{0.5f, 1.5f, false, HoldCondition::GreaterOrEqual}; // 连发保持判定
-    TriggerHold _triggerMouseBurst{0.5f, 1.5f, false, HoldCondition::GreaterOrEqual};
-    TriggerEdge _trigSingleRelease{0.23f, EdgeType::Falling};                    // 单发释放触发 (按下=1.0→currentState=true, 松开=-1.0→currentState=false, Falling触发)
-    TriggerEdge _triggerMouseSingle{0.0f, EdgeType::Falling};
-    TriggerHold _trigVision{0.5f, 0.001f, false, HoldCondition::GreaterOrEqual}; // 视觉瞄准保持
-    // --- 运动/切换 ---
-    TriggerHold _trigShiftHold{0.5f, 0.001f, true, HoldCondition::GreaterOrEqual};    // Shift 键保持
-    TriggerHold _trigKeyboardFric{0.5f, 0.001f, true, HoldCondition::GreaterOrEqual}; // Q 键触发
-    // --- Toggle 装饰器 (包装基础触发器) ---
-    TriggerHold _baseInstantTrigger{0.5f, 0.001f, true, HoldCondition::GreaterOrEqual};     // 即时单次触发基座
-    TriggerHold _baseContinuousTrigger{0.5f, 0.001f, false, HoldCondition::GreaterOrEqual}; // 持续触发基座
-    TriggerToggle _trigSpin{_baseInstantTrigger, false};                                    // 小陀螺切换
-    TriggerToggle _trigSpinKey{_trigShiftHold, false};                                      // Shift 小陀螺切换
+    InputAction& actionFn1Switch    = _actions[FN1_SWITCH];
 
 #else
     // ── Gamepad 专用 ──────────────────────────────────────────────
-    InputAction _actions[5];
+    InputAction _gpActions[5];
 
-    enum ActionSlot : uint8_t { RELAX, HANDBRAKE, MOVE_X, YAW, BRAKE, ACTION_COUNT };
+    enum GpSlot : uint8_t { GP_RELAX, GP_HANDBRAKE, GP_MOVE_X, GP_YAW, GP_BRAKE, GP_COUNT };
 
-    TriggerLinear _joystickDeadzone{0.02f};
+    TriggerLinear _joystickDeadzone{TriggerCfg::JOYSTICK_DEADZONE};
     TriggerHold _handbreak{0.0f, 0.001f, false, HoldCondition::GreaterOrEqual};
     TriggerHold _aTest{0.0f, 0.001f, true, HoldCondition::GreaterOrEqual};
     TriggerToggle _relax{_aTest, true};
 
-    InputAction& actionRelax          = _actions[RELAX];
-    InputAction& actionHandbrakeDepth = _actions[HANDBRAKE];
-    InputAction& actionMoveX          = _actions[MOVE_X];
-    InputAction& actionYaw            = _actions[YAW];
-    InputAction& actionBreak          = _actions[BRAKE];
+    InputAction& actionRelax          = _gpActions[GP_RELAX];
+    InputAction& actionHandbrakeDepth = _gpActions[GP_HANDBRAKE];
+    InputAction& actionMoveX          = _gpActions[GP_MOVE_X];
+    InputAction& actionYaw            = _gpActions[GP_YAW];
+    InputAction& actionBreak          = _gpActions[GP_BRAKE];
 #endif
 
     // --- 私有辅助方法 ---

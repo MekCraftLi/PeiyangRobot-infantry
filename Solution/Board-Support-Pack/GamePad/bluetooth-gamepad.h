@@ -106,6 +106,7 @@ public:
 
     [[nodiscard]] bool isConnected() const override;
     void onDataReceived() override;
+    void bindActions(InputAction* /*actions*/, TriggerConfig& /*triggers*/) override {}
 
     // =============================================================
     // 手柄特有控件暴露接口 (供高阶 Action 绑定使用)

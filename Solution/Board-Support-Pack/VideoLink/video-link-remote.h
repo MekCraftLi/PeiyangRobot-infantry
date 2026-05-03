@@ -117,6 +117,7 @@ class VideoLinkRemote : public RemoteBase, public Singleton<VideoLinkRemote> {
 
     [[nodiscard]] bool isConnected() const override;
     void onDataReceived() override;
+    void bindActions(InputAction* actions, TriggerConfig& triggers) override;
 
     // =============================================================
     // 暴露特定于图传链路遥控器的独立控件接口

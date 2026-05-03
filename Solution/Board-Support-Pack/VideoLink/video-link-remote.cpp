@@ -30,6 +30,8 @@
 
 #include "video-link-remote.h"
 
+#include "System/Input/action.h"
+#include "System/Service/commander.h"
 #include "task.h"
 #include "projdefs.h"
 
@@ -231,4 +233,40 @@ bool VideoLinkRemote::isConnected() const {
 
 void VideoLinkRemote::onDataReceived() {
     _lastUpdateTick = xTaskGetTickCount();
+}
+
+void VideoLinkRemote::bindActions(InputAction* actions, TriggerConfig& triggers) {
+    //
+    //  图传链路布局:
+    //    右摇杆 Y/X → 底盘前后/左右     W/S, A/D → 键盘辅助
+    //    左摇杆偏航/俯仰 → 云台          鼠标 X/Y → 云台辅助
+    //    鼠标左键 → 连发/单发            鼠标右键 → 视觉瞄准
+    //    模式开关 → 控制源仲裁           Fn2 / Q → 摩擦轮切换
+    //    Pause → 小陀螺                 Shift → 键盘小陀螺
+    //
+    // 底盘: 摇杆 + 键盘
+    actions[MOVE_X].bind(getRightY(), &triggers.joystickDeadzone);
+    actions[MOVE_Y].bind(getRightX(), &triggers.joystickDeadzone);
+    actions[MOVE_X_KEY].bind(getAxisKeyWS());
+    actions[MOVE_Y_KEY].bind(getAxisKeyAD());
+    // 云台: 摇杆 + 鼠标
+    actions[YAW].bind(getAxis(AxisID::ViewYaw), &triggers.joystickDeadzone);
+    actions[PITCH].bind(getAxis(AxisID::ViewPitch), &triggers.joystickDeadzone);
+    actions[MOUSE_YAW].bind(getMouseX(), &triggers.joystickDeadzone);
+    actions[MOUSE_PITCH].bind(getMouseY(), &triggers.joystickDeadzone);
+    // 射击: 鼠标 + 扳机
+    actions[MOUSE_BURST].bind(getMouseLeft(), &triggers.burstFire);
+    actions[MOUSE_SINGLE].bind(getMouseLeft(), &triggers.singleRelease);
+    actions[MOUSE_VISION].bind(getMouseRight(), &triggers.visionAim);
+    actions[SHOOT_BURST].bind(getTrigger(), &triggers.burstFire);
+    actions[SHOOT_SINGLE].bind(getTrigger(), &triggers.singleRelease);
+    // 控制源 + 摩擦轮
+    actions[CTRL_MODE].bind(getModeSw());
+    actions[FRIC_TOGGLE].bind(getFn2(), &triggers.fricToggle);
+    actions[KEYBOARD_FRIC].bind(getKeyQ(), &triggers.fricToggle);
+    actions[FN1_SWITCH].bind(getFn1(), &triggers.fn1Toggle);
+    // 运动/电容
+    actions[SPIN_MODE].bind(getPause(), &triggers.spinToggle);
+    actions[KEY_SPIN].bind(getKeyShift(), &triggers.spinKeyToggle);
+    actions[CAP_SWITCH].bind(getKeyC(), &triggers.continuousTrigger);
 }

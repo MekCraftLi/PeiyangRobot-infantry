@@ -77,20 +77,6 @@ private:
     float m_value;
 };
 
-
-// --- 模式切换意图 ---
-extern InputAction Action_CtrlMode;   // 决定系统控制权 (映射到右侧开关)
-extern InputAction Action_FuncMode;   // 决定附加功能 (映射到左侧开关)
-
-// --- 底盘运动意图 ---
-extern InputAction Action_MoveX;      // 前后移动
-extern InputAction Action_MoveY;      // 左右移动
-extern InputAction Action_Spin;       // 底盘自旋
-
-// --- 云台/发射意图 ---
-extern InputAction Action_GimbalYaw;
-extern InputAction Action_GimbalPitch;
-
 /*-------- 4. decorator ----------------------------------------------------------------------------------------------*/
 
 

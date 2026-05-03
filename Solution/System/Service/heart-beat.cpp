@@ -122,16 +122,6 @@ struct {
 void HeartBeatApp::run() {
  pyro::dwt_drv_t::get_timeline();
 
-#ifdef GIMBAL
-    GimbalOutput out{};
-    Blackboard::instance().gimbalOut.read(out);
-    if (out.pitchEn) {
-        MotActSrvc::instance().pitch.enable();
-    } else {
-        MotActSrvc::instance().pitch.disable();
-    }
-#endif
-
     // ========================================================================
     // 【终极防御】：主动轮询 FDCAN 硬件状态，无视任何中断配置
     // FDCAN_CCCR_INIT 位为 1 代表硬件处于初始化/休眠状态（被 Bus-Off 强杀）

@@ -27,13 +27,6 @@
 #include "System/DataHub/blackboard.h"
 #include "usart.h"
 
-#ifdef GIMBAL
-#if REMOTE_DEVICE == REMOTE_VIDEO_LINK
-#include "Board-Support-Pack/VideoLink/video-link-remote.h"
-#elif REMOTE_DEVICE == REMOTE_GAMEPAD
-#include "Board-Support-Pack/GamePad/bluetooth-gamepad.h"
-#endif
-#endif
 
 #include <algorithm>
 
@@ -83,83 +76,16 @@ CommanderSrvc::CommanderSrvc()
 /* -------- 初始化: 绑定物理控件 → Action -------------------------------------------------- */
 
 void CommanderSrvc::init() {
-    // ── 1. Action 映射绑定 (物理控件 + 触发器 → Action) ──
-
+    // ── 1. Action 映射绑定 (由各遥控器类实现) ──
 #if REMOTE_DEVICE == REMOTE_DR16
-    //
-    //  DR16 遥控器布局:
-    //    左摇杆 Y → 前后 (MoveX)      左摇杆 X → 左右 (MoveY)
-    //    右摇杆 X → 偏航 (Yaw)        右摇杆 Y → 俯仰 (Pitch)
-    //    右开关   → 控制源仲裁         左开关   → 射击系统
-    //    拨轮     → 小陀螺切换
-    //
-    actionMoveX.bind(RemoteDR16::instance().getLeftY(), &_joystickDeadzone);
-    actionMoveY.bind(RemoteDR16::instance().getLeftX(), &_joystickDeadzone);
-    actionYaw.bind(RemoteDR16::instance().getRightX(), &_joystickDeadzone);
-    actionPitch.bind(RemoteDR16::instance().getRightY(), &_joystickDeadzone);
-
-    // 控制源仲裁: 右开关
-    actionCtrlMode.bind(RemoteDR16::instance().getSwRight(), &_work);
-
-    // 射击: 左开关 → 摩擦轮 / 连发 / 单发
-    actionFricToggle.bind(RemoteDR16::instance().getSwLeft(), &_trigFricToggle);
-    actionShootBurst.bind(RemoteDR16::instance().getSwLeft(), &_triggerBurst);
-    actionShootSingle.bind(RemoteDR16::instance().getSwLeft(), &_trigSingleRelease);
-
-    // 小陀螺: 拨轮 toggle
-    actionSpinMode.bind(RemoteDR16::instance().getWheel(), &_trigSpin);
-
+    RemoteDR16::instance().bindActions(_actions, triggers);
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
-#ifdef GIMBAL
-    //
-    //  图传链路布局:
-    //    右摇杆 Y/X → 底盘前后/左右     W/S, A/D → 键盘辅助
-    //    摇杆偏航/俯仰 → 云台            鼠标 X/Y → 云台辅助
-    //    鼠标左键 → 连发/单发            鼠标右键 → 视觉瞄准
-    //    模式开关 → 控制源仲裁           Fn2 / Q → 摩擦轮切换
-    //    Pause → 小陀螺                 Shift → 键盘小陀螺
-    //
-    auto& vr = VideoLinkRemote::instance();
-
-    // 底盘: 摇杆 + 键盘
-    actionMoveX.bind(vr.getRightY(), &_joystickDeadzone);
-    actionMoveY.bind(vr.getRightX(), &_joystickDeadzone);
-    actionMoveXKey.bind(vr.getAxisKeyWS());
-    actionMoveYKey.bind(vr.getAxisKeyAD());
-
-    // 云台: 摇杆 + 鼠标
-    actionYaw.bind(vr.getAxis(AxisID::ViewYaw), &_joystickDeadzone);
-    actionPitch.bind(vr.getAxis(AxisID::ViewPitch), &_joystickDeadzone);
-    actionMouseYaw.bind(vr.getMouseX(), &_joystickDeadzone);
-    actionMousePitch.bind(vr.getMouseY(), &_joystickDeadzone);
-
-    // 射击: 扳机 + 鼠标
-    actionMouseBurst.bind(vr.getMouseLeft(), &_triggerMouseBurst);
-    actionMouseSingle.bind(vr.getMouseLeft(), &_triggerMouseSingle);
-    actionShootBurst.bind(vr.getTrigger(), &_triggerBurst);
-    actionShootSingle.bind(vr.getTrigger(), &_trigSingleRelease);
-    actionMouseVision.bind(vr.getMouseRight(), &_trigVision);
-
-    // 控制源 + 摩擦轮
-    actionCtrlMode.bind(vr.getModeSw(), &_work);
-    actionFricToggle.bind(vr.getFn2(), &_trigFricToggle);
-    actionKeyboardFric.bind(vr.getKeyQ(), &_trigFricToggle);
-
-    // 运动/电容
-    actionSpinMode.bind(vr.getPause(), &_trigSpin);
-    actionKeySpin.bind(vr.getKeyShift(), &_trigSpinKey);
-    actionCapSwitch.bind(vr.getKeyC(), &_baseContinuousTrigger);
-#endif
-
+    VideoLinkRemote::instance().bindActions(_actions, triggers);
 #elif REMOTE_DEVICE == REMOTE_GAMEPAD
-    //
-    //  蓝牙手柄布局:
-    //    右扳机 → 前进     左扳机 → 刹车
-    //    摇杆偏航 → 转向   A 键 → 放松    B 键 → 手刹
-    //
-    actionMoveX.bind(BluetoothGamepad::instance().getRightTrigger(), &_joystickDeadzone);
-    actionBreak.bind(BluetoothGamepad::instance().getLeftTrigger(), &_joystickDeadzone);
-    actionYaw.bind(BluetoothGamepad::instance().getAxis(AxisID::ViewYaw), &_joystickDeadzone);
+    // Gamepad 保持内联绑定
+    actionMoveX.bind(BluetoothGamepad::instance().getRightTrigger(), &triggers.joystickDeadzone);
+    actionBreak.bind(BluetoothGamepad::instance().getLeftTrigger(), &triggers.joystickDeadzone);
+    actionYaw.bind(BluetoothGamepad::instance().getAxis(AxisID::ViewYaw), &triggers.joystickDeadzone);
     actionRelax.bind(BluetoothGamepad::instance().getButtonA(), &_relax);
     actionHandbrakeDepth.bind(BluetoothGamepad::instance().getButtonB(), &_handbreak);
 #endif
@@ -250,8 +176,13 @@ void CommanderSrvc::run() {
 #endif
 
     // ── 2. 驱动所有 Action 更新 ──
+#if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
     for (auto& action : _actions)
         action.update(dt);
+#else
+    for (auto& action : _gpActions)
+        action.update(dt);
+#endif
 
     // ── 3~5. 仲裁 → 填充指令 → 写入黑板 ──
 
@@ -266,27 +197,16 @@ void CommanderSrvc::run() {
     ShootCmd sCmd{};
     GimbalToChassisComm comm{};
 
-    // ── 3. 仲裁控制源 ──
+    // ── 3. 仲裁控制源 (统一逻辑) ──
+    // 3档开关归一化: -1.0(上) / 0.0(中) / 1.0(下)
+    //   < -0.5 → SAFE_STOP    [-0.5, 0.5] → REMOTE    > 0.5 → VISION
     ControlSource currentSource = ControlSource::SAFE_STOP;
+    const float swState = actionCtrlMode.getValue();
 
-    if (true) {
-        float swState = actionCtrlMode.getValue();
-
-#if REMOTE_DEVICE == REMOTE_DR16
-        // DR16: 右开关上方/中位 → REMOTE, 下方 → VISION
-        if (actionCtrlMode.isTriggered()) {
-            currentSource = (swState > -0.5f) ? ControlSource::REMOTE : ControlSource::VISION;
-        }
-#elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
-        // VideoLink: 模式开关 < 0 → SAFE_STOP, 鼠标右键或开关 > 0 → VISION
-        if (swState < 0) {
-            currentSource = ControlSource::SAFE_STOP;
-        } else if (swState > 0 || actionMouseVision.isTriggered()) {
-            currentSource = ControlSource::VISION;
-        } else {
-            currentSource = ControlSource::REMOTE;
-        }
-#endif
+    if (swState > TriggerCfg::MODE_SW_VISION_THRESH || actionMouseVision.isTriggered()) {
+        currentSource = ControlSource::VISION;
+    } else if (swState >= TriggerCfg::MODE_SW_STOP_THRESH) {
+        currentSource = ControlSource::REMOTE;
     }
 
     // ── 4. 读取黑板历史值 (未修改字段天然保留) ──
@@ -343,7 +263,13 @@ void CommanderSrvc::run() {
             break;
     }
 
-    gCmd.timestamp = nowTick;
+    gCmd.timestamp         = nowTick;
+
+    // [调试] 底盘数据强制为被动模式，云台正常控制
+    comm.msg.mode  = (uint8_t)CHASSIS_RELAX;
+    comm.msg.vx    = 0;
+    comm.msg.vy    = 0;
+    comm.msg.fn1Switch = 0;
 
 #else
     // ========================================
@@ -406,7 +332,7 @@ void CommanderSrvc::onUartRxEventCallback(size_t size) {
 #if REMOTE_DEVICE == REMOTE_DR16
     memcpy(&_dr16Data, rxbuf, size);
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
-    //RemoteDR16::instance().onDataReceived();
+    RemoteDR16::instance().onDataReceived();
 #elif REMOTE_DEVICE == REMOTE_VIDEO_LINK
     memcpy(&_videoLinkRawData, rxbuf, size);
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));

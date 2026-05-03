@@ -29,9 +29,12 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
-#include "../System/Input/Control.h"
+#include "../System/Input/control.h"
 #include <string>
 #include <vector>
+
+class InputAction;
+struct TriggerConfig;
 
 
 
@@ -104,6 +107,15 @@ class RemoteBase {
     // 是否连接 (看门狗状态)
     virtual bool isConnected() const              = 0;
     virtual void onDataReceived()                 = 0;
+
+    /**
+     * @brief 绑定标准 Action 数组 (由 CommanderSrvc 调用)
+     * @param actions 标准 Action 槽位数组 (大小由 CommanderSrvc::ACTION_COUNT 决定)
+     * @param triggers 统一触发器配置
+     * 各遥控器实现此方法, 将自身控件映射到标准 Action 槽位.
+     * 未使用的槽位保持默认状态 (control=nullptr, trigger=nullptr).
+     */
+    virtual void bindActions(InputAction* actions, TriggerConfig& triggers) = 0;
 };
 
 
