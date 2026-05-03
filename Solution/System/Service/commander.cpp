@@ -23,6 +23,7 @@
  */
 
 #include "commander.h"
+#include "Application/movtion-ctrl-app.h"
 #include "Config/config.h"
 #include "System/DataHub/blackboard.h"
 #include "usart.h"
@@ -265,11 +266,26 @@ void CommanderSrvc::run() {
 
     gCmd.timestamp         = nowTick;
 
-    // [调试] 底盘数据强制为被动模式，云台正常控制
-    comm.msg.mode  = (uint8_t)CHASSIS_RELAX;
-    comm.msg.vx    = 0;
-    comm.msg.vy    = 0;
+    // 底盘模式: Relax/Align 状态强制 RELAX, Manual/Auto 正常控制
+    {
+        auto motionState = MovtionCtrlApp::instance().getMotionState();
+        if (motionState == MovtionCtrlApp::MotionState::Relax ||
+            motionState == MovtionCtrlApp::MotionState::Align) {
+            comm.msg.mode = (uint8_t)CHASSIS_RELAX;
+            comm.msg.vx   = 0;
+            comm.msg.vy   = 0;
+        }
+    }
     comm.msg.fn1Switch = 0;
+
+    // 功能标志位
+    comm.msg.turboMode    = actionTurboMode.isTriggered() ? 1 : 0;
+    comm.msg.stepClimb    = actionStepClimb.isTriggered() ? 1 : 0;
+    comm.msg.legLength    = triggers.legLengthCycle.getIndex(); // 0/1/2
+    comm.msg.selfRescue   = actionSelfRescue.isTriggered() ? 1 : 0;
+    comm.msg.manualRescue = actionManualRescue.isTriggered() ? 1 : 0;
+    comm.msg.gimbalReverse= actionGimbalReverse.isTriggered() ? 1 : 0;
+    comm.msg.jump         = actionJump.isTriggered() ? 1 : 0;
 
 #else
     // ========================================

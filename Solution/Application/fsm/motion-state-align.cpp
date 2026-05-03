@@ -38,6 +38,7 @@ static int32_t ecdShortestError(int32_t target, int32_t current) {
 }
 
 void MovtionCtrlApp::StateAlign::enter(GimbalMotionCtx& ctx) {
+    ctx.motionState = static_cast<uint8_t>(MotionState::Align);
     instance()._alignStableMs = 0.0f;
     instance()._alignPosPid.clear();
     instance()._alignSpdPid.clear();

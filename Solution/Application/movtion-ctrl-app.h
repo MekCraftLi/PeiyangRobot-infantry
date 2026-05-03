@@ -87,6 +87,7 @@ struct GimbalMotionCtx {
     GimbalOutput output;
     GimbalTelemetry telem;
     float dt;
+    uint8_t motionState; // MovtionCtrlApp::MotionState, 用 uint8_t 避免前向引用
 };
 #endif
 
@@ -100,6 +101,8 @@ public:
 
     /************ setter & getter ***********/
 
+    enum class MotionState { Relax, Align, Manual, Auto };
+    MotionState getMotionState();
 
 #ifdef CHASSIS
 

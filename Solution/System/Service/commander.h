@@ -80,6 +80,15 @@ enum StdActionSlot : uint8_t {
     CAP_SWITCH,    // 超级电容开关
     KEYBOARD_FRIC, // 键盘 Q 摩擦轮切换
     FN1_SWITCH,    // Fn1 开关 (过0上升沿 toggle)
+    TURBO_MODE,    // 极速模式 [R]
+    STEP_CLIMB,    // 上台阶 [E]
+    SELF_RESCUE,   // 自救 [G]
+    MANUAL_RESCUE, // 手动自救 [Ctrl]
+    GIMBAL_REVERSE,// 云台反向 [X]
+    JUMP,          // 跳跃 [V]
+    AIM_MODE,      // 自瞄模式切换 [B]
+    LEG_LENGTH,    // 腿长切换 [Z] (三档循环)
+    REVERSE_EDGE,  // 调头脉冲 [X] (上升沿)
     STD_ACTION_COUNT
 };
 
@@ -108,6 +117,24 @@ struct TriggerConfig {
     // 持续触发 (电容)
     TriggerHold continuousTrigger{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
                                   HoldCondition::GreaterOrEqual};
+    // 按键 Toggle (各自独立上升沿基座)
+    TriggerEdge turboRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerToggle turboToggle{turboRise, false};
+    TriggerEdge stepClimbRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerToggle stepClimbToggle{stepClimbRise, false};
+    TriggerEdge selfRescueRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerToggle selfRescueToggle{selfRescueRise, false};
+    TriggerEdge manualRescueRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerToggle manualRescueToggle{manualRescueRise, false};
+    TriggerEdge gimbalReverseRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerToggle gimbalReverseToggle{gimbalReverseRise, false};
+    TriggerEdge jumpEdge{0.5f, EdgeType::Rising};
+    // 按键 Cycle (多值循环)
+    TriggerEdge aimModeRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerCycle aimModeCycle{aimModeRise, 4};       // [B] 车辆/前哨站/大能量/小能量
+    TriggerEdge legLengthRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerCycle legLengthCycle{legLengthRise, 3};    // [Z] 三种腿长
+    TriggerEdge reverseEdge{0.0f, EdgeType::Rising};  // [X] 调头脉冲
 };
 
 /*-------- class
@@ -127,7 +154,6 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
 
     TriggerConfig triggers;
 
-  private:
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
 
     InputAction _actions[STD_ACTION_COUNT];
@@ -153,6 +179,15 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     InputAction& actionCapSwitch    = _actions[CAP_SWITCH];
     InputAction& actionKeyboardFric = _actions[KEYBOARD_FRIC];
     InputAction& actionFn1Switch    = _actions[FN1_SWITCH];
+    InputAction& actionTurboMode    = _actions[TURBO_MODE];
+    InputAction& actionStepClimb    = _actions[STEP_CLIMB];
+    InputAction& actionSelfRescue   = _actions[SELF_RESCUE];
+    InputAction& actionManualRescue = _actions[MANUAL_RESCUE];
+    InputAction& actionGimbalReverse= _actions[GIMBAL_REVERSE];
+    InputAction& actionJump         = _actions[JUMP];
+    InputAction& actionAimMode      = _actions[AIM_MODE];
+    InputAction& actionLegLength    = _actions[LEG_LENGTH];
+    InputAction& actionReverseEdge  = _actions[REVERSE_EDGE];
 
 #else
     // ── Gamepad 专用 ──────────────────────────────────────────────

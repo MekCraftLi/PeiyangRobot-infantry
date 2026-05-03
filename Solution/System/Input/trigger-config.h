@@ -19,6 +19,7 @@
 #ifndef INFANTRY_TRIGGER_CONFIG_H
 #define INFANTRY_TRIGGER_CONFIG_H
 
+#include "TriggerImpl/trigger-decorator-cycle.h"
 #include "TriggerImpl/trigger-decorator-toggle.h"
 #include "TriggerImpl/trigger-impl-edge.h"
 #include "TriggerImpl/trigger-impl-hold.h"

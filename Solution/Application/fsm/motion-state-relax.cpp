@@ -19,6 +19,7 @@
 #include "System/Service/motor-actuator.h"
 
 void MovtionCtrlApp::StateRelax::enter(GimbalMotionCtx& ctx) {
+    ctx.motionState = static_cast<uint8_t>(MotionState::Relax);
     ctx.output.targetPitchPos         = ctx.state.pitch.pos;
     ctx.output.targetPitchSpeed       = 0.0f;
     ctx.output.pitchFeedforwardTorque = 0.0f;

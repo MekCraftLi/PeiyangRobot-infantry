@@ -23,6 +23,7 @@
 #include "System/Service/motor-actuator.h"
 
 void MovtionCtrlApp::StateManual::enter(GimbalMotionCtx& ctx) {
+    ctx.motionState = static_cast<uint8_t>(MotionState::Manual);
     ctx.output.pitchEn = true;
     MotActSrvc::instance().pitch.enable();
 }

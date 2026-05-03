@@ -35,6 +35,7 @@
 
 #include "../System/DataHub/blackboard.h"
 #include "Config/Gimbal/algo-config.h"
+#include "System/Service/commander.h"
 #include "System/Service/motor-actuator.h"
 #include "System/DataHub/referee-data-hub.h"
 #include "dsp/fast_math_functions.h"
@@ -319,6 +320,10 @@ void MovtionCtrlApp::run() {
     Blackboard::instance().chassisTelem.write(telem);
 }
 
+MovtionCtrlApp::MotionState MovtionCtrlApp::getMotionState() {
+    return MotionState::Manual; // CHASSIS 无 FSM, 始终视为 Manual
+}
+
 #elif defined(GIMBAL) // 标准预编译宏
 
 // =================================================================================
@@ -406,6 +411,11 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
         ffYawTorque            = 0.0f;
     }
 
+    // 调头: X 键上升沿 → yaw 目标 +π
+    if (CommanderSrvc::instance().actionReverseEdge.isTriggered()) {
+        ctx.telem.targetYawRad = wrapAngle(ctx.telem.targetYawRad + M_PI);
+    }
+
     ffYawTorque = Config::Algorithm::Gimbal::YAW_INERTIA_K * ctx.cmd.yawVel;
     ChassisToGimbalComm c2g{};
     Blackboard::instance().c2gComm.read(c2g);
@@ -418,5 +428,9 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
     ctx.telem.targetYawRotate = tgtYawSpd;
     float yawSpdOut       = yawSpdPid.calculate(tgtYawSpd, ctx.imu.gyro[2]);
     ctx.output.yawVoltage = yawSpdOut + ffYawTorque;
+}
+
+MovtionCtrlApp::MotionState MovtionCtrlApp::getMotionState() {
+    return static_cast<MotionState>(motionCtx.motionState);
 }
 #endif

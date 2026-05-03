@@ -207,6 +207,13 @@ union GimbalToChassisComm {
         uint32_t shootEn  : 1;
         uint32_t resetUI  : 1;
         uint32_t fn1Switch: 1;
+        uint32_t turboMode    : 1; // [R] 飞坡
+        uint32_t stepClimb    : 1; // [E] 上台阶
+        uint32_t legLength    : 2; // [Z] 腿长 (0/1/2)
+        uint32_t selfRescue   : 1; // [G] 自救
+        uint32_t manualRescue : 1; // [Ctrl] 手动自救
+        uint32_t gimbalReverse: 1; // [X] 调头
+        uint32_t jump         : 1; // [V] 跳跃
     } msg;
 
     uint8_t buffer[8];
