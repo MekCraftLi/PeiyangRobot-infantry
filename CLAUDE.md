@@ -4,20 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build System
 
-Two MCU targets built from one `Solution/` codebase, selected via CMake cache variable:
+Two MCU targets (STM32H723) built from one `Solution/` codebase. C11 / C++23, Ninja + gcc-arm-none-eabi toolchain.
 
 ```bash
-# Configure (from repo root)
-cmake --preset Debug -DBUILD_TARGET=CHASSIS   # or GIMBAL / BOTH
-cmake --preset Debug -DBUILD_TARGET=GIMBAL -DREMOTE_DEVICE=DR16  # DR16 | VideoLink | GamePad
+# Prerequisites: init submodules once
+git submodule update --init --recursive
 
-# Build (from target subdirectory, e.g. Infantry-Chassis/)
-cmake --build build/Debug
+# Configure + Build (from repo root, using CMake presets)
+cmake --preset chassis-debug          # Chassis target
+cmake --preset gimbal-debug           # Gimbal target (VideoLink remote, default)
+cmake --preset gimbal-debug-dr16      # Gimbal target (DR16 remote)
+cmake --preset both-debug             # Both targets
+
+# Build
+cmake --build build/chassis-debug
+cmake --build build/gimbal-debug
 ```
 
-Each target (`Infantry-Chassis/`, `Infantry-Gimbal/`) has its own CMakeLists.txt that pulls sources from `../Solution/`. The root CMakeLists.txt dispatches based on `BUILD_TARGET`. Both targets use Ninja + gcc-arm-none-eabi toolchain.
+Presets are defined in `CMakePresets.json`. Each target (`Infantry-Chassis/`, `Infantry-Gimbal/`) has its own CMakeLists.txt pulling sources from `../Solution/`. The root CMakeLists.txt dispatches based on `BUILD_TARGET`.
 
-**Submodules:** `git submodule update --init --recursive` is required before building. Submodules are under `Solution/ThirdParty/` (PYRo-uCtrl-Unity, TinyUSB).
+**Submodules:** Required before building. Submodules are under `Solution/ThirdParty/` (PYRo-uCtrl-Unity, TinyUSB).
 
 ## Target Selection & Conditional Compilation
 
@@ -69,3 +75,7 @@ Provides: `pyro::pid_t` (PID), `pyro::fsm_t` (FSM), `pyro::can_hub_t` (CAN bus),
 - Header layout: 5-section template — (1) includes, (2) enum/define, (3) interface/class, (4) decorator, (5) factories
 - File header comment block with `@file`, `@brief`, `@attention`, `@note`, `@author`, `@date`, `@version`
 - Language: comments are in Chinese; code identifiers in English
+
+## Flash & Debug
+
+Flash via ST-Link or J-Link. Build produces `.elf` files (e.g. `build/chassis-debug/Infantry-Chassis.elf`). Use `arm-none-eabi-gdb` + OpenOCD or probe-rs for debugging. CubeMX-generated code is in `Infantry-{Chassis,Gimbal}/Core/` — do not edit manually unless regenerating from `.ioc`.

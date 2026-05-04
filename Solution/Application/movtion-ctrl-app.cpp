@@ -416,7 +416,6 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
         ctx.telem.targetYawRad = wrapAngle(ctx.telem.targetYawRad + M_PI);
     }
 
-    ffYawTorque = Config::Algorithm::Gimbal::YAW_INERTIA_K * ctx.cmd.yawVel;
     ChassisToGimbalComm c2g{};
     Blackboard::instance().c2gComm.read(c2g);
     if (abs(c2g.msg.chassisYawSpeed) > 0.5f)

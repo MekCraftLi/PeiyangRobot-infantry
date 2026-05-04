@@ -24,7 +24,7 @@
 #include "../movtion-ctrl-app.h"
 #include "System/Service/motor-actuator.h"
 
-static constexpr int32_t ALIGN_TARGET_ECD = 5400;
+static constexpr int32_t ALIGN_TARGET_ECD = 3600;
 static constexpr int32_t ECD_PER_REV      = 8192;
 static constexpr float   ALIGN_TOLERANCE  = 15.0f * M_PI / 180.0f;
 static constexpr float   ALIGN_STABLE_MS  = 800.0f;
@@ -40,6 +40,7 @@ static int32_t ecdShortestError(int32_t target, int32_t current) {
 void MovtionCtrlApp::StateAlign::enter(GimbalMotionCtx& ctx) {
     ctx.motionState = static_cast<uint8_t>(MotionState::Align);
     instance()._alignStableMs = 0.0f;
+    instance()._alignVelFilt  = 0.0f;
     instance()._alignPosPid.clear();
     instance()._alignSpdPid.clear();
     ctx.output.pitchEn    = false;
@@ -58,9 +59,15 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     float errorRad = (float)ecdShortestError(ALIGN_TARGET_ECD, curEcd)
                      / (float)ECD_PER_REV * 2.0f * M_PI;
 
-    // 专用 PID 闭环 (编码器反馈)
+    // 编码器速度 50Hz 一阶低通滤波: alpha = 2π*fc*dt / (2π*fc*dt + 1)
+    constexpr float TWO_PI_FC = 2.0f * M_PI * 10.0f;  // 314.16 rad/s
+    float alpha = TWO_PI_FC * ctx.dt / (TWO_PI_FC * ctx.dt + 1.0f);
+    instance()._alignVelFilt = alpha * ctx.state.yaw.vel + (1.0f - alpha) * instance()._alignVelFilt;
+
+    // 位置环: 编码器误差 → 速度指令
+    // 速度环: 编码器速度经 50Hz LPF 后作为反馈
     float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -errorRad);
-    ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.state.yaw.vel);
+    ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, instance()._alignVelFilt);
     ctx.output.pitchEn    = false;
 
     // 误差 < ±5° → 累计稳定时间

@@ -23,7 +23,6 @@
  */
 
 #include "commander.h"
-#include "Application/fire-ctrl-app.h"
 #include "Application/movtion-ctrl-app.h"
 #include "Config/config.h"
 #include "System/DataHub/blackboard.h"
@@ -100,8 +99,13 @@ void CommanderSrvc::init() {
  */
 
 void CommanderSrvc::resolveChassisMode(bool spinRequested, bool capRequested, GimbalToChassisComm& comm) {
-    comm.msg.mode      = spinRequested ? CHASSIS_SPIN : CHASSIS_NORMAL;
-    comm.msg.capSwitch = capRequested ? 1 : 0;
+    comm.msg.mode = spinRequested ? CHASSIS_SPIN : CHASSIS_NORMAL;
+
+    // 电容开关标志 (bit 2)
+    if (capRequested)
+        comm.msg.mode |= 0x04;
+    else
+        comm.msg.mode &= ~0x04;
 }
 
 void CommanderSrvc::resolveMovement(GimbalCmd& gCmd, GimbalToChassisComm& comm) {
@@ -313,17 +317,6 @@ void CommanderSrvc::run() {
     }
     comm.msg.fn1Switch = 0;
 
-    // 功能标志位
-    comm.msg.turboMode    = actionTurboMode.isTriggered() ? 1 : 0;
-    comm.msg.stepClimb    = actionStepClimb.isTriggered() ? 1 : 0;
-    comm.msg.legLength    = triggers.legLengthCycle.getIndex(); // 0/1/2
-    comm.msg.selfRescue   = actionSelfRescue.isTriggered() ? 1 : 0;
-    comm.msg.manualRescue = actionManualRescue.isTriggered() ? 1 : 0;
-    comm.msg.gimbalReverse= actionGimbalReverse.isTriggered() ? 1 : 0;
-    comm.msg.jump         = actionJump.isTriggered() ? 1 : 0;
-    comm.msg.fireState    = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
-    comm.msg.aimMode      = triggers.aimModeCycle.getIndex();
-
 #else
     // ========================================
     //  Gamepad 专用逻辑
@@ -365,7 +358,6 @@ void CommanderSrvc::run() {
     Blackboard::instance().rComm.read(comm);
 
     cmd.mode      = comm.msg.mode;
-    cmd.capSwitch = comm.msg.capSwitch;
     cmd.vx        = (float)comm.msg.vx / 10;
     cmd.vy        = (float)comm.msg.vy / 10;
 

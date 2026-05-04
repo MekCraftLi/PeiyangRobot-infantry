@@ -29,8 +29,7 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
-
-
+#include <cstddef>
 
 /*-------- 2. enum and define ----------------------------------------------------------------------------------------*/
 
@@ -47,6 +46,16 @@ public:
         static T _instance;
         return _instance;
     }
+
+    /**
+     * @brief 调试辅助：返回当前单例的类型签名
+     * @note  GCC __PRETTY_FUNCTION__ 在模板实例化时会展开为包含 T 名称的完整签名
+     *        例: "const char* Singleton<MovtionCtrlApp>::debugName()"
+     *        Ozone 中: Eval Singleton<MovtionCtrlApp>::instance().debugName()
+     *        GDB  中:  p Singleton<MovtionCtrlApp>::instance().debugName()
+     */
+    __attribute__((noinline))
+    const char* debugName() const { return __PRETTY_FUNCTION__; }
 
 protected:
     Singleton() = default;
@@ -65,8 +74,6 @@ private:
 
 
 /*-------- 5. factories ----------------------------------------------------------------------------------------------*/
-
-
 
 
 
