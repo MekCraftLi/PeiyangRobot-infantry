@@ -251,7 +251,7 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
 #endif
 
     // --- 私有辅助方法 ---
-    void resolveChassisMode(bool spinRequested, bool capRequested, GimbalToChassisComm& comm);
+    void resolveChassisMode(bool spinRequested, GimbalToChassisComm& comm);
     void resolveMovement(GimbalCmd& gCmd, GimbalToChassisComm& comm);
     void resolveShootEvents(ShootCmd& sCmd, bool burstAllowed = true);
 };

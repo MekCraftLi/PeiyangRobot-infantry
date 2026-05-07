@@ -94,6 +94,7 @@ struct ShootCmd {
 struct ChassisCmd {
     float vx, vy, vw; // 期望速度 (m/s, rad/s)
     uint8_t mode;     // 模式控制
+    uint8_t capSwitch; // 超级电容开关
     uint32_t timestamp;
 };
 
@@ -207,6 +208,16 @@ union GimbalToChassisComm {
         uint32_t shootEn  : 1;
         uint32_t resetUI  : 1;
         uint32_t fn1Switch: 1;
+        uint32_t turboMode    : 1; // [R] 飞坡
+        uint32_t stepClimb    : 1; // [E] 上台阶
+        uint32_t legLength    : 2; // [Z] 腿长 (0/1/2)
+        uint32_t selfRescue   : 1; // [G] 自救
+        uint32_t manualRescue : 1; // [Ctrl] 手动自救
+        uint32_t gimbalReverse: 1; // [X] 调头
+        uint32_t jump         : 1; // [V] 跳跃
+        uint32_t capSwitch    : 1; // [C] 超级电容开关
+        uint32_t fireState    : 4; // 发射机构 FSM 状态 (FireState)
+        uint32_t aimMode      : 2; // [B] 自瞄模式 (0~3)
     } msg;
 
     uint8_t buffer[8];
