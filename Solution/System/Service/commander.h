@@ -140,10 +140,16 @@ struct TriggerConfig {
     // 通用
     TriggerLinear joystickDeadzone{TriggerCfg::JOYSTICK_DEADZONE};
     // 射击系统
-    TriggerEdge fricToggle{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerEdge fricToggleSw{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerEdge fricToggleFn2{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
+    TriggerEdge fricToggleKeyQ{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerHold burstFire{TriggerCfg::BTN_THRESHOLD, TriggerCfg::BURST_HOLD_TIME, false,
                           HoldCondition::GreaterOrEqual};
-    TriggerEdge singleRelease{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
+    TriggerHold mouseBurstFire{TriggerCfg::BTN_THRESHOLD, TriggerCfg::BURST_HOLD_TIME, false,
+                          HoldCondition::GreaterOrEqual};
+    TriggerEdge singleReleaseSw{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
+    TriggerEdge singleReleaseMouse{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
+    TriggerEdge singleReleaseTrigger{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
     TriggerHold visionAim{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
                           HoldCondition::GreaterOrEqual};
     // 运动/切换

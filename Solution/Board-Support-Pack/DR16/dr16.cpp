@@ -108,9 +108,9 @@ void RemoteDR16::bindActions(InputAction* actions, TriggerConfig& triggers) {
     // 控制源仲裁 (模式开关, 无触发器 → 直接值比较)
     actions[CTRL_MODE].bind(getSwRight());
     // 射击: 左开关 → 摩擦轮 / 连发 / 单发
-    actions[FRIC_TOGGLE].bind(getSwLeft(), &triggers.fricToggle);
+    actions[FRIC_TOGGLE].bind(getSwLeft(), &triggers.fricToggleSw);
     actions[SHOOT_BURST].bind(getSwLeft(), &triggers.burstFire);
-    actions[SHOOT_SINGLE].bind(getSwLeft(), &triggers.singleRelease);
+    actions[SHOOT_SINGLE].bind(getSwLeft(), &triggers.singleReleaseSw);
     // 小陀螺: 拨轮 toggle
     actions[SPIN_MODE].bind(getWheel(), &triggers.spinToggle);
 }

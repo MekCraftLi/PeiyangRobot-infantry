@@ -255,15 +255,15 @@ void VideoLinkRemote::bindActions(InputAction* actions, TriggerConfig& triggers)
     actions[MOUSE_YAW].bind(getMouseX(), &triggers.joystickDeadzone);
     actions[MOUSE_PITCH].bind(getMouseY(), &triggers.joystickDeadzone);
     // 射击: 鼠标 + 扳机
-    actions[MOUSE_BURST].bind(getMouseLeft(), &triggers.burstFire);
-    actions[MOUSE_SINGLE].bind(getMouseLeft(), &triggers.singleRelease);
+    actions[MOUSE_BURST].bind(getMouseLeft(), &triggers.mouseBurstFire);
+    actions[MOUSE_SINGLE].bind(getMouseLeft(), &triggers.singleReleaseMouse);
     actions[MOUSE_VISION].bind(getMouseRight(), &triggers.visionAim);
     actions[SHOOT_BURST].bind(getTrigger(), &triggers.burstFire);
-    actions[SHOOT_SINGLE].bind(getTrigger(), &triggers.singleRelease);
+    actions[SHOOT_SINGLE].bind(getTrigger(), &triggers.singleReleaseTrigger);
     // 控制源 + 摩擦轮
     actions[CTRL_MODE].bind(getModeSw());
-    actions[FRIC_TOGGLE].bind(getFn2(), &triggers.fricToggle);
-    actions[KEYBOARD_FRIC].bind(getKeyQ(), &triggers.fricToggle);
+    actions[FRIC_TOGGLE].bind(getFn2(), &triggers.fricToggleFn2);
+    actions[KEYBOARD_FRIC].bind(getKeyQ(), &triggers.fricToggleKeyQ);
     actions[FN1_SWITCH].bind(getFn1(), &triggers.fn1Toggle);
     // 运动/电容
     actions[SPIN_MODE].bind(getPause(), &triggers.spinToggle);
