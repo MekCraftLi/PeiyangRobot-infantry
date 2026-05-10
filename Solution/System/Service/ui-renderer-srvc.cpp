@@ -53,7 +53,7 @@ void UiRendererSrvc::run() {
     UBaseType_t waitingCount = uxQueueMessagesWaiting(_renderQueue);
     if (waitingCount == 0) return;
 
-    // --- 新增：1. 屏障拦截 (偷窥队首指令) ---
+    // --- 新增：1. 屏障拦截 (窥视队首指令) ---
     RMInteractionFigurePayload peekPayload;
     xQueuePeek(_renderQueue, &peekPayload, 0);
 
