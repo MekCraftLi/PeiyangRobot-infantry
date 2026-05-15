@@ -29,7 +29,6 @@
 #include "System/DataHub/blackboard.h"
 #include "usart.h"
 
-
 #include <algorithm>
 
 /* -------- 应用属性 -------------------------------------------------------------------------------------------------
@@ -42,7 +41,7 @@
 
 static StackType_t appStack[APPLICATION_STACK_SIZE];
 
-[[maybe_unused]] static auto& forceInit = CommanderSrvc::instance();
+[[maybe_unused]] static auto& forceInit                        = CommanderSrvc::instance();
 
 /* -------- 遥控器 DMA 缓存 -------------------------------------------------------------------------------------------
  */
@@ -92,6 +91,13 @@ void CommanderSrvc::init() {
     actionHandbrakeDepth.bind(BluetoothGamepad::instance().getButtonB(), &_handbreak);
 #endif
 
+#ifdef GIMBAL
+#if REMOTE_DEVICE != REMOTE_GAMEPAD
+    // 视觉控制信号绑定
+    actionVisionSingle.bind(&_visionFireControl, &triggers.visionSingleShotRise);
+#endif
+#endif
+
     // ── 2. 初始化硬件通信 (HAL 中断方式) ──
     HAL_UARTEx_ReceiveToIdle_DMA(&Config::Hardware::Comms::REMOTE_UART, rxbuf, sizeof(rxbuf));
 }
@@ -128,26 +134,6 @@ void CommanderSrvc::resolveMovement(GimbalCmd& gCmd, GimbalToChassisComm& comm) 
     gCmd.pitchVel = -pitchInput * Config::Algorithm::Gimbal::MAX_PITCH_SPEED;
 }
 
-void CommanderSrvc::resolveShootEvents(ShootCmd& sCmd, bool burstAllowed) {
-    // 摩擦轮切换 (遥控器开关 或 键盘 Q)
-    if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
-        sCmd.event = ShootEvent::FRIC_TOGGLE;
-    }
-
-    // 连发: 遥控器扳机 或 鼠标左键
-    if (burstAllowed && (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered())) {
-        sCmd.state.burstShot = 1;
-    } else {
-        sCmd.state.burstShot = 0;
-    }
-
-    // 单发 (优先级高于连发)
-    if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
-        sCmd.event           = ShootEvent::SINGLE_FIRE;
-        sCmd.state.burstShot = 0;
-    }
-}
-
 /* -------- 主循环 ----------------------------------------------------------------------------------------------------
  */
 
@@ -175,6 +161,11 @@ void CommanderSrvc::run() {
 #if REMOTE_DEVICE != REMOTE_GAMEPAD || defined(CHASSIS)
     for (auto& action : _actions)
         action.update(dt);
+
+    // 视觉控件更新
+
+
+
 #else
     for (auto& action : _gpActions)
         action.update(dt);
@@ -212,11 +203,11 @@ void CommanderSrvc::run() {
     debug.legLength     = actionLegLength.isTriggered();
     debug.reverseEdge   = actionReverseEdge.isTriggered();
 #else
-    debug.gpRelax       = actionRelax.isTriggered();
-    debug.gpHandbrake   = actionHandbrakeDepth.isTriggered();
-    debug.gpMoveX       = actionMoveX.isTriggered();
-    debug.gpYaw         = actionYaw.isTriggered();
-    debug.gpBrake       = actionBreak.isTriggered();
+    debug.gpRelax     = actionRelax.isTriggered();
+    debug.gpHandbrake = actionHandbrakeDepth.isTriggered();
+    debug.gpMoveX     = actionMoveX.isTriggered();
+    debug.gpYaw       = actionYaw.isTriggered();
+    debug.gpBrake     = actionBreak.isTriggered();
 #endif
 
     // ── 3~5. 仲裁 → 填充指令 → 写入黑板 ──
@@ -231,12 +222,15 @@ void CommanderSrvc::run() {
     GimbalCmd gCmd{};
     ShootCmd sCmd{};
     GimbalToChassisComm comm{};
+    VisionCommand vCmd{};
+    ImuState imuState{};
+
 
     // ── 3. 仲裁控制源 (统一逻辑) ──
     // 3档开关归一化: -1.0(上) / 0.0(中) / 1.0(下)
     //   < -0.5 → SAFE_STOP    [-0.5, 0.5] → REMOTE    > 0.5 → VISION
     ControlSource currentSource = ControlSource::SAFE_STOP;
-    const float swState = actionCtrlMode.getValue();
+    const float swState         = actionCtrlMode.getValue();
 
     if (swState > TriggerCfg::MODE_SW_VISION_THRESH || actionMouseVision.isTriggered()) {
         currentSource = ControlSource::VISION;
@@ -245,10 +239,12 @@ void CommanderSrvc::run() {
     }
 
     // ── 4. 读取黑板历史值 (未修改字段天然保留) ──
-    ImuState imuState{};
+
     Blackboard::instance().gimbalCmd.read(gCmd);
     Blackboard::instance().shootCmd.read(sCmd);
     Blackboard::instance().imuState.read(imuState);
+    Blackboard::instance().visionCmd.read(vCmd);
+
     sCmd.event               = ShootEvent::NONE;
 
     // 预计算运动意图 (REMOTE / VISION 共用)
@@ -271,57 +267,100 @@ void CommanderSrvc::run() {
             gCmd.mode           = GIMBAL_NORMAL;
             gCmd.targetYawSpeed = 0;
 
-            resolveShootEvents(sCmd);
+
+
+            /*
+             * 发射信号判断
+             */
+
+            if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
+                sCmd.event = ShootEvent::FRIC_TOGGLE;
+            }
+
+            if (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered()) {
+                sCmd.state.burstShot = 1;
+            } else {
+                sCmd.state.burstShot = 0;
+            }
+
+            if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
+                sCmd.event = ShootEvent::SINGLE_FIRE;
+            }
+
+
+
         } break;
 
         case ControlSource::VISION: {
             resolveChassisMode(spinRequested, comm);
             resolveMovement(gCmd, comm);
 
-            gCmd.mode = GIMBAL_AUTO;
+            gCmd.mode                  = GIMBAL_AUTO;
 
             // 视觉指令覆盖云台目标
-            VisionCommand vCmd{};
-            Blackboard::instance().visionCmd.read(vCmd);
+
             gCmd.targetYaw             = vCmd.targetYaw;
             gCmd.targetPitch           = -vCmd.targetPitch;
             gCmd.targetYawSpeed        = vCmd.targetYawSpeed;
             gCmd.pitchVel              = -vCmd.targetPitchSpeed;
             gCmd.targetYawAcceleration = vCmd.targetYawAcceleration;
 
-            // 连发需视觉允许开火
-            resolveShootEvents(sCmd, vCmd.fireCommand);
+
+
+            _visionFireControl.updateRaw(vCmd.fireCommand ? 1 : 0);
+            actionVisionSingle.update(dt);
+
+
+            if (actionFricToggle.isTriggered() || actionKeyboardFric.isTriggered()) {
+                sCmd.event = ShootEvent::FRIC_TOGGLE;
+            }
+
+
+            /*
+             * 判断是否处于单发模式
+             * 如果在单发模式，检测发火信号的01跳变
+             * 如果不是单发模式，将发火信号作为连发状态
+             */
+            if (vCmd.isSingleShot) {
+                if (actionVisionSingle.isTriggered()) {
+                    sCmd.event = ShootEvent::SINGLE_FIRE;
+                }
+            } else {
+                sCmd.state.burstShot = vCmd.fireCommand;
+            }
+
+
+
         } break;
 
         default:
             break;
     }
 
-    gCmd.timestamp         = nowTick;
+    gCmd.timestamp = nowTick;
 
     // 底盘模式: Relax/Align 状态强制 RELAX, Manual/Auto 正常控制
     {
         auto motionState = MovtionCtrlApp::instance().getMotionState();
-        if (motionState == MovtionCtrlApp::MotionState::Relax ||
-            motionState == MovtionCtrlApp::MotionState::Align) {
+        if (motionState == MovtionCtrlApp::MotionState::Relax || motionState == MovtionCtrlApp::MotionState::Align) {
             comm.msg.mode = (uint8_t)CHASSIS_RELAX;
             comm.msg.vx   = 0;
             comm.msg.vy   = 0;
         }
     }
-    comm.msg.fn1Switch = 0;
+    comm.msg.fn1Switch     = 0;
 
     // 功能标志位
-    comm.msg.capSwitch    = actionCapSwitch.isTriggered() ? 1 : 0;
-    comm.msg.turboMode    = actionTurboMode.isTriggered() ? 1 : 0;
-    comm.msg.stepClimb    = actionStepClimb.isTriggered() ? 1 : 0;
-    comm.msg.legLength    = triggers.legLengthCycle.getIndex(); // 0/1/2
-    comm.msg.selfRescue   = actionSelfRescue.isTriggered() ? 1 : 0;
-    comm.msg.manualRescue = actionManualRescue.isTriggered() ? 1 : 0;
-    comm.msg.gimbalReverse= actionGimbalReverse.isTriggered() ? 1 : 0;
-    comm.msg.jump         = actionJump.isTriggered() ? 1 : 0;
-    comm.msg.fireState    = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
-    comm.msg.aimMode      = triggers.aimModeCycle.getIndex();
+    comm.msg.capSwitch     = actionCapSwitch.isTriggered() ? 1 : 0;
+    comm.msg.turboMode     = actionTurboMode.isTriggered() ? 1 : 0;
+    comm.msg.stepClimb     = actionStepClimb.isTriggered() ? 1 : 0;
+    comm.msg.legLength     = triggers.legLengthCycle.getIndex(); // 0/1/2
+    comm.msg.selfRescue    = actionSelfRescue.isTriggered() ? 1 : 0;
+    comm.msg.manualRescue  = actionManualRescue.isTriggered() ? 1 : 0;
+    comm.msg.gimbalReverse = actionGimbalReverse.isTriggered() ? 1 : 0;
+    comm.msg.jump          = actionJump.isTriggered() ? 1 : 0;
+    comm.msg.fireState     = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
+    comm.msg.aimMode       = triggers.aimModeCycle.getIndex();
 
 #else
     // ========================================

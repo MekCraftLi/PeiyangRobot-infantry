@@ -150,6 +150,7 @@ struct TriggerConfig {
     TriggerEdge singleReleaseSw{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
     TriggerEdge singleReleaseMouse{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
     TriggerEdge singleReleaseTrigger{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
+    TriggerEdge visionSingleShotRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerHold visionAim{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
                           HoldCondition::GreaterOrEqual};
     // 运动/切换
@@ -238,6 +239,14 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     InputAction& actionLegLength    = _actions[LEG_LENGTH];
     InputAction& actionReverseEdge  = _actions[REVERSE_EDGE];
 
+#ifdef GIMBAL
+    // Vision fireCommand edge detector: 0 -> 1 triggers single-shot event when isSingleShot=1.
+    ControlSwitch _visionFireControl{{{0, -1.0f}, {1, 1.0f}}, 0};
+
+
+    InputAction actionVisionSingle;
+#endif
+
 #else
     // ── Gamepad 专用 ──────────────────────────────────────────────
     InputAction _gpActions[5];
@@ -259,7 +268,8 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     // --- 私有辅助方法 ---
     void resolveChassisMode(bool spinRequested, GimbalToChassisComm& comm);
     void resolveMovement(GimbalCmd& gCmd, GimbalToChassisComm& comm);
-    void resolveShootEvents(ShootCmd& sCmd, bool burstAllowed = true);
+    void resolveShootEvents(ShootCmd& sCmd, bool fireAllowed);
+
 };
 
 #endif

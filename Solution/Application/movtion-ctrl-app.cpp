@@ -405,10 +405,10 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
 
     if (ctx.cmd.mode == GIMBAL_AUTO && abs(ctx.cmd.targetYaw) < M_PI) {
         ctx.telem.targetYawRad = ctx.cmd.targetYaw;
-        ffYawTorque            = Config::Algorithm::Gimbal::YAW_INERTIA_K * ctx.cmd.targetYawSpeed;
+       // ffYawTorque            = Config::Algorithm::Gimbal::YAW_INERTIA_K * ctx.cmd.targetYawSpeed;
     } else {
         ctx.telem.targetYawRad = wrapAngle(ctx.telem.targetYawRad + ctx.cmd.yawVel * ctx.dt);
-        ffYawTorque            = 0.0f;
+        //ffYawTorque            = 0.0f;
     }
 
     // 调头: X 键上升沿 → yaw 目标 +π

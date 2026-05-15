@@ -30,10 +30,15 @@ JLinkSetting.ini
 build/
 .idea
 .vscode
+.claude/
 cmake*
 !*/CMakeLists.txt
 !CMakeLists.txt
 /managed_components/
+
+# Local third-party archives should not be committed; keep source/submodule
+# references in Git instead.
+Solution/ThirdParty/*.zip
 
 
 

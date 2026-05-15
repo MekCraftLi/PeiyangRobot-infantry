@@ -147,8 +147,8 @@ public:
 
 #elif defined(GIMBAL)
 
-    pyro::pid_t yawPosPid = pyro::pid_t(12.0f, 0.8f, 0.0f, 10.0f, 500.0f);
-    pyro::pid_t yawSpdPid = pyro::pid_t(8.0f, 0.0f, 0.0f, 0.0f, 24.0f);
+    pyro::pid_t yawPosPid = pyro::pid_t(27.0f, 0.8f, 0.0f, 10.0f, 500.0f);
+    pyro::pid_t yawSpdPid = pyro::pid_t(18.0f, 0.0f, 0.0f, 0.0f, 24.0f);
     pyro::pid_t pitchPosPid = pyro::pid_t(0.0f, Config::Algorithm::Gimbal::DM_MOT_PITCH_KI, 0.0f, 12.0f, 12.0f);
 
     void updatePitch(GimbalMotionCtx& ctx);
