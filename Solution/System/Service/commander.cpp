@@ -162,6 +162,20 @@ void CommanderSrvc::run() {
     for (auto& action : _actions)
         action.update(dt);
 
+    if (actionTurboMode.isTriggered()) {
+        _turboModeActive = !_turboModeActive;
+        if (_turboModeActive) {
+            _stepClimbActive = false;
+        }
+    }
+
+    if (actionStepClimb.isTriggered()) {
+        _stepClimbActive = !_stepClimbActive;
+        if (_stepClimbActive) {
+            _turboModeActive = false;
+        }
+    }
+
     // 视觉控件更新
 
 
@@ -193,8 +207,8 @@ void CommanderSrvc::run() {
     debug.capSwitch     = actionCapSwitch.isTriggered();
     debug.keyboardFric  = actionKeyboardFric.isTriggered();
     debug.fn1Switch     = actionFn1Switch.isTriggered();
-    debug.turboMode     = actionTurboMode.isTriggered();
-    debug.stepClimb     = actionStepClimb.isTriggered();
+    debug.turboMode     = _turboModeActive;
+    debug.stepClimb     = _stepClimbActive;
     debug.selfRescue    = actionSelfRescue.isTriggered();
     debug.manualRescue  = actionManualRescue.isTriggered();
     debug.gimbalReverse = actionGimbalReverse.isTriggered();
@@ -352,8 +366,8 @@ void CommanderSrvc::run() {
 
     // 功能标志位
     comm.msg.capSwitch     = actionCapSwitch.isTriggered() ? 1 : 0;
-    comm.msg.turboMode     = actionTurboMode.isTriggered() ? 1 : 0;
-    comm.msg.stepClimb     = actionStepClimb.isTriggered() ? 1 : 0;
+    comm.msg.turboMode     = _turboModeActive ? 1 : 0;
+    comm.msg.stepClimb     = _stepClimbActive ? 1 : 0;
     comm.msg.legLength     = triggers.legLengthCycle.getIndex(); // 0/1/2
     comm.msg.selfRescue    = actionSelfRescue.isTriggered() ? 1 : 0;
     comm.msg.manualRescue  = actionManualRescue.isTriggered() ? 1 : 0;

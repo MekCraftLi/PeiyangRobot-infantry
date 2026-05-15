@@ -168,16 +168,15 @@ struct TriggerConfig {
                                   HoldCondition::GreaterOrEqual};
     // 按键 Toggle (各自独立上升沿基座)
     TriggerEdge turboRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
-    TriggerToggle turboToggle{turboRise, false};
     TriggerEdge stepClimbRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
-    TriggerToggle stepClimbToggle{stepClimbRise, false};
     TriggerEdge selfRescueRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerToggle selfRescueToggle{selfRescueRise, false};
     TriggerEdge manualRescueRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerToggle manualRescueToggle{manualRescueRise, false};
     TriggerEdge gimbalReverseRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerToggle gimbalReverseToggle{gimbalReverseRise, false};
-    TriggerEdge jumpEdge{0.5f, EdgeType::Rising};
+    TriggerHold jumpHold{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
+                         HoldCondition::GreaterOrEqual};
     // 按键 Cycle (多值循环)
     TriggerEdge aimModeRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerCycle aimModeCycle{aimModeRise, 4};       // [B] 车辆/前哨站/大能量/小能量
@@ -238,6 +237,9 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     InputAction& actionAimMode      = _actions[AIM_MODE];
     InputAction& actionLegLength    = _actions[LEG_LENGTH];
     InputAction& actionReverseEdge  = _actions[REVERSE_EDGE];
+
+    bool _turboModeActive = false;
+    bool _stepClimbActive = false;
 
 #ifdef GIMBAL
     // Vision fireCommand edge detector: 0 -> 1 triggers single-shot event when isSingleShot=1.
