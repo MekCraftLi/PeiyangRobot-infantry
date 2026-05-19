@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Holographic Helmet UI</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #191c22;
+      --panel-2: #12151a;
+      --line: #303642;
+      --text: #e8edf2;
+      --muted: #95a2b0;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+      --pink: #ff5fa2;
+      --amber: #ffbc3d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.42 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .left {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .toolbar,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    .title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .title strong {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    select {
+      border: 1px solid #414856;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 11px;
+      min-height: 36px;
+      font: inherit;
+    }
+
+    button {
+      min-width: 72px;
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover { border-color: #687486; }
+
+    button.active {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(57, 215, 255, 0.45);
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 104px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .group {
+      border: 1px solid #2b313b;
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #cdd6df;
+    }
+
+    label,
+    .status {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--cyan);
+    }
+
+    .fields {
+      display: grid;
+      gap: 8px;
+    }
+
+    .status strong {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .command-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 54px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid #2c333e;
+      border-radius: 6px;
+      background: #171a20;
+      color: #cbd5df;
+      font-size: 12px;
+    }
+
+    .command code {
+      color: #dce6ef;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    @media (max-width: 980px) {
+      body { overflow: auto; }
+      main {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+      }
+      .side { grid-template-rows: auto; }
+    }
+
+    @media (max-width: 680px) {
+      main { padding: 10px; }
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .title {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 2px;
+        white-space: normal;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+        width: 100%;
+      }
+      button {
+        min-width: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="left">
+      <div class="toolbar">
+        <div class="title">
+          <strong>Holographic Helmet UI</strong>
+          <span>Inside-visor HUD / bottom-left origin</span>
+        </div>
+        <div class="controls" role="group" aria-label="Helmet style">
+          <button data-mode="combat" class="active">Combat</button>
+          <button data-mode="scan">Scan</button>
+          <button data-mode="low">Low</button>
+          <button data-aim="0" class="active">CAR</button>
+          <button data-aim="1">ENE-A</button>
+          <button data-aim="2">ENE-B</button>
+          <button data-aim="3">POST</button>
+        </div>
+      </div>
+
+      <div class="stage">
+        <canvas id="preview" width="1920" height="1080"></canvas>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="group">
+        <h2>View</h2>
+        <div class="fields">
+          <label>
+            Grid
+            <select id="gridMode">
+              <option value="origin">Axes</option>
+              <option value="full">Full</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label>
+            Mask
+            <input id="maskToggle" type="checkbox" />
+          </label>
+          <div class="status">
+            Placement
+            <strong id="placementStatus">CENTER SAFE</strong>
+          </div>
+          <div class="status">
+            Budget
+            <strong id="budgetStatus">0 GFX</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="group command-list" id="commandList" aria-label="Line commands"></section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const commandList = document.getElementById("commandList");
+    const gridMode = document.getElementById("gridMode");
+    const maskToggle = document.getElementById("maskToggle");
+    const placementStatus = document.getElementById("placementStatus");
+    const budgetStatus = document.getElementById("budgetStatus");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const palette = {
+      cyan: "#39d7ff",
+      green: "#49e66f",
+      pink: "#ff5fa2",
+      amber: "#ffbc3d",
+      white: "#e8edf2",
+      dim: "rgba(232,237,242,0.28)",
+    };
+
+    const aimModes = [
+      { id: 0, code: "CAR", x: 770, y: 382 },
+      { id: 1, code: "ENE-A", x: 895, y: 342 },
+      { id: 2, code: "ENE-B", x: 1025, y: 342 },
+      { id: 3, code: "POST", x: 1150, y: 382 },
+    ];
+
+    const clientMaskRects = [
+      { id: "TOP", x: 0, y: 925, w: 1920, h: 155 },
+      { id: "LEFT_MAIN", x: 0, y: 0, w: 422, h: 516 },
+      { id: "LEFT_STEP", x: 422, y: 0, w: 82, h: 258 },
+      { id: "LEFT_FLOAT", x: 473, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_FLOAT", x: 1357, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_MAIN", x: 1461, y: 0, w: 459, h: 333 },
+    ];
+
+    let mode = "combat";
+    let activeAim = initialAim();
+    let commands = [];
+
+    function initialAim() {
+      const value = Number(new URLSearchParams(location.search).get("aim"));
+      return Number.isFinite(value) ? Math.max(0, Math.min(3, Math.trunc(value))) : 0;
+    }
+
+    function by(y) {
+      return H - y;
+    }
+
+    function rectToCanvas(rect) {
+      return { x: rect.x, y: H - rect.y - rect.h, w: rect.w, h: rect.h };
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function line(name, x1, y1, x2, y2, color = palette.cyan, width = 3, layer = 0) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.shadowColor = color;
+      ctx.shadowBlur = Math.min(16, width * 3);
+      ctx.beginPath();
+      ctx.moveTo(x1, by(y1));
+      ctx.lineTo(x2, by(y2));
+      ctx.stroke();
+      ctx.restore();
+      commands.push({ name, type: "Line", layer, color, width, x1, y1, x2, y2 });
+    }
+
+    function circle(name, x, y, r, color = palette.cyan, width = 3, layer = 0) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.shadowColor = color;
+      ctx.shadowBlur = Math.min(18, width * 4);
+      ctx.beginPath();
+      ctx.arc(x, by(y), r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      commands.push({ name, type: "Circle", layer, color, width, x1: x, y1: y, x2: r, y2: r });
+    }
+
+    function mirrorLine(prefix, index, ax, ay, bx, ey, color, width, layer = 0) {
+      const cx = 960;
+      line(`${prefix}${index}L`, cx - ax, ay, cx - bx, ey, color, width, layer);
+      line(`${prefix}${index}R`, cx + ax, ay, cx + bx, ey, color, width, layer);
+    }
+
+    function drawPreviewRect(rect, fill, stroke) {
+      const cr = rectToCanvas(rect);
+      ctx.save();
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(cr.x, cr.y, cr.w, cr.h);
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cr.x, cr.y, cr.w, cr.h);
+      }
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      if (gridMode.value === "off") return;
+      ctx.save();
+      if (gridMode.value === "full") {
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 120) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= H; y += 90) {
+          ctx.beginPath();
+          ctx.moveTo(0, by(y));
+          ctx.lineTo(W, by(y));
+          ctx.stroke();
+        }
+      }
+      ctx.strokeStyle = "rgba(57,215,255,0.45)";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(220, by(72));
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(72, by(220));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawForbiddenPreview() {
+      if (!maskToggle.checked) return;
+      clientMaskRects.forEach((rect) => {
+        drawPreviewRect(rect, "rgba(150,150,150,0.26)", "rgba(175,175,175,0.34)");
+      });
+    }
+
+    function drawHelmet() {
+      const main = mode === "low" ? palette.green : palette.cyan;
+      const accent = mode === "scan" ? palette.amber : palette.green;
+      const danger = mode === "combat" ? palette.pink : palette.dim;
+
+      // Outside scene seen through the visor.
+      line("OUT0", 420, 505, 1500, 505, "rgba(232,237,242,0.18)", 2, 0);
+      line("OUT1", 780, 505, 640, 320, "rgba(57,215,255,0.18)", 1, 0);
+      line("OUT2", 960, 505, 960, 288, "rgba(57,215,255,0.14)", 1, 0);
+      line("OUT3", 1140, 505, 1280, 320, "rgba(57,215,255,0.18)", 1, 0);
+      line("OUT4", 650, 386, 1270, 386, "rgba(57,215,255,0.14)", 1, 0);
+      line("OUT5", 720, 330, 1200, 330, "rgba(57,215,255,0.12)", 1, 0);
+
+      // Inner helmet visor frame near the user's face.
+      line("VIS0", 220, 890, 610, 1008, main, 7, 3);
+      line("VIS1", 1310, 1008, 1700, 890, main, 7, 3);
+      line("VIS2", 610, 1008, 1310, 1008, main, 5, 3);
+      line("VIS3", 116, 742, 220, 890, main, 6, 3);
+      line("VIS4", 1804, 742, 1700, 890, main, 6, 3);
+      line("VIS5", 116, 742, 82, 510, main, 5, 3);
+      line("VIS6", 1804, 742, 1838, 510, main, 5, 3);
+      line("VIS7", 82, 510, 220, 238, main, 6, 3);
+      line("VIS8", 1838, 510, 1700, 238, main, 6, 3);
+      line("VIS9", 220, 238, 610, 92, main, 7, 3);
+      line("VISA", 1700, 238, 1310, 92, main, 7, 3);
+      line("VISB", 610, 92, 1310, 92, main, 4, 3);
+
+      // Semi-floating side panels, all line-only.
+      line("LP0", 240, 735, 560, 790, accent, 3, 2);
+      line("LP1", 560, 790, 640, 728, accent, 3, 2);
+      line("LP2", 640, 728, 610, 590, accent, 3, 2);
+      line("LP3", 610, 590, 290, 540, accent, 3, 2);
+      line("LP4", 290, 540, 240, 735, accent, 3, 2);
+      line("LP5", 318, 700, 540, 734, "rgba(232,237,242,0.55)", 2, 2);
+      line("LP6", 310, 650, 580, 690, "rgba(232,237,242,0.35)", 1, 2);
+      line("LP7", 300, 602, 528, 638, "rgba(232,237,242,0.28)", 1, 2);
+
+      line("RP0", 1680, 735, 1360, 790, accent, 3, 2);
+      line("RP1", 1360, 790, 1280, 728, accent, 3, 2);
+      line("RP2", 1280, 728, 1310, 590, accent, 3, 2);
+      line("RP3", 1310, 590, 1630, 540, accent, 3, 2);
+      line("RP4", 1630, 540, 1680, 735, accent, 3, 2);
+      line("RP5", 1602, 700, 1380, 734, "rgba(232,237,242,0.55)", 2, 2);
+      line("RP6", 1610, 650, 1340, 690, "rgba(232,237,242,0.35)", 1, 2);
+      line("RP7", 1620, 602, 1392, 638, "rgba(232,237,242,0.28)", 1, 2);
+
+      // Center targeting frame and lower instrument shelf.
+      line("CT0", 900, 585, 940, 585, palette.white, 2, 4);
+      line("CT1", 980, 585, 1020, 585, palette.white, 2, 4);
+      line("CT2", 960, 625, 960, 602, palette.white, 2, 4);
+      line("CT3", 960, 568, 960, 545, palette.white, 2, 4);
+      line("CT4", 880, 638, 840, 670, danger, 2, 4);
+      line("CT5", 1040, 638, 1080, 670, danger, 2, 4);
+      line("CT6", 880, 532, 840, 500, danger, 2, 4);
+      line("CT7", 1040, 532, 1080, 500, danger, 2, 4);
+
+      line("SH0", 710, 190, 1210, 190, main, 3, 3);
+      line("SH1", 760, 224, 1160, 224, "rgba(57,215,255,0.42)", 2, 3);
+      line("SH2", 820, 258, 1100, 258, accent, 2, 3);
+      line("SH3", 925, 292, 995, 292, palette.white, 2, 3);
+      drawAimSelector(accent);
+
+      if (mode === "scan") {
+        line("SC0", 360, 820, 1560, 820, palette.amber, 2, 5);
+        line("SC1", 430, 704, 1490, 704, "rgba(255,188,61,0.65)", 1, 5);
+        line("SC2", 510, 588, 1410, 588, "rgba(255,188,61,0.45)", 1, 5);
+        line("SC3", 610, 472, 1310, 472, "rgba(255,188,61,0.28)", 1, 5);
+      }
+    }
+
+    function drawAimSelector(accent) {
+      line("AMR0", 735, 408, 895, 342, "rgba(57,215,255,0.24)", 1, 2);
+      line("AMR1", 895, 342, 1025, 342, "rgba(57,215,255,0.24)", 1, 2);
+      line("AMR2", 1025, 342, 1185, 408, "rgba(57,215,255,0.24)", 1, 2);
+
+      aimModes.forEach((aim) => {
+        const active = aim.id === activeAim;
+        const ring = active ? accent : "rgba(232,237,242,0.34)";
+        const core = active ? palette.white : "rgba(232,237,242,0.22)";
+        const radius = active ? 30 : 22;
+        const width = active ? 4 : 2;
+
+        circle(`AM${aim.id}0`, aim.x, aim.y, radius, ring, width, 4);
+        circle(`AM${aim.id}1`, aim.x, aim.y, active ? 18 : 13, core, active ? 2 : 1, 4);
+
+        if (active) {
+          circle(`AM${aim.id}2`, aim.x, aim.y, 38, "rgba(57,215,255,0.35)", 1, 3);
+          line(`AM${aim.id}3`, aim.x, aim.y + 38, 960, 545, "rgba(232,237,242,0.42)", 1, 3);
+          line(`AM${aim.id}4`, aim.x - 48, aim.y, aim.x - 34, aim.y, ring, 2, 4);
+          line(`AM${aim.id}5`, aim.x + 34, aim.y, aim.x + 48, aim.y, ring, 2, 4);
+          line(`AM${aim.id}6`, aim.x, aim.y - 48, aim.x, aim.y - 34, ring, 2, 4);
+          line(`AM${aim.id}7`, aim.x, aim.y + 34, aim.x, aim.y + 48, ring, 2, 4);
+        }
+      });
+    }
+
+    function helmetBounds() {
+      return { x: 82, y: 92, w: 1756, h: 916 };
+    }
+
+    function renderCommandList() {
+      commandList.innerHTML = "";
+      const title = document.createElement("h2");
+      title.textContent = "HUD Commands";
+      commandList.appendChild(title);
+
+      commands.forEach((cmd) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${cmd.name}</code><span>${cmd.x1},${cmd.y1} -> ${cmd.x2},${cmd.y2}</span><span>L${cmd.layer}</span>`;
+        commandList.appendChild(row);
+      });
+    }
+
+    function draw() {
+      commands = [];
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      drawForbiddenPreview();
+      drawHelmet();
+      renderCommandList();
+
+      const safe = !clientMaskRects.some((rect) => intersects(helmetBounds(), rect));
+      placementStatus.textContent = maskToggle.checked ? `FULL ${safe ? "SAFE" : "CHECK"}` : "FULL VISOR DEMO";
+      placementStatus.style.color = maskToggle.checked && !safe ? "var(--pink)" : "var(--green)";
+      budgetStatus.textContent = `${commands.length} GFX`;
+    }
+
+    document.querySelectorAll("[data-mode]").forEach((button) => {
+      button.addEventListener("click", () => {
+        mode = button.dataset.mode;
+        document.querySelectorAll("[data-mode]").forEach((item) => item.classList.toggle("active", item === button));
+        draw();
+      });
+    });
+
+    document.querySelectorAll("[data-aim]").forEach((button) => {
+      button.classList.toggle("active", Number(button.dataset.aim) === activeAim);
+      button.addEventListener("click", () => {
+        activeAim = Number(button.dataset.aim);
+        document.querySelectorAll("[data-aim]").forEach((item) => item.classList.toggle("active", item === button));
+        draw();
+      });
+    });
+
+    gridMode.addEventListener("change", draw);
+    maskToggle.addEventListener("change", draw);
+    draw();
+  </script>
+</body>
+</html>

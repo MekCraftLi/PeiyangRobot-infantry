@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Movement Speed HUD</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #191c22;
+      --panel-2: #12151a;
+      --line: #303642;
+      --text: #e8edf2;
+      --muted: #95a2b0;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+      --amber: #ffbc3d;
+      --pink: #ff5fa2;
+      --red: #ff5d6c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.42 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .left {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .toolbar,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    .title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .title strong {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    select,
+    input[type="number"] {
+      border: 1px solid #414856;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 11px;
+      min-height: 36px;
+      font: inherit;
+    }
+
+    button {
+      min-width: 72px;
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover,
+    input[type="number"]:hover {
+      border-color: #687486;
+    }
+
+    button.active {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(57, 215, 255, 0.45);
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 104px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+    }
+
+    .group {
+      border: 1px solid #2b313b;
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #cdd6df;
+    }
+
+    .fields {
+      display: grid;
+      gap: 8px;
+    }
+
+    label,
+    .status {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--cyan);
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--cyan);
+    }
+
+    .status strong {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .command-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 54px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid #2c333e;
+      border-radius: 6px;
+      background: #171a20;
+      color: #cbd5df;
+      font-size: 12px;
+    }
+
+    .command code {
+      color: #dce6ef;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        overflow: auto;
+      }
+
+      main {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        grid-template-rows: auto;
+      }
+    }
+
+    @media (max-width: 680px) {
+      main {
+        padding: 10px;
+      }
+
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .title {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 2px;
+        white-space: normal;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+      }
+
+      button {
+        min-width: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="left">
+      <div class="toolbar">
+        <div class="title">
+          <strong>Movement Speed HUD</strong>
+          <span>resultant speed / vector / component chart</span>
+        </div>
+        <div class="controls" role="group" aria-label="Speed presets">
+          <button data-preset="cruise" class="active">Cruise</button>
+          <button data-preset="strafe">Strafe</button>
+          <button data-preset="sprint">Sprint</button>
+          <button data-auto="true">Auto</button>
+        </div>
+      </div>
+
+      <div class="stage">
+        <canvas id="preview" width="1920" height="1080"></canvas>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="group">
+        <h2>View</h2>
+        <div class="fields">
+          <label>
+            Grid
+            <select id="gridMode">
+              <option value="origin">Axes</option>
+              <option value="full">Full</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label>
+            Mask
+            <input id="maskToggle" type="checkbox" checked />
+          </label>
+          <div class="status">
+            Placement
+            <strong id="placementStatus">CENTER SAFE</strong>
+          </div>
+          <div class="status">
+            Budget
+            <strong id="budgetStatus">0 GFX</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Signal</h2>
+        <div class="fields">
+          <label>
+            VX
+            <input id="vxSlider" type="range" min="-5" max="5" step="0.05" value="1.8" />
+          </label>
+          <label>
+            VY
+            <input id="vySlider" type="range" min="-5" max="5" step="0.05" value="1.2" />
+          </label>
+          <label>
+            Limit
+            <input id="limitInput" type="number" min="1" max="8" step="0.5" value="5" />
+          </label>
+        </div>
+      </section>
+
+      <section class="group command-list" id="commandList" aria-label="Primitive groups"></section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const commandList = document.getElementById("commandList");
+    const gridMode = document.getElementById("gridMode");
+    const maskToggle = document.getElementById("maskToggle");
+    const placementStatus = document.getElementById("placementStatus");
+    const budgetStatus = document.getElementById("budgetStatus");
+    const vxSlider = document.getElementById("vxSlider");
+    const vySlider = document.getElementById("vySlider");
+    const limitInput = document.getElementById("limitInput");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const cx = 960;
+    const cy = 560;
+
+    const palette = {
+      cyan: "#39d7ff",
+      green: "#49e66f",
+      amber: "#ffbc3d",
+      pink: "#ff5fa2",
+      white: "#e8edf2",
+      dim: "rgba(232,237,242,0.26)",
+      grid: "rgba(57,215,255,0.16)",
+    };
+
+    const clientMaskRects = [
+      { id: "TOP", x: 0, y: 925, w: 1920, h: 155 },
+      { id: "LEFT_MAIN", x: 0, y: 0, w: 422, h: 516 },
+      { id: "LEFT_STEP", x: 422, y: 0, w: 82, h: 258 },
+      { id: "LEFT_FLOAT", x: 473, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_FLOAT", x: 1357, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_MAIN", x: 1461, y: 0, w: 459, h: 333 },
+    ];
+
+    let vx = Number(vxSlider.value);
+    let vy = Number(vySlider.value);
+    let auto = false;
+    let autoTime = 0;
+    let lastTs = performance.now();
+    let commands = [];
+
+    function by(y) {
+      return H - y;
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(Number(value) || 0, min), max);
+    }
+
+    function speedLimit() {
+      return clamp(Number(limitInput.value), 1, 8);
+    }
+
+    function speed() {
+      return Math.hypot(vx, vy);
+    }
+
+    function speedColor(value = speed()) {
+      const ratio = value / speedLimit();
+      if (ratio > 0.82) return palette.pink;
+      if (ratio > 0.58) return palette.amber;
+      return palette.green;
+    }
+
+    function rectToCanvas(rect) {
+      return { x: rect.x, y: H - rect.y - rect.h, w: rect.w, h: rect.h };
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function push(name, type, layer, color, width, args, scope = "DYN") {
+      commands.push({ name, type, layer, color, width, args, scope });
+    }
+
+    function line(name, x1, y1, x2, y2, color = palette.cyan, width = 3, layer = 0, scope = "DYN") {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.shadowColor = color;
+      ctx.shadowBlur = Math.min(14, width * 3);
+      ctx.beginPath();
+      ctx.moveTo(x1, by(y1));
+      ctx.lineTo(x2, by(y2));
+      ctx.stroke();
+      ctx.restore();
+      push(name, "Line", layer, color, width, { x1, y1, x2, y2 }, scope);
+    }
+
+    function circle(name, x, y, r, color = palette.cyan, width = 3, layer = 0, scope = "DYN") {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = Math.min(14, width * 3);
+      ctx.beginPath();
+      ctx.arc(x, by(y), r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      push(name, "Circle", layer, color, width, { x, y, r }, scope);
+    }
+
+    function arc(name, x, y, r, startDeg, endDeg, color = palette.cyan, width = 3, layer = 0, scope = "DYN") {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.shadowColor = color;
+      ctx.shadowBlur = Math.min(16, width * 3);
+      ctx.beginPath();
+      const start = (-endDeg * Math.PI) / 180;
+      const end = (-startDeg * Math.PI) / 180;
+      ctx.arc(x, by(y), r, start, end);
+      ctx.stroke();
+      ctx.restore();
+      push(name, "Arc", layer, color, width, { x, y, r, startDeg, endDeg }, scope);
+    }
+
+    function text(name, value, x, y, size, color = palette.white, layer = 1, scope = "DYN") {
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.font = `700 ${size}px 'Cascadia Mono', Consolas, monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.fillText(value, x, by(y));
+      ctx.restore();
+      push(name, "Text", layer, color, 1, { x, y, value }, scope);
+    }
+
+    function drawPreviewRect(rect, fill, stroke) {
+      const cr = rectToCanvas(rect);
+      ctx.save();
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(cr.x, cr.y, cr.w, cr.h);
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cr.x, cr.y, cr.w, cr.h);
+      }
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      if (gridMode.value === "off") return;
+
+      ctx.save();
+      if (gridMode.value === "full") {
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 120) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= H; y += 90) {
+          ctx.beginPath();
+          ctx.moveTo(0, by(y));
+          ctx.lineTo(W, by(y));
+          ctx.stroke();
+        }
+      }
+
+      ctx.strokeStyle = "rgba(57,215,255,0.45)";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(220, by(72));
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(72, by(220));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawForbiddenPreview() {
+      if (!maskToggle.checked) return;
+      clientMaskRects.forEach((rect) => {
+        drawPreviewRect(rect, "rgba(150,150,150,0.26)", "rgba(175,175,175,0.34)");
+      });
+    }
+
+    function drawStaticFrame() {
+      circle("FR0", cx, cy, 232, "rgba(232,237,242,0.2)", 2, 0, "STATIC");
+      circle("FR1", cx, cy, 168, "rgba(57,215,255,0.14)", 1, 0, "STATIC");
+      circle("FR2", cx, cy, 82, "rgba(57,215,255,0.1)", 1, 0, "STATIC");
+
+      for (let i = 0; i < 16; i++) {
+        const deg = -135 + i * 18;
+        const rad = (deg * Math.PI) / 180;
+        const r0 = i % 4 === 0 ? 214 : 222;
+        const r1 = 232;
+        const x0 = cx + Math.cos(rad) * r0;
+        const y0 = cy + Math.sin(rad) * r0;
+        const x1 = cx + Math.cos(rad) * r1;
+        const y1 = cy + Math.sin(rad) * r1;
+        line(`TK${i}`, x0, y0, x1, y1, "rgba(232,237,242,0.28)", i % 4 === 0 ? 3 : 1, 0, "STATIC");
+      }
+
+      line("AX0", cx - 280, cy, cx + 280, cy, "rgba(57,215,255,0.14)", 1, 0, "STATIC");
+      line("AX1", cx, cy - 250, cx, cy + 250, "rgba(57,215,255,0.14)", 1, 0, "STATIC");
+      line("BX0", 700, 250, 1220, 250, "rgba(232,237,242,0.28)", 2, 0, "STATIC");
+      line("BX1", 700, 292, 1220, 292, "rgba(232,237,242,0.14)", 1, 0, "STATIC");
+      line("BY0", 1300, 320, 1300, 780, "rgba(232,237,242,0.22)", 2, 0, "STATIC");
+      line("BY1", 1344, 320, 1344, 780, "rgba(232,237,242,0.12)", 1, 0, "STATIC");
+    }
+
+    function drawSpeedGauge() {
+      const limit = speedLimit();
+      const currentSpeed = speed();
+      const ratio = clamp(currentSpeed / limit, 0, 1);
+      const color = speedColor(currentSpeed);
+      const sweep = 270 * ratio;
+
+      arc("GA0", cx, cy, 252, -135, 135, "rgba(232,237,242,0.18)", 10, 1, "STATIC");
+      arc("GA1", cx, cy, 252, -135, -135 + sweep, color, 14, 2);
+      arc("GA2", cx, cy, 268, -135 + sweep - 2, -135 + sweep + 2, palette.white, 6, 3);
+
+      const vectorScale = 160 / limit;
+      const endX = cx + clamp(vx * vectorScale, -185, 185);
+      const endY = cy + clamp(vy * vectorScale, -185, 185);
+      line("VC0", cx, cy, endX, endY, color, 6, 3);
+      line("VC1", endX, endY, endX - Math.sign(vx || 1) * 22, endY - 18, color, 4, 3);
+      line("VC2", endX, endY, endX - Math.sign(vx || 1) * 22, endY + 18, color, 4, 3);
+      circle("VC3", cx, cy, 10, palette.white, 3, 3);
+
+      text("SP0", currentSpeed.toFixed(2), cx, cy - 34, 56, color, 4);
+      text("SP1", "M/S", cx, cy - 92, 20, "rgba(232,237,242,0.58)", 4);
+    }
+
+    function drawComponentBar(prefix, y, value, color) {
+      const centerX = cx;
+      const width = 430;
+      const half = width * 0.5;
+      const ratio = clamp(value / speedLimit(), -1, 1);
+      const endX = centerX + half * ratio;
+      line(`${prefix}0`, centerX - half, y, centerX + half, y, "rgba(232,237,242,0.18)", 5, 1, "STATIC");
+      line(`${prefix}1`, centerX, y, endX, y, color, 8, 2);
+      line(`${prefix}2`, centerX, y - 14, centerX, y + 14, palette.white, 2, 2);
+      line(`${prefix}3`, endX, y - 18, endX, y + 18, color, 3, 2);
+    }
+
+    function drawComponents() {
+      drawComponentBar("VX", 250, vx, vx >= 0 ? palette.cyan : palette.pink);
+      drawComponentBar("VY", 292, vy, vy >= 0 ? palette.green : palette.amber);
+      text("VXTXT", `VX ${vx.toFixed(1)}`, 660, 250, 18, "rgba(232,237,242,0.62)", 2);
+      text("VYTXT", `VY ${vy.toFixed(1)}`, 660, 292, 18, "rgba(232,237,242,0.62)", 2);
+    }
+
+    function historyValue(index) {
+      const base = speed();
+      const wave = Math.sin(index * 0.8 + autoTime * 1.8) * 0.42 + Math.cos(index * 0.35 + autoTime) * 0.26;
+      return clamp(base + wave, 0, speedLimit());
+    }
+
+    function drawHistory() {
+      const left = 1320;
+      const bottom = 650;
+      const height = 210;
+      const width = 260;
+      const count = 18;
+      let prev = null;
+      for (let i = 0; i < count; i++) {
+        const x = left + (width * i) / (count - 1);
+        const y = bottom + (height * historyValue(i)) / speedLimit();
+        if (prev) {
+          line(`HS${i}`, prev.x, prev.y, x, y, speedColor(historyValue(i)), 3, 2);
+        }
+        prev = { x, y };
+      }
+      for (let i = 0; i < 5; i++) {
+        const y = bottom + (height * i) / 4;
+        line(`HG${i}`, left - 20, y, left + width + 20, y, "rgba(232,237,242,0.12)", 1, 1, "STATIC");
+      }
+    }
+
+    function commandBounds(cmd) {
+      const pad = Math.max(4, cmd.width + 2);
+      const args = cmd.args;
+      if (cmd.type === "Line") {
+        const x = Math.min(args.x1, args.x2) - pad;
+        const y = Math.min(args.y1, args.y2) - pad;
+        return {
+          x,
+          y,
+          w: Math.abs(args.x2 - args.x1) + pad * 2,
+          h: Math.abs(args.y2 - args.y1) + pad * 2,
+        };
+      }
+      if (cmd.type === "Circle" || cmd.type === "Arc") {
+        const r = args.r + pad;
+        return { x: args.x - r, y: args.y - r, w: r * 2, h: r * 2 };
+      }
+      if (cmd.type === "Text") {
+        const size = args.size || 20;
+        const w = String(args.value).length * size * 0.62;
+        return { x: args.x - w / 2 - pad, y: args.y - size / 2 - pad, w: w + pad * 2, h: size + pad * 2 };
+      }
+      return null;
+    }
+
+    function placementSafe() {
+      return !commands.some((cmd) => {
+        const bounds = commandBounds(cmd);
+        return bounds && clientMaskRects.some((rect) => intersects(bounds, rect));
+      });
+    }
+
+    function renderCommandList() {
+      commandList.innerHTML = "";
+      const title = document.createElement("h2");
+      title.textContent = "Primitive Groups";
+      commandList.appendChild(title);
+
+      const groups = [
+        ["RING", commands.filter((cmd) => cmd.name.startsWith("GA") || cmd.name.startsWith("FR")).length],
+        ["VECTOR", commands.filter((cmd) => cmd.name.startsWith("VC")).length],
+        ["COMP", commands.filter((cmd) => cmd.name.startsWith("VX") || cmd.name.startsWith("VY")).length],
+        ["HIST", commands.filter((cmd) => cmd.name.startsWith("H")).length],
+      ];
+
+      groups.forEach(([name, count]) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${name}</code><span>Speed chart layer</span><span>${count}</span>`;
+        commandList.appendChild(row);
+      });
+
+      commands.slice(0, 32).forEach((cmd) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${cmd.name}</code><span>${cmd.type}</span><span>L${cmd.layer}</span>`;
+        commandList.appendChild(row);
+      });
+    }
+
+    function draw() {
+      commands = [];
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      drawForbiddenPreview();
+      drawStaticFrame();
+      drawSpeedGauge();
+      drawComponents();
+      drawHistory();
+      renderCommandList();
+
+      const safe = placementSafe();
+      placementStatus.textContent = `CENTER ${safe ? "SAFE" : "CHECK"}`;
+      placementStatus.style.color = safe ? "var(--green)" : "var(--red)";
+      budgetStatus.textContent = `${commands.length} GFX`;
+    }
+
+    function setPreset(name) {
+      const presets = {
+        cruise: [1.8, 1.2],
+        strafe: [-2.6, 0.7],
+        sprint: [3.9, 2.1],
+      };
+      const next = presets[name] || presets.cruise;
+      vx = next[0];
+      vy = next[1];
+      vxSlider.value = String(vx);
+      vySlider.value = String(vy);
+    }
+
+    document.querySelectorAll("[data-preset]").forEach((button) => {
+      button.addEventListener("click", () => {
+        auto = false;
+        setPreset(button.dataset.preset);
+        document.querySelectorAll("[data-preset]").forEach((item) => item.classList.toggle("active", item === button));
+        document.querySelector("[data-auto]").classList.remove("active");
+        draw();
+      });
+    });
+
+    document.querySelector("[data-auto]").addEventListener("click", (event) => {
+      auto = !auto;
+      event.currentTarget.classList.toggle("active", auto);
+      document.querySelectorAll("[data-preset]").forEach((item) => item.classList.remove("active"));
+    });
+
+    vxSlider.addEventListener("input", () => {
+      auto = false;
+      vx = Number(vxSlider.value);
+      document.querySelector("[data-auto]").classList.remove("active");
+      draw();
+    });
+
+    vySlider.addEventListener("input", () => {
+      auto = false;
+      vy = Number(vySlider.value);
+      document.querySelector("[data-auto]").classList.remove("active");
+      draw();
+    });
+
+    limitInput.addEventListener("change", draw);
+    gridMode.addEventListener("change", draw);
+    maskToggle.addEventListener("change", draw);
+
+    function frame(ts) {
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+      if (auto) {
+        autoTime += dt;
+        vx = 3.2 * Math.cos(autoTime * 0.82) + 0.8 * Math.sin(autoTime * 1.7);
+        vy = 2.8 * Math.sin(autoTime * 0.72);
+        vxSlider.value = vx.toFixed(2);
+        vySlider.value = vy.toFixed(2);
+      }
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    draw();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

@@ -1,0 +1,1546 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Referee UI Preview - July 2025</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0f1110;
+            --panel: #181b18;
+            --panel-2: #222620;
+            --line: #343a33;
+            --text: #eef3ed;
+            --muted: #a9b2a6;
+            --accent: #4ee8ff;
+            --danger: #ff5d9b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font: 14px/1.4 Inter, "Segoe UI", Arial, sans-serif;
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 372px;
+            height: 100vh;
+        }
+
+        .viewport {
+            display: grid;
+            place-items: center;
+            min-width: 0;
+            padding: 18px;
+            background: #111410;
+        }
+
+        .canvas-shell {
+            position: relative;
+            width: min(100%, calc((100vh - 36px) * 16 / 9));
+            max-height: calc(100vh - 36px);
+            aspect-ratio: 16 / 9;
+            border: 1px solid #30362f;
+            background: #050606;
+            box-shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hud-meta {
+            position: absolute;
+            top: 10px;
+            left: 12px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            color: rgba(238, 243, 237, 0.72);
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--accent);
+            box-shadow: 0 0 14px rgba(78, 232, 255, 0.72);
+        }
+
+        .panel {
+            overflow: auto;
+            border-left: 1px solid var(--line);
+            background: var(--panel);
+            padding: 18px;
+        }
+
+        h1 {
+            margin: 0 0 14px;
+            font-size: 18px;
+            font-weight: 650;
+            letter-spacing: 0;
+        }
+
+        h2 {
+            margin: 18px 0 8px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 650;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .field {
+            display: grid;
+            grid-template-columns: 104px minmax(0, 1fr) 64px;
+            gap: 10px;
+            align-items: center;
+            padding: 7px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .field.compact {
+            grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .toggle-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            column-gap: 14px;
+        }
+
+        label {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+
+        input[type="number"],
+        output,
+        textarea {
+            width: 100%;
+            border: 1px solid #3a4238;
+            border-radius: 6px;
+            background: var(--panel-2);
+            color: var(--text);
+            font: 12px/1.35 Consolas, "Cascadia Mono", monospace;
+        }
+
+        input[type="number"] {
+            padding: 7px 8px;
+        }
+
+        output {
+            padding: 6px 7px;
+            text-align: right;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        button {
+            min-height: 36px;
+            border: 1px solid #3a4238;
+            border-radius: 6px;
+            background: #242a22;
+            color: var(--text);
+            font: inherit;
+            cursor: pointer;
+        }
+
+        button:hover {
+            border-color: #5d6a59;
+            background: #2c3329;
+        }
+
+        button.primary {
+            border-color: rgba(78, 232, 255, 0.55);
+            background: #173134;
+        }
+
+        button.danger {
+            border-color: rgba(255, 93, 155, 0.55);
+            background: #351b26;
+        }
+
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+            padding: 10px;
+        }
+
+        @media (max-width: 980px) {
+            body {
+                overflow: auto;
+            }
+
+            .app {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+                min-height: 100vh;
+            }
+
+            .panel {
+                max-height: 50vh;
+                border-left: 0;
+                border-top: 1px solid var(--line);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <main class="viewport">
+        <div class="canvas-shell">
+            <canvas id="rmCanvas" width="1920" height="1080"></canvas>
+            <div class="hud-meta">
+                <span class="status-dot"></span>
+                <span id="drawCount">0 graphics</span>
+                <span id="teamLabel">robot 103</span>
+            </div>
+        </div>
+    </main>
+
+    <aside class="panel">
+        <h1>Referee UI Preview</h1>
+
+        <h2>Robot</h2>
+        <div class="field">
+            <label for="robotId">robot id</label>
+            <input id="robotId" type="number" min="1" max="199" value="103">
+            <output id="robotIdOut">103</output>
+        </div>
+
+        <h2>Motion</h2>
+        <div class="field">
+            <label for="vx">realVX</label>
+            <input id="vx" type="range" min="-5" max="5" step="0.05" value="1.30">
+            <output id="vxOut">1.30</output>
+        </div>
+        <div class="field">
+            <label for="vy">realVY</label>
+            <input id="vy" type="range" min="-5" max="5" step="0.05" value="1.10">
+            <output id="vyOut">1.10</output>
+        </div>
+        <div class="field">
+            <label for="wz">realWZ</label>
+            <input id="wz" type="range" min="-3" max="3" step="0.02" value="1.00">
+            <output id="wzOut">1.00</output>
+        </div>
+        <div class="field">
+            <label for="yawRealAngle">yaw rad</label>
+            <input id="yawRealAngle" type="range" min="-0.75" max="0.75" step="0.01" value="0.10">
+            <output id="yawRealAngleOut">0.10</output>
+        </div>
+        <div class="field">
+            <label for="pitchAngle">pitch rad</label>
+            <input id="pitchAngle" type="range" min="-0.40" max="0.70" step="0.01" value="0.18">
+            <output id="pitchAngleOut">0.18</output>
+        </div>
+
+        <h2>Power</h2>
+        <div class="field">
+            <label for="capVoltage">cap volt</label>
+            <input id="capVoltage" type="range" min="0" max="28" step="0.1" value="22.5">
+            <output id="capVoltageOut">22.5</output>
+        </div>
+        <div class="field">
+            <label for="capPower">cap power</label>
+            <input id="capPower" type="range" min="-120" max="80" step="1" value="-42">
+            <output id="capPowerOut">-42</output>
+        </div>
+        <div class="field">
+            <label for="chassisPower">chassis W</label>
+            <input id="chassisPower" type="range" min="0" max="220" step="1" value="84">
+            <output id="chassisPowerOut">84</output>
+        </div>
+        <div class="field">
+            <label for="powerLimit">limit W</label>
+            <input id="powerLimit" type="range" min="0" max="160" step="1" value="110">
+            <output id="powerLimitOut">110</output>
+        </div>
+        <div class="toggle-grid">
+            <div class="field compact">
+                <label for="capUseFlag">cap use</label>
+                <input id="capUseFlag" type="checkbox" checked>
+            </div>
+            <div class="field compact">
+                <label for="capSuperFlag">cap super</label>
+                <input id="capSuperFlag" type="checkbox" checked>
+            </div>
+        </div>
+
+        <h2>Fire</h2>
+        <div class="field">
+            <label for="shootState">shoot state</label>
+            <input id="shootState" type="range" min="0" max="4" step="1" value="0">
+            <output id="shootStateOut">0</output>
+        </div>
+        <div class="field">
+            <label for="heatRemain">heat used</label>
+            <input id="heatRemain" type="range" min="0" max="300" step="1" value="60">
+            <output id="heatRemainOut">60</output>
+        </div>
+        <div class="field">
+            <label for="heatLimit">heat limit</label>
+            <input id="heatLimit" type="range" min="10" max="300" step="10" value="200">
+            <output id="heatLimitOut">200</output>
+        </div>
+        <div class="toggle-grid">
+            <div class="field compact">
+                <label for="identifyFlag">identify</label>
+                <input id="identifyFlag" type="checkbox" checked>
+            </div>
+            <div class="field compact">
+                <label for="pcOffline">pc offline</label>
+                <input id="pcOffline" type="checkbox">
+            </div>
+        </div>
+
+        <h2>Offline</h2>
+        <div class="toggle-grid">
+            <div class="field compact">
+                <label for="driverOffline">driver</label>
+                <input id="driverOffline" type="checkbox">
+            </div>
+            <div class="field compact">
+                <label for="rudderOffline">rudder</label>
+                <input id="rudderOffline" type="checkbox">
+            </div>
+            <div class="field compact">
+                <label for="remoteOffline">remote</label>
+                <input id="remoteOffline" type="checkbox">
+            </div>
+            <div class="field compact">
+                <label for="capOffline">cap</label>
+                <input id="capOffline" type="checkbox">
+            </div>
+            <div class="field compact">
+                <label for="yawOffline">yaw</label>
+                <input id="yawOffline" type="checkbox">
+            </div>
+            <div class="field compact">
+                <label for="pitchOffline">pitch</label>
+                <input id="pitchOffline" type="checkbox">
+            </div>
+            <div class="field compact">
+                <label for="can1Offline">can1</label>
+                <input id="can1Offline" type="checkbox">
+            </div>
+            <div class="field compact">
+                <label for="refereeOffline">referee</label>
+                <input id="refereeOffline" type="checkbox">
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button class="primary" id="resetBtn" type="button">reset</button>
+            <button id="runBtn" type="button">pause</button>
+            <button id="triggerBtn" type="button">trigger</button>
+            <button class="danger" id="clearBtn" type="button">clear</button>
+        </div>
+
+        <h2>API</h2>
+        <textarea id="apiText" readonly spellcheck="false"></textarea>
+    </aside>
+</div>
+
+<script>
+(() => {
+    const GraphicOption = Object.freeze({ Null: 0, Add: 1, Update: 2, Delete: 3 });
+    const GraphicType = Object.freeze({ Line: 0, Rectangle: 1, Circle: 2, Ellipse: 3, Arc: 4, Float: 5, Int: 6, String: 7 });
+    const FigureDel = Object.freeze({ Null: 0, Layer: 1, All: 2, Name: 3 });
+    const UiColor = Object.freeze({ Main: 0, Yellow: 1, Green: 2, Orange: 3, Purple: 4, Pink: 5, Cyan: 6, Black: 7, White: 8, Del: 9 });
+    const RMSubCmdId = Object.freeze({ Delete: 0x0100, Draw1: 0x0101, Draw2: 0x0102, Draw5: 0x0103, Draw7: 0x0104, DrawChar: 0x0110 });
+
+    const GROUP = Object.freeze({
+        FRAME_WORK: 0,
+        CAPCITITOR: 1,
+        GEAR: 2,
+        POWER: 3,
+        SPEEDOMETER: 4,
+        GYRO_SPEED: 5,
+        HORIZON: 6,
+        OFFLINE: 7,
+        FIRE: 8,
+        OFFLINE_DISPLAY: 9,
+        QUANTITY: 10
+    });
+
+    const COLOR = {
+        [UiColor.Yellow]: "#ffd84d",
+        [UiColor.Green]: "#59f178",
+        [UiColor.Orange]: "#ff9b42",
+        [UiColor.Purple]: "#b383ff",
+        [UiColor.Pink]: "#ff5d9b",
+        [UiColor.Cyan]: "#4ee8ff",
+        [UiColor.Black]: "#020202",
+        [UiColor.White]: "#f4f7f2",
+        [UiColor.Del]: "transparent"
+    };
+
+    const DEFAULT_STATE = Object.freeze({
+        robotId: 103,
+        vx: 1.3,
+        vy: 1.1,
+        wz: 1.0,
+        yawRealAngle: 0.1,
+        pitchAngle: 0.18,
+        capVoltage: 22.5,
+        capPower: -42,
+        chassisPower: 84,
+        powerLimit: 110,
+        capUseFlag: 1,
+        capSuperFlag: 1,
+        shootState: 0,
+        identifyFlag: 1,
+        pcOffline: 0,
+        heatRemain: 60,
+        heatLimit: 200,
+        driverOffline: 0,
+        rudderOffline: 0,
+        remoteOffline: 0,
+        capOffline: 0,
+        yawOffline: 0,
+        pitchOffline: 0,
+        can1Offline: 0,
+        refereeOffline: 0,
+        chassisType: "OMNI_CHASSIS_NEO"
+    });
+
+    const canvas = document.getElementById("rmCanvas");
+    const drawCount = document.getElementById("drawCount");
+    const teamLabel = document.getElementById("teamLabel");
+
+    function constrain(value, min, max) {
+        return Math.min(Math.max(Number(value) || 0, min), max);
+    }
+
+    function deg2rad(value) {
+        return value * Math.PI / 180;
+    }
+
+    function rad2deg(value) {
+        return value * 180 / Math.PI;
+    }
+
+    function loopDeg(value) {
+        let result = value % 360;
+        if (result < 0) result += 360;
+        return result;
+    }
+
+    function teamMainColor(robotId) {
+        return robotId > 100 ? COLOR[UiColor.Cyan] : COLOR[UiColor.Pink];
+    }
+
+    function figureName(name) {
+        if (Array.isArray(name)) {
+            const a = name.map((value) => Number(value) & 0xff);
+            return `f${a[0] || 0}_${a[1] || 0}_${a[2] || 0}`;
+        }
+        return String(name).slice(0, 24);
+    }
+
+    function nameBytes(group, index, sub = 0) {
+        return [group, index, sub];
+    }
+
+    class RefereeCanvasRenderer {
+        constructor(targetCanvas) {
+            this.canvas = targetCanvas;
+            this.ctx = targetCanvas.getContext("2d");
+            this.elements = new Map();
+            this.sequence = 0;
+            this.robotId = DEFAULT_STATE.robotId;
+            this.render();
+        }
+
+        setRobotId(robotId) {
+            this.robotId = Number(robotId) || DEFAULT_STATE.robotId;
+        }
+
+        color(colorCode) {
+            if (colorCode === UiColor.Main) return teamMainColor(this.robotId);
+            return COLOR[colorCode] || COLOR[UiColor.White];
+        }
+
+        screenY(y) {
+            return this.canvas.height - y;
+        }
+
+        commit(figure) {
+            const payload = {
+                name: figureName(figure.name),
+                opt: figure.opt ?? GraphicOption.Add,
+                type: figure.type ?? GraphicType.Line,
+                layer: figure.layer ?? 0,
+                color: figure.color ?? UiColor.White,
+                width: figure.width ?? 2,
+                startX: Number(figure.startX ?? 0),
+                startY: Number(figure.startY ?? 0),
+                endX: Number(figure.endX ?? 0),
+                endY: Number(figure.endY ?? 0),
+                radius: Number(figure.radius ?? 0),
+                startAngle: Number(figure.startAngle ?? 0),
+                endAngle: Number(figure.endAngle ?? 0),
+                value: figure.value ?? 0,
+                text: figure.text ?? "",
+                fontSize: Number(figure.fontSize ?? 20),
+                order: this.sequence++
+            };
+
+            if (payload.opt === GraphicOption.Delete || payload.color === UiColor.Del) {
+                this.elements.delete(payload.name);
+            } else {
+                this.elements.set(payload.name, payload);
+            }
+            return payload;
+        }
+
+        deleteAll() {
+            this.elements.clear();
+            this.render();
+        }
+
+        deleteLayer(layer) {
+            for (const [name, figure] of this.elements.entries()) {
+                if (figure.layer === layer) this.elements.delete(name);
+            }
+            this.render();
+        }
+
+        deleteName(name) {
+            this.elements.delete(figureName(name));
+        }
+
+        exportElements() {
+            return Array.from(this.elements.values()).map((item) => ({ ...item }));
+        }
+
+        render() {
+            const ctx = this.ctx;
+            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.drawBackground(ctx);
+            Array.from(this.elements.values())
+                .sort((a, b) => (a.layer - b.layer) || (a.order - b.order))
+                .forEach((figure) => this.drawFigure(ctx, figure));
+            drawCount.textContent = `${this.elements.size} graphics`;
+            teamLabel.textContent = `robot ${this.robotId}`;
+        }
+
+        drawBackground(ctx) {
+            ctx.save();
+            ctx.fillStyle = "#050606";
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.035)";
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= 1920; x += 120) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, 1080);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= 1080; y += 120) {
+                const screenY = this.screenY(y);
+                ctx.beginPath();
+                ctx.moveTo(0, screenY);
+                ctx.lineTo(1920, screenY);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+            ctx.beginPath();
+            ctx.moveTo(960, 0);
+            ctx.lineTo(960, 1080);
+            ctx.moveTo(0, this.screenY(540));
+            ctx.lineTo(1920, this.screenY(540));
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        drawFigure(ctx, figure) {
+            ctx.save();
+            ctx.strokeStyle = this.color(figure.color);
+            ctx.fillStyle = this.color(figure.color);
+            ctx.lineWidth = Math.max(1, figure.width);
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.shadowColor = this.color(figure.color);
+            ctx.shadowBlur = figure.color === UiColor.Black ? 0 : Math.min(12, Math.max(2, figure.width));
+
+            if (figure.type === GraphicType.Line) this.drawLine(ctx, figure);
+            else if (figure.type === GraphicType.Rectangle) this.drawRectangle(ctx, figure);
+            else if (figure.type === GraphicType.Circle) this.drawCircle(ctx, figure);
+            else if (figure.type === GraphicType.Ellipse) this.drawEllipse(ctx, figure);
+            else if (figure.type === GraphicType.Arc) this.drawArc(ctx, figure);
+            else this.drawText(ctx, figure);
+
+            ctx.restore();
+        }
+
+        drawLine(ctx, figure) {
+            ctx.beginPath();
+            ctx.moveTo(figure.startX, this.screenY(figure.startY));
+            ctx.lineTo(figure.endX, this.screenY(figure.endY));
+            ctx.stroke();
+        }
+
+        drawRectangle(ctx, figure) {
+            const x = Math.min(figure.startX, figure.endX);
+            const y = this.screenY(Math.max(figure.startY, figure.endY));
+            ctx.strokeRect(x, y, Math.abs(figure.endX - figure.startX), Math.abs(figure.endY - figure.startY));
+        }
+
+        drawCircle(ctx, figure) {
+            ctx.beginPath();
+            ctx.arc(figure.startX, this.screenY(figure.startY), Math.abs(figure.radius), 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        drawEllipse(ctx, figure) {
+            ctx.beginPath();
+            ctx.ellipse(figure.startX, this.screenY(figure.startY), Math.abs(figure.endX), Math.abs(figure.endY), 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        drawArc(ctx, figure) {
+            let start = Number(figure.startAngle) || 0;
+            let end = Number(figure.endAngle) || 0;
+            while (end < start) end += 360;
+            const span = Math.max(0.5, end - start);
+            const steps = Math.max(8, Math.ceil(span / 3));
+
+            ctx.beginPath();
+            for (let i = 0; i <= steps; i++) {
+                const deg = start + span * i / steps;
+                const rad = deg2rad(deg);
+                const x = figure.startX + figure.endX * Math.sin(rad);
+                const y = this.screenY(figure.startY + figure.endY * Math.cos(rad));
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        drawText(ctx, figure) {
+            const value = figure.type === GraphicType.String ? figure.text : String(figure.value);
+            ctx.shadowBlur = 0;
+            ctx.textBaseline = "alphabetic";
+            ctx.font = `${Math.max(10, figure.fontSize)}px Consolas, "Cascadia Mono", monospace`;
+            ctx.fillText(value, figure.startX, this.screenY(figure.startY));
+        }
+    }
+
+    const renderer = new RefereeCanvasRenderer(canvas);
+    const figureGroupState = new Uint8Array(GROUP.QUANTITY);
+    const businessState = { ...DEFAULT_STATE };
+    const horizon = { point1X: 0, point1Y: 0, point2X: 0, point2Y: 0, point3X: 0, point3Y: 0, point4X: 0, point4Y: 0 };
+
+    function basic(name, opts = {}) {
+        return {
+            figureName: name,
+            opsType: opts.ops ?? GraphicOption.Add,
+            layer: opts.layer ?? 0,
+            color: opts.color ?? UiColor.White,
+            width: opts.width ?? 2,
+            stOrCtrX: opts.x ?? 0,
+            stOrCtrY: opts.y ?? 0
+        };
+    }
+
+    function bitOps(group, bit) {
+        return (figureGroupState[group] & (1 << bit)) ? GraphicOption.Update : GraphicOption.Add;
+    }
+
+    function mark(group, bit) {
+        figureGroupState[group] |= (1 << bit);
+    }
+
+    const figureOptIntf = {
+        pfInit() {},
+        pfPlotLine(_driver, info, endX, endY) {
+            renderer.commit({
+                name: info.figureName,
+                opt: info.opsType,
+                type: GraphicType.Line,
+                layer: info.layer,
+                color: info.color,
+                width: info.width,
+                startX: info.stOrCtrX,
+                startY: info.stOrCtrY,
+                endX,
+                endY
+            });
+        },
+        pfPlotRectangle(_driver, info, endX, endY) {
+            renderer.commit({
+                name: info.figureName,
+                opt: info.opsType,
+                type: GraphicType.Rectangle,
+                layer: info.layer,
+                color: info.color,
+                width: info.width,
+                startX: info.stOrCtrX,
+                startY: info.stOrCtrY,
+                endX,
+                endY
+            });
+        },
+        pfPlotCircle(_driver, info, radius) {
+            renderer.commit({
+                name: info.figureName,
+                opt: info.opsType,
+                type: GraphicType.Circle,
+                layer: info.layer,
+                color: info.color,
+                width: info.width,
+                startX: info.stOrCtrX,
+                startY: info.stOrCtrY,
+                radius
+            });
+        },
+        pfPlotEllipse(_driver, info, radiusX, radiusY) {
+            renderer.commit({
+                name: info.figureName,
+                opt: info.opsType,
+                type: GraphicType.Ellipse,
+                layer: info.layer,
+                color: info.color,
+                width: info.width,
+                startX: info.stOrCtrX,
+                startY: info.stOrCtrY,
+                endX: radiusX,
+                endY: radiusY
+            });
+        },
+        pfPlotArc(_driver, info, radiusX, radiusY, startAngle, endAngle) {
+            renderer.commit({
+                name: info.figureName,
+                opt: info.opsType,
+                type: GraphicType.Arc,
+                layer: info.layer,
+                color: info.color,
+                width: info.width,
+                startX: info.stOrCtrX,
+                startY: info.stOrCtrY,
+                startAngle,
+                endAngle,
+                endX: radiusX,
+                endY: radiusY
+            });
+        },
+        pfPrintFloat(_driver, info, fontSize, value) {
+            renderer.commit({
+                name: info.figureName,
+                opt: info.opsType,
+                type: GraphicType.Float,
+                layer: info.layer,
+                color: info.color,
+                width: info.width,
+                startX: info.stOrCtrX,
+                startY: info.stOrCtrY,
+                value: Number(value).toFixed(1),
+                fontSize
+            });
+        },
+        pfPrintInt(_driver, info, fontSize, value) {
+            renderer.commit({
+                name: info.figureName,
+                opt: info.opsType,
+                type: GraphicType.Int,
+                layer: info.layer,
+                color: info.color,
+                width: info.width,
+                startX: info.stOrCtrX,
+                startY: info.stOrCtrY,
+                value: Math.round(Number(value) || 0),
+                fontSize
+            });
+        },
+        pfPrintString(_driver, info, fontSize, length, text) {
+            renderer.commit({
+                name: info.figureName,
+                opt: info.opsType,
+                type: GraphicType.String,
+                layer: info.layer,
+                color: info.color,
+                width: info.width,
+                startX: info.stOrCtrX,
+                startY: info.stOrCtrY,
+                text: String(text).slice(0, length),
+                fontSize
+            });
+        },
+        pfDelFigure(_driver, delType, name) {
+            if (delType === FigureDel.All) renderer.elements.clear();
+            else if (delType === FigureDel.Layer) renderer.deleteLayer(Number(name) || 0);
+            else if (delType === FigureDel.Name) renderer.deleteName(name);
+        }
+    };
+
+    function line(group, index, sub, x, y, endX, endY, color = UiColor.White, width = 2, ops = GraphicOption.Add) {
+        figureOptIntf.pfPlotLine(null, basic(nameBytes(group, index, sub), { x, y, color, width, ops }), endX, endY);
+    }
+
+    function arc(group, index, sub, x, y, radiusX, radiusY, startAngle, endAngle, color = UiColor.White, width = 2, ops = GraphicOption.Add) {
+        figureOptIntf.pfPlotArc(null, basic(nameBytes(group, index, sub), { x, y, color, width, ops }), radiusX, radiusY, startAngle, endAngle);
+    }
+
+    function ellipse(group, index, sub, x, y, radiusX, radiusY, color = UiColor.White, width = 2, ops = GraphicOption.Add) {
+        figureOptIntf.pfPlotEllipse(null, basic(nameBytes(group, index, sub), { x, y, color, width, ops }), radiusX, radiusY);
+    }
+
+    function printFloat(group, index, sub, x, y, value, color = UiColor.White, width = 2, fontSize = 20, ops = GraphicOption.Add) {
+        figureOptIntf.pfPrintFloat(null, basic(nameBytes(group, index, sub), { x, y, color, width, ops }), fontSize, value);
+    }
+
+    function printInt(group, index, sub, x, y, value, color = UiColor.White, width = 2, fontSize = 20, ops = GraphicOption.Add) {
+        figureOptIntf.pfPrintInt(null, basic(nameBytes(group, index, sub), { x, y, color, width, ops }), fontSize, value);
+    }
+
+    function delName(group, index, sub = 0) {
+        figureOptIntf.pfDelFigure(null, FigureDel.Name, nameBytes(group, index, sub));
+    }
+
+    function clearScreen() {
+        renderer.elements.clear();
+        renderer.sequence = 0;
+        figureGroupState.fill(0);
+        renderer.render();
+    }
+
+    function plotFrameworkLine() {
+        const group = GROUP.FRAME_WORK;
+        if (figureGroupState[group] !== 0) return;
+
+        line(group, 0, 0, 650, 10, 787, 70, UiColor.White, 5);
+        line(group, 1, 0, 1170, 50, 1133, 70, UiColor.White, 5);
+        line(group, 7, 0, 780, 158, 787, 70, UiColor.White, 10);
+        line(group, 8, 0, 1140, 158, 1133, 70, UiColor.White, 10);
+        arc(group, 2, 0, 960, 60, 600, 100, 300, 342, UiColor.White, 5);
+        arc(group, 3, 0, 960, 60, 600, 100, 38, 60, UiColor.White, 5);
+        arc(group, 4, 0, 960, 60, 600, 100, 18, 24, UiColor.White, 5);
+        arc(group, 9, 0, 960, 1, 300, 100, 335, 25, UiColor.White, 5);
+        arc(group, 15, 0, 960, 1, 280, 75, 345, 15, UiColor.White, 12);
+        arc(group, 14, 0, 930, 17, 600, 100, 38, 60, UiColor.White, 5);
+        arc(group, 5, 0, 1270, 82, 90, 75, 180, 41, UiColor.White, 5);
+        arc(group, 13, 0, 1270, 75, 30, 25, 180, 50, UiColor.White, 5);
+        arc(group, 6, 0, 1253, 78, 88, 80, 240, 340, UiColor.White, 2);
+        line(group, 10, 0, 910, 50, 1010, 50, UiColor.White, 5);
+        line(group, 11, 0, 910, 50, 880, 10, UiColor.White, 5);
+        line(group, 12, 0, 1010, 50, 1040, 10, UiColor.White, 5);
+        figureGroupState[group] = 0xff;
+    }
+
+    function plotGear() {
+        const group = GROUP.GEAR;
+        const bulletX = 850;
+        const bulletY = 150;
+        const accelX = 960;
+        const accelY = 160;
+        const capX = 1080;
+        const capY = 150;
+
+        if ((figureGroupState[group] & 1) === 0) {
+            arc(group, 0, 0, bulletX, bulletY, 20, 5, 0, 180, UiColor.White, 2);
+            line(group, 3, 0, bulletX - 20, bulletY + 6, bulletX - 20, bulletY - 4, UiColor.White, 2);
+            line(group, 1, 0, bulletX, bulletY + 6, bulletX - 20, bulletY + 6, UiColor.White, 3);
+            line(group, 2, 0, bulletX, bulletY - 4, bulletX - 20, bulletY - 4, UiColor.White, 3);
+            line(group, 4, 0, bulletX - 35, bulletY, bulletX - 50, bulletY, UiColor.Cyan, 2);
+            line(group, 5, 0, bulletX - 25, bulletY + 6, bulletX - 40, bulletY + 6, UiColor.Cyan, 2);
+            line(group, 6, 0, bulletX - 25, bulletY - 6, bulletX - 40, bulletY - 6, UiColor.Cyan, 2);
+
+            line(group, 7, 0, accelX + 2, accelY + 20, accelX - 15, accelY, UiColor.Green, 8);
+            line(group, 8, 0, accelX - 2, accelY + 20, accelX + 15, accelY, UiColor.Green, 8);
+            line(group, 9, 0, accelX + 2, accelY + 8, accelX - 15, accelY - 12, UiColor.Yellow, 8);
+            line(group, 10, 0, accelX - 2, accelY + 8, accelX + 15, accelY - 12, UiColor.Yellow, 8);
+            line(group, 11, 0, accelX + 2, accelY - 4, accelX - 15, accelY - 24, UiColor.Orange, 8);
+            line(group, 12, 0, accelX - 2, accelY - 4, accelX + 15, accelY - 24, UiColor.Orange, 8);
+
+            line(group, 13, 0, capX - 5, capY + 25, capX - 10, capY, UiColor.Yellow, 4);
+            line(group, 14, 0, capX - 10, capY, capX, capY, UiColor.Yellow, 4);
+            line(group, 25, 0, capX, capY, capX - 5, capY - 20, UiColor.Yellow, 4);
+            line(group, 15, 0, capX + 5, capY + 25, capX - 5, capY + 25, UiColor.Yellow, 4);
+            line(group, 22, 0, capX + 5, capY + 25, capX + 1, capY + 8, UiColor.Yellow, 4);
+            line(group, 23, 0, capX + 1, capY + 8, capX + 13, capY + 5, UiColor.Yellow, 4);
+            line(group, 24, 0, capX + 13, capY + 5, capX - 5, capY - 20, UiColor.Yellow, 4);
+
+            ellipse(group, 16, 0, bulletX, bulletY - 35, 20, 7, UiColor.White, 2);
+            arc(group, 17, 0, accelX, accelY - 40, 20, 7, 30, 330, UiColor.White, 2);
+            ellipse(group, 18, 0, capX, capY - 35, 20, 7, UiColor.White, 2);
+            mark(group, 0);
+        }
+
+        ellipse(group, 19, 0, bulletX - 2, bulletY - 30, 22, 9, businessState.shootState > 0 ? UiColor.Green : UiColor.Pink, 5, bitOps(group, 1));
+        mark(group, 1);
+        arc(group, 20, 0, accelX, accelY - 35, 22, 9, 45, 315, businessState.capSuperFlag ? UiColor.Green : UiColor.Pink, 5, bitOps(group, 2));
+        mark(group, 2);
+        ellipse(group, 21, 0, capX, capY - 30, 22, 9, businessState.capUseFlag ? UiColor.Green : UiColor.Pink, 5, bitOps(group, 3));
+        mark(group, 3);
+        figureGroupState[group] = 0xff;
+    }
+
+    function plotCapacitanceVoltage() {
+        const group = GROUP.CAPCITITOR;
+        const voltage = Number(businessState.capVoltage) || 0;
+
+        if ((figureGroupState[group] & 1) === 0) {
+            line(group, 0, 0, 860, 800, 840, 780, UiColor.Cyan, 5);
+            line(group, 0, 1, 840, 780, 860, 760, UiColor.Cyan, 5);
+            line(group, 0, 2, 860, 800, 875, 800, UiColor.Cyan, 5);
+            line(group, 0, 3, 860, 760, 875, 760, UiColor.Cyan, 5);
+            line(group, 0, 4, 1060, 800, 1080, 780, UiColor.Cyan, 5);
+            line(group, 0, 5, 1060, 800, 1045, 800, UiColor.Cyan, 5);
+            line(group, 0, 6, 1060, 760, 1080, 780, UiColor.Cyan, 5);
+            line(group, 0, 7, 1060, 760, 1045, 760, UiColor.Cyan, 5);
+            line(group, 0, 8, 865, 780, 885, 780, UiColor.White, 25);
+            line(group, 0, 9, 1055, 780, 1035, 780, UiColor.White, 25);
+            arc(group, 0, 10, 960, 1000, 800, 220, 190, 220, UiColor.White, 5);
+            arc(group, 0, 11, 960, 1000, 800, 220, 140, 170, UiColor.White, 5);
+            mark(group, 0);
+        }
+
+        const voltageAngle = constrain(voltage * 30 / 26, 1, 30);
+        let color = UiColor.Black;
+        if (!businessState.capUseFlag) color = UiColor.Cyan;
+        else if (voltage > 22) color = UiColor.Green;
+        else if (voltage > 15) color = UiColor.Orange;
+        else if (voltage > 7) color = UiColor.Pink;
+
+        arc(group, 1, 0, 960, 980, 800, 220, 190, 190 + voltageAngle, color, 15, bitOps(group, 1));
+        mark(group, 1);
+        arc(group, 2, 0, 960, 980, 800, 220, 170 - voltageAngle, 170, color, 15, bitOps(group, 2));
+        mark(group, 2);
+        printFloat(group, 3, 0, 915, 790, voltage, color, 2, 20, bitOps(group, 3));
+        mark(group, 3);
+    }
+
+    function plotPowerData() {
+        const group = GROUP.POWER;
+        const rawCapPower = Number(businessState.capPower) || 0;
+        const capPower = rawCapPower > 0 ? 0 : -rawCapPower;
+        const chassisPower = Number(businessState.chassisPower) || 0;
+        const totalPower = constrain(chassisPower - rawCapPower, 0, 300);
+        const powerLimitTemp = constrain(businessState.powerLimit, 0, 160);
+        const totalPowerTemp = constrain(totalPower + capPower, 0, 160);
+
+        if (powerLimitTemp > 70) {
+            const theta = deg2rad((powerLimitTemp - 70) * 22 / 90 + 38);
+            line(group, 0, 0, 960 + 600 * Math.sin(theta), 60 + 100 * Math.cos(theta),
+                960 + 550 * Math.sin(theta), 45 + 64 * Math.cos(theta), UiColor.Pink, 15, bitOps(group, 0));
+        } else {
+            const theta = deg2rad(powerLimitTemp * 221 / 70 - 180);
+            line(group, 0, 0, 1270 + 90 * Math.sin(theta), 82 + 75 * Math.cos(theta),
+                1270 + 40 * Math.sin(theta), 82 + 25 * Math.cos(theta), UiColor.Pink, 15, bitOps(group, 0));
+        }
+        mark(group, 0);
+
+        printInt(group, 1, 0, 1270, 90, totalPower, UiColor.Orange, 5, 30, bitOps(group, 1));
+        mark(group, 1);
+
+        let capPowerEndAngle1 = 180;
+        let capPowerEndAngle2 = 38;
+        let capPowerAngle1 = 0;
+
+        if (!businessState.capUseFlag || capPower <= 0) {
+            delName(group, 4);
+            delName(group, 5);
+            figureGroupState[group] &= ~(1 << 4);
+            figureGroupState[group] &= ~(1 << 5);
+        } else {
+            const capPowerTemp1 = constrain(capPower, 0, 70);
+            const capPowerTemp2 = constrain(capPower - capPowerTemp1, 0, 90);
+            capPowerAngle1 = constrain(capPowerTemp1 * 221 / 70, 1, 221);
+            capPowerEndAngle1 = loopDeg(capPowerAngle1 + 180);
+            arc(group, 4, 0, 1280, 90, 70, 55, 180, capPowerEndAngle1, UiColor.Green, 30, bitOps(group, 4));
+            mark(group, 4);
+            if (capPower > 70) {
+                const capPowerAngle2 = constrain(capPowerTemp2 * 22 / 90, 1, 22);
+                capPowerEndAngle2 = capPowerAngle2 + 38;
+                arc(group, 5, 0, 950, 53, 600, 100, 38, capPowerEndAngle2, UiColor.Green, 30, bitOps(group, 5));
+                mark(group, 5);
+            } else {
+                delName(group, 5);
+                figureGroupState[group] &= ~(1 << 5);
+            }
+        }
+
+        let chassisPowerPure = Math.max(0, totalPowerTemp - capPower);
+        if (!businessState.capUseFlag) chassisPowerPure = Math.max(0, totalPowerTemp);
+
+        delName(group, 2);
+        delName(group, 3);
+        figureGroupState[group] &= ~(1 << 2);
+        figureGroupState[group] &= ~(1 << 3);
+
+        if (totalPowerTemp < 70) {
+            const chassisPowerAngle1 = constrain(chassisPowerPure * 221 / 70, 1, 221);
+            const chassisPowerEndAngle1 = loopDeg(chassisPowerAngle1 + capPowerEndAngle1);
+            arc(group, 2, 0, 1280, 90, 70, 55, capPowerEndAngle1, chassisPowerEndAngle1, UiColor.Orange, 30, GraphicOption.Add);
+            mark(group, 2);
+        } else {
+            if (capPower < 70) {
+                arc(group, 2, 0, 1280, 90, 70, 55, capPowerEndAngle1, 41, UiColor.Orange, 30, GraphicOption.Add);
+                mark(group, 2);
+                const chassisPowerTemp1 = Math.max(0, (221 - capPowerAngle1) * 70 / 221);
+                const chassisPowerTemp2 = Math.max(0, chassisPowerPure - chassisPowerTemp1);
+                const chassisPowerAngle2 = constrain(chassisPowerTemp2 * 22 / 90, 1, 22);
+                arc(group, 3, 0, 950, 53, 600, 100, 38, loopDeg(chassisPowerAngle2 + 38), UiColor.Orange, 30, GraphicOption.Add);
+                mark(group, 3);
+            } else if (chassisPowerPure > 0) {
+                const chassisPowerAngle2 = constrain(chassisPowerPure * 22 / 90, 1, 22);
+                arc(group, 3, 0, 950, 53, 600, 100, capPowerEndAngle2, loopDeg(capPowerEndAngle2 + chassisPowerAngle2), UiColor.Orange, 30, GraphicOption.Add);
+                mark(group, 3);
+            }
+        }
+    }
+
+    function plotSpeedometer() {
+        const group = GROUP.SPEEDOMETER;
+        const vx = Number(businessState.vx) || 0;
+        const vy = Number(businessState.vy) || 0;
+        const moveSpeed = Math.sqrt(vx * vx + vy * vy);
+        const moveAngle = moveSpeed > 0.2 ? rad2deg(Math.atan2(vy, vx)) : 0;
+        let startAngle = loopDeg(moveAngle + 722);
+        let endAngle = loopDeg(moveAngle + 718);
+        let color = UiColor.Cyan;
+
+        if (startAngle > 90 && startAngle < 270) {
+            startAngle = loopDeg(startAngle + 180);
+            endAngle = loopDeg(endAngle + 180);
+            color = UiColor.Pink;
+        }
+
+        arc(group, 0, 0, 960, 0, 250, 75, endAngle, startAngle, color, 14, bitOps(group, 0));
+        mark(group, 0);
+
+        const startX = 840;
+        const midX1 = 900;
+        const midX2 = 1020;
+        const endXMax = 1080;
+        const endX = constrain(moveSpeed * (endXMax - startX) / 5 + startX, startX + 1, endXMax - 1);
+
+        delName(group, 1);
+        delName(group, 2);
+        delName(group, 3);
+        figureGroupState[group] &= ~(1 << 1);
+        figureGroupState[group] &= ~(1 << 2);
+        figureGroupState[group] &= ~(1 << 3);
+
+        if (endX < midX1) {
+            const k1 = (70 - 10) / (midX1 - startX);
+            line(group, 1, 0, startX, 10, endX, k1 * (endX - startX) + 10, UiColor.Main, 30, GraphicOption.Add);
+            mark(group, 1);
+        } else if (endX < midX2) {
+            line(group, 1, 0, startX, 10, midX1, 70, UiColor.Main, 30, GraphicOption.Add);
+            line(group, 2, 0, midX1 - 5, 65, endX, 65, UiColor.Main, 15, GraphicOption.Add);
+            mark(group, 1);
+            mark(group, 2);
+        } else {
+            const k2 = (10 - 70) / (endXMax - midX2);
+            line(group, 1, 0, startX, 10, midX1, 70, UiColor.Main, 30, GraphicOption.Add);
+            line(group, 2, 0, midX1 - 5, 65, midX2 + 5, 65, UiColor.Main, 15, GraphicOption.Add);
+            line(group, 3, 0, midX2, 70, endX, k2 * (endX - midX2) + 70, UiColor.Main, 30, GraphicOption.Add);
+            mark(group, 1);
+            mark(group, 2);
+            mark(group, 3);
+        }
+    }
+
+    function plotGyroSpeed() {
+        const group = GROUP.GYRO_SPEED;
+        if ((figureGroupState[group] & 1) === 0) {
+            line(group, 0, 0, 850, 250, 875, 250, UiColor.White, 10);
+            line(group, 0, 1, 850, 200, 875, 200, UiColor.White, 10);
+            line(group, 0, 2, 595, 185, 570, 182, UiColor.White, 10);
+            line(group, 0, 3, 590, 235, 565, 232, UiColor.White, 10);
+            mark(group, 0);
+        }
+
+        const wz = Math.abs(Number(businessState.wz) || 0);
+        const gyroAngle = constrain(20 * wz, 1, 60);
+        arc(group, 1, 0, 850, 195, 300, 30, 360 - gyroAngle, 360, UiColor.Green, 25, bitOps(group, 1));
+        mark(group, 1);
+        printFloat(group, 2, 0, 890, 235, wz, UiColor.White, 2, 20, bitOps(group, 2));
+        mark(group, 2);
+    }
+
+    function plotHorizonPoint(x, y, z) {
+        const pitch = Number(businessState.pitchAngle) || 0;
+        const yaw = Number(businessState.yawRealAngle) || 0;
+        const cp = Math.cos(pitch);
+        const sp = Math.sin(pitch);
+        const cy = Math.cos(-yaw);
+        const sy = Math.sin(-yaw);
+
+        const pitchPoint = [
+            cp * x - sp * z,
+            y,
+            sp * x + cp * z
+        ];
+        const yawPoint = [
+            cy * pitchPoint[0] - sy * pitchPoint[1],
+            sy * pitchPoint[0] + cy * pitchPoint[1],
+            pitchPoint[2]
+        ];
+
+        const cameraPoint = [-yawPoint[1], -yawPoint[2], yawPoint[0]];
+        const fx = 971.6036278025330;
+        const fy = 969.5541514542653;
+        const cx = 1267.488580279745;
+        const cyK = 809.0838685197858;
+        const denom = Math.abs(cameraPoint[2]) < 0.001 ? 0.001 : cameraPoint[2];
+        const rawX = (fx * cameraPoint[0] + cx * cameraPoint[2]) / denom;
+        const rawY = (fy * cameraPoint[1] + cyK * cameraPoint[2]) / denom;
+
+        return {
+            x: constrain(rawX * 1920 / 2560, -400, 2320),
+            y: constrain(rawY * 1080 / 1600, -300, 1380)
+        };
+    }
+
+    function calculateHorizonPoints() {
+        const isRudder = businessState.chassisType === "RUDDER_CHASSIS";
+        const pointY = isRudder ? 0.266 : 0.25;
+        const pitch = Number(businessState.pitchAngle) || 0;
+        const cameraHigh = isRudder
+            ? (160 * Math.sin(pitch + 0.442615) + 361) / 1000
+            : (169 * Math.sin(pitch + 0.3583160954241944) + 361) / 1000;
+        const p1 = plotHorizonPoint(0.5, pointY, cameraHigh);
+        const p2 = plotHorizonPoint(2.0, pointY, cameraHigh);
+        const p3 = plotHorizonPoint(0.5, -pointY, cameraHigh);
+        const p4 = plotHorizonPoint(2.0, -pointY, cameraHigh);
+        Object.assign(horizon, {
+            point1X: p1.x,
+            point1Y: p1.y,
+            point2X: p2.x,
+            point2Y: p2.y,
+            point3X: p3.x,
+            point3Y: p3.y,
+            point4X: p4.x,
+            point4Y: p4.y
+        });
+    }
+
+    function plotHorizonLine() {
+        const group = GROUP.HORIZON;
+        const yaw = Number(businessState.yawRealAngle) || 0;
+        if (yaw < -0.4 || yaw > 0.540728271) {
+            delName(group, 0);
+            delName(group, 1);
+            figureGroupState[group] = 0;
+            return;
+        }
+
+        line(group, 0, 0, horizon.point1X, horizon.point1Y, horizon.point2X, horizon.point2Y, UiColor.Green, 5, bitOps(group, 0));
+        mark(group, 0);
+        line(group, 1, 0, horizon.point3X, horizon.point3Y, horizon.point4X, horizon.point4Y, UiColor.Green, 5, bitOps(group, 1));
+        mark(group, 1);
+    }
+
+    function offlineWorning() {
+        const group = GROUP.OFFLINE;
+        if ((figureGroupState[group] & 1) === 0) {
+            line(group, 0, 0, 700, 80, 750, 95, UiColor.Main, 3);
+            line(group, 0, 1, 700, 110, 750, 120, UiColor.Main, 3);
+            line(group, 0, 2, 700, 80, 700, 110, UiColor.Main, 7);
+            line(group, 0, 3, 750, 95, 750, 120, UiColor.Main, 7);
+            line(group, 0, 4, 710, 90, 740, 98, UiColor.Main, 1);
+            line(group, 0, 5, 710, 96, 740, 104, UiColor.Main, 1);
+            line(group, 0, 6, 710, 103, 740, 110, UiColor.Main, 1);
+            line(group, 0, 7, 700, 95, 690, 93, UiColor.Main, 7);
+            ellipse(group, 0, 8, 620, 75, 3, 5, UiColor.Main, 5);
+            arc(group, 0, 9, 620, 75, 13, 15, 35, 125, UiColor.Main, 6);
+            arc(group, 0, 10, 620, 75, 20, 25, 35, 125, UiColor.Main, 6);
+            arc(group, 0, 11, 620, 75, 20, 25, 215, 305, UiColor.Main, 6);
+            arc(group, 0, 12, 620, 75, 13, 15, 215, 305, UiColor.Main, 6);
+            mark(group, 0);
+        }
+
+        line(group, 1, 0, 700, 60, 720, 68, businessState.driverOffline ? UiColor.Pink : UiColor.Green, 6, bitOps(group, 1));
+        mark(group, 1);
+        line(group, 2, 0, 730, 71, 750, 80, businessState.rudderOffline ? UiColor.Pink : UiColor.Green, 6, bitOps(group, 2));
+        mark(group, 2);
+        line(group, 3, 0, 610, 30, 650, 47, businessState.remoteOffline ? UiColor.Pink : UiColor.Green, 6, bitOps(group, 3));
+        mark(group, 3);
+    }
+
+    function fireInfo() {
+        const group = GROUP.FIRE;
+        const leftX = 670;
+        const topY = 600;
+        const rightX = 1260;
+        const bottomY = 400;
+
+        if ((figureGroupState[group] & 1) === 0) {
+            line(group, 0, 0, leftX, topY, leftX, bottomY, UiColor.White, 5);
+            line(group, 0, 1, rightX, topY, rightX, bottomY, UiColor.White, 5);
+            mark(group, 0);
+        }
+
+        let pcColor = UiColor.Pink;
+        if (businessState.identifyFlag) pcColor = UiColor.Green;
+        else if (businessState.pcOffline) pcColor = UiColor.White;
+
+        line(group, 1, 0, leftX + 20, topY - 10, leftX - 80, topY + 40, pcColor, 10, bitOps(group, 1));
+        line(group, 1, 1, rightX - 20, topY - 10, rightX + 80, topY + 40, pcColor, 10, bitOps(group, 1));
+        line(group, 1, 2, leftX + 20, bottomY + 10, leftX - 80, bottomY - 40, pcColor, 10, bitOps(group, 1));
+        line(group, 1, 3, rightX - 20, bottomY + 10, rightX + 80, bottomY - 40, pcColor, 10, bitOps(group, 1));
+        mark(group, 1);
+
+        const bulletTotal = Math.max(1, Math.floor((Number(businessState.heatLimit) || 0) / 10));
+        const bulletRemain = constrain(bulletTotal - Math.floor((Number(businessState.heatRemain) || 0) / 10), 0, bulletTotal);
+        let remainColor = UiColor.Cyan;
+        if (bulletRemain < 0.25 * bulletTotal) remainColor = UiColor.Pink;
+        else if (bulletRemain < 0.5 * bulletTotal) remainColor = UiColor.Orange;
+
+        printInt(group, 2, 0, 1300, 550, bulletRemain, remainColor, 3, 20, bitOps(group, 2));
+        mark(group, 2);
+        printInt(group, 3, 0, 1300, 450, bulletTotal, UiColor.Yellow, 2, 20, bitOps(group, 3));
+        mark(group, 3);
+
+        const triggerColor = businessState.shootState >= 3 ? UiColor.Purple : UiColor.White;
+        line(group, 4, 0, 950, 530, 970, 550, triggerColor, 5, bitOps(group, 4));
+        line(group, 4, 1, 970, 530, 950, 550, triggerColor, 5, bitOps(group, 4));
+        mark(group, 4);
+    }
+
+    function offlineDisplay() {
+        const group = GROUP.OFFLINE_DISPLAY;
+        const errCode =
+            (businessState.capOffline ? 1 : 0) |
+            (businessState.yawOffline ? 2 : 0) |
+            (businessState.pitchOffline ? 4 : 0) |
+            (businessState.can1Offline ? 8 : 0) |
+            (businessState.refereeOffline ? 16 : 0);
+        printInt(group, 0, 0, 1500, 800, errCode, UiColor.Pink, 4, 20, figureGroupState[group] ? GraphicOption.Update : GraphicOption.Add);
+        figureGroupState[group] = 1;
+    }
+
+    function applyBusinessState(input = {}) {
+        const aliases = {
+            robot_id: "robotId",
+            realVX: "vx",
+            realVY: "vy",
+            realWZ: "wz",
+            yaw: "yawRealAngle",
+            yawAngle: "yawRealAngle",
+            capVol: "capVoltage",
+            cap_vol: "capVoltage",
+            capUse: "capUseFlag",
+            capSuper: "capSuperFlag",
+            heatUsed: "heatRemain",
+            heatLimit: "heatLimit",
+            pcState: "identifyFlag"
+        };
+
+        for (const [rawKey, rawValue] of Object.entries(input || {})) {
+            const key = aliases[rawKey] || rawKey;
+            if (!(key in businessState)) continue;
+            if (typeof DEFAULT_STATE[key] === "number") businessState[key] = Number(rawValue) || 0;
+            else businessState[key] = rawValue;
+        }
+
+        for (const key of ["capUseFlag", "capSuperFlag", "identifyFlag", "pcOffline", "driverOffline", "rudderOffline", "remoteOffline", "capOffline", "yawOffline", "pitchOffline", "can1Offline", "refereeOffline"]) {
+            businessState[key] = businessState[key] ? 1 : 0;
+        }
+        businessState.robotId = Number(businessState.robotId) || DEFAULT_STATE.robotId;
+        renderer.setRobotId(businessState.robotId);
+    }
+
+    function figurePlotTick(input = {}) {
+        applyBusinessState(input);
+        calculateHorizonPoints();
+        plotFrameworkLine();
+        plotGear();
+        plotCapacitanceVoltage();
+        plotPowerData();
+        plotSpeedometer();
+        plotGyroSpeed();
+        plotHorizonLine();
+        offlineWorning();
+        fireInfo();
+        offlineDisplay();
+        renderer.render();
+        return renderer.exportElements();
+    }
+
+    function bspUIHandlerInit(input = {}) {
+        clearScreen();
+        Object.assign(businessState, DEFAULT_STATE);
+        applyBusinessState(input);
+        return figurePlotTick();
+    }
+
+    function streamlineUIInit(param = {}) {
+        return bspUIHandlerInit(param);
+    }
+
+    function streamlineUIFlash(param = {}) {
+        const mapped = {
+            robotId: param.robotId ?? param.robot_id,
+            vx: param.LV ?? param.lv ?? param.vx,
+            vy: param.TV ?? param.tv ?? param.vy,
+            wz: param.angleRad ?? param.realWZ ?? param.wz,
+            capVoltage: param.capVol ?? param.cap_vol ?? param.capVoltage,
+            shootState: param.fireFlag ? 3 : (param.shootState ?? businessState.shootState),
+            capUseFlag: param.capState ?? param.capUseFlag ?? businessState.capUseFlag,
+            capOffline: param.capErr ?? param.capOffline ?? businessState.capOffline,
+            capSuperFlag: param.gyroState ?? param.capSuperFlag ?? businessState.capSuperFlag
+        };
+        return figurePlotTick(mapped);
+    }
+
+    const controls = {
+        robotId: document.getElementById("robotId"),
+        vx: document.getElementById("vx"),
+        vy: document.getElementById("vy"),
+        wz: document.getElementById("wz"),
+        yawRealAngle: document.getElementById("yawRealAngle"),
+        pitchAngle: document.getElementById("pitchAngle"),
+        capVoltage: document.getElementById("capVoltage"),
+        capPower: document.getElementById("capPower"),
+        chassisPower: document.getElementById("chassisPower"),
+        powerLimit: document.getElementById("powerLimit"),
+        capUseFlag: document.getElementById("capUseFlag"),
+        capSuperFlag: document.getElementById("capSuperFlag"),
+        shootState: document.getElementById("shootState"),
+        heatRemain: document.getElementById("heatRemain"),
+        heatLimit: document.getElementById("heatLimit"),
+        identifyFlag: document.getElementById("identifyFlag"),
+        pcOffline: document.getElementById("pcOffline"),
+        driverOffline: document.getElementById("driverOffline"),
+        rudderOffline: document.getElementById("rudderOffline"),
+        remoteOffline: document.getElementById("remoteOffline"),
+        capOffline: document.getElementById("capOffline"),
+        yawOffline: document.getElementById("yawOffline"),
+        pitchOffline: document.getElementById("pitchOffline"),
+        can1Offline: document.getElementById("can1Offline"),
+        refereeOffline: document.getElementById("refereeOffline")
+    };
+
+    const outputs = {
+        robotId: document.getElementById("robotIdOut"),
+        vx: document.getElementById("vxOut"),
+        vy: document.getElementById("vyOut"),
+        wz: document.getElementById("wzOut"),
+        yawRealAngle: document.getElementById("yawRealAngleOut"),
+        pitchAngle: document.getElementById("pitchAngleOut"),
+        capVoltage: document.getElementById("capVoltageOut"),
+        capPower: document.getElementById("capPowerOut"),
+        chassisPower: document.getElementById("chassisPowerOut"),
+        powerLimit: document.getElementById("powerLimitOut"),
+        shootState: document.getElementById("shootStateOut"),
+        heatRemain: document.getElementById("heatRemainOut"),
+        heatLimit: document.getElementById("heatLimitOut")
+    };
+
+    function readControlState() {
+        return {
+            robotId: Number(controls.robotId.value),
+            vx: Number(controls.vx.value),
+            vy: Number(controls.vy.value),
+            wz: Number(controls.wz.value),
+            yawRealAngle: Number(controls.yawRealAngle.value),
+            pitchAngle: Number(controls.pitchAngle.value),
+            capVoltage: Number(controls.capVoltage.value),
+            capPower: Number(controls.capPower.value),
+            chassisPower: Number(controls.chassisPower.value),
+            powerLimit: Number(controls.powerLimit.value),
+            capUseFlag: controls.capUseFlag.checked ? 1 : 0,
+            capSuperFlag: controls.capSuperFlag.checked ? 1 : 0,
+            shootState: Number(controls.shootState.value),
+            heatRemain: Number(controls.heatRemain.value),
+            heatLimit: Number(controls.heatLimit.value),
+            identifyFlag: controls.identifyFlag.checked ? 1 : 0,
+            pcOffline: controls.pcOffline.checked ? 1 : 0,
+            driverOffline: controls.driverOffline.checked ? 1 : 0,
+            rudderOffline: controls.rudderOffline.checked ? 1 : 0,
+            remoteOffline: controls.remoteOffline.checked ? 1 : 0,
+            capOffline: controls.capOffline.checked ? 1 : 0,
+            yawOffline: controls.yawOffline.checked ? 1 : 0,
+            pitchOffline: controls.pitchOffline.checked ? 1 : 0,
+            can1Offline: controls.can1Offline.checked ? 1 : 0,
+            refereeOffline: controls.refereeOffline.checked ? 1 : 0
+        };
+    }
+
+    function setControls(state) {
+        for (const [key, value] of Object.entries(state)) {
+            if (!controls[key]) continue;
+            if (controls[key].type === "checkbox") controls[key].checked = Boolean(value);
+            else controls[key].value = String(value);
+        }
+    }
+
+    function syncOutputs() {
+        outputs.robotId.value = controls.robotId.value;
+        outputs.vx.value = Number(controls.vx.value).toFixed(2);
+        outputs.vy.value = Number(controls.vy.value).toFixed(2);
+        outputs.wz.value = Number(controls.wz.value).toFixed(2);
+        outputs.yawRealAngle.value = Number(controls.yawRealAngle.value).toFixed(2);
+        outputs.pitchAngle.value = Number(controls.pitchAngle.value).toFixed(2);
+        outputs.capVoltage.value = Number(controls.capVoltage.value).toFixed(1);
+        outputs.capPower.value = String(Math.round(Number(controls.capPower.value)));
+        outputs.chassisPower.value = String(Math.round(Number(controls.chassisPower.value)));
+        outputs.powerLimit.value = String(Math.round(Number(controls.powerLimit.value)));
+        outputs.shootState.value = controls.shootState.value;
+        outputs.heatRemain.value = controls.heatRemain.value;
+        outputs.heatLimit.value = controls.heatLimit.value;
+
+        const state = readControlState();
+        document.getElementById("apiText").value =
+`refereeUiBusiness.bspUIHandlerInit({ robotId: ${state.robotId} });
+refereeUiBusiness.figurePlotTick({
+  vx: ${state.vx.toFixed(2)}, vy: ${state.vy.toFixed(2)}, wz: ${state.wz.toFixed(2)},
+  capVoltage: ${state.capVoltage.toFixed(1)}, capPower: ${state.capPower},
+  chassisPower: ${state.chassisPower}, powerLimit: ${state.powerLimit},
+  shootState: ${state.shootState}, identifyFlag: ${state.identifyFlag},
+  pcOffline: ${state.pcOffline}, capUseFlag: ${state.capUseFlag},
+  capSuperFlag: ${state.capSuperFlag}
+});`;
+    }
+
+    function applyControls() {
+        syncOutputs();
+        figurePlotTick(readControlState());
+    }
+
+    Object.values(controls).forEach((control) => {
+        control.addEventListener("input", applyControls);
+        control.addEventListener("change", applyControls);
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+        setControls(DEFAULT_STATE);
+        syncOutputs();
+        bspUIHandlerInit(readControlState());
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", clearScreen);
+
+    document.getElementById("triggerBtn").addEventListener("click", () => {
+        controls.shootState.value = Number(controls.shootState.value) >= 3 ? "0" : "3";
+        applyControls();
+    });
+
+    let running = true;
+    const runBtn = document.getElementById("runBtn");
+    runBtn.addEventListener("click", () => {
+        running = !running;
+        runBtn.textContent = running ? "pause" : "run";
+    });
+
+    let lastFrame = 0;
+    function tick(time) {
+        if (running && time - lastFrame > 50) {
+            lastFrame = time;
+            const t = time / 1000;
+            controls.vx.value = (2.4 * Math.cos(t * 0.7)).toFixed(2);
+            controls.vy.value = (2.1 * Math.sin(t * 0.9)).toFixed(2);
+            controls.wz.value = (1.8 * Math.sin(t * 0.8)).toFixed(2);
+            controls.yawRealAngle.value = (0.28 * Math.sin(t * 0.45)).toFixed(2);
+            controls.pitchAngle.value = (0.18 + 0.14 * Math.sin(t * 0.35)).toFixed(2);
+            controls.capVoltage.value = (18.5 + 5 * (0.5 + 0.5 * Math.sin(t * 0.25))).toFixed(1);
+            controls.capPower.value = String(Math.round(-45 - 28 * (0.5 + 0.5 * Math.sin(t * 0.55))));
+            controls.chassisPower.value = String(Math.round(72 + 35 * (0.5 + 0.5 * Math.cos(t * 0.4))));
+            applyControls();
+        }
+        requestAnimationFrame(tick);
+    }
+
+    window.refereeUi = {
+        constants: { GraphicOption, GraphicType, FigureDel, UiColor, RMSubCmdId, GROUP },
+        renderer,
+        figureOptIntf,
+        deleteAll: clearScreen,
+        deleteLayer(layer) {
+            renderer.deleteLayer(layer);
+        },
+        send(drawId) {
+            if (drawId === RMSubCmdId.Delete) clearScreen();
+            else renderer.render();
+        },
+        drawLine(name, opt, layer, color, width, startX, startY, endX, endY) {
+            renderer.commit({ name, opt, type: GraphicType.Line, layer, color, width, startX, startY, endX, endY });
+            renderer.render();
+        },
+        drawArc(name, opt, layer, color, startAngle, endAngle, width, centerX, centerY, xHalfAxis, yHalfAxis) {
+            renderer.commit({ name, opt, type: GraphicType.Arc, layer, color, width, startX: centerX, startY: centerY, startAngle, endAngle, endX: xHalfAxis, endY: yHalfAxis });
+            renderer.render();
+        },
+        drawCircle(name, opt, layer, color, width, centerX, centerY, radius) {
+            renderer.commit({ name, opt, type: GraphicType.Circle, layer, color, width, startX: centerX, startY: centerY, radius });
+            renderer.render();
+        },
+        drawEllipse(name, opt, layer, color, width, centerX, centerY, xHalfAxis, yHalfAxis) {
+            renderer.commit({ name, opt, type: GraphicType.Ellipse, layer, color, width, startX: centerX, startY: centerY, endX: xHalfAxis, endY: yHalfAxis });
+            renderer.render();
+        },
+        printInt(name, opt, layer, color, width, fontSize, startX, startY, value) {
+            renderer.commit({ name, opt, type: GraphicType.Int, layer, color, width, fontSize, startX, startY, value });
+            renderer.render();
+        },
+        getState() {
+            return renderer.exportElements();
+        }
+    };
+
+    window.refereeUiBusiness = {
+        bspUIHandlerInit,
+        figurePlotTick,
+        clearScreen,
+        plotFrameworkLine,
+        plotGear,
+        plotCapacitanceVoltage,
+        plotPowerData,
+        plotSpeedometer,
+        plotGyroSpeed,
+        plotHorizonLine,
+        offlineWorning,
+        fireInfo,
+        offlineDisplay,
+        plotHorizonPoint,
+        streamlineUIInit,
+        streamlineUIFlash,
+        getState: () => ({ ...businessState }),
+        setState(nextState) {
+            return figurePlotTick(nextState);
+        }
+    };
+
+    setControls(DEFAULT_STATE);
+    syncOutputs();
+    bspUIHandlerInit(readControlState());
+    requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

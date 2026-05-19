@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parallel Wheel-Leg UI Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --panel: #191b20;
+      --line: #2f3440;
+      --text: #e8edf2;
+      --muted: #9aa7b4;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+      --pink: #ff5fa2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .title strong {
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button {
+      border: 1px solid #404653;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 12px;
+      min-width: 70px;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    button:hover {
+      border-color: #667184;
+    }
+
+    button.active {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(57, 215, 255, 0.45);
+      color: #ffffff;
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 96px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        padding: 10px;
+      }
+
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .controls {
+        justify-content: flex-start;
+      }
+
+      button {
+        flex: 1 1 78px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="toolbar">
+      <div class="title">
+        <strong>并联轮腿腿长控件</strong>
+        <span>双后腿式结构，业务坐标原点在左下角</span>
+      </div>
+      <div class="controls" role="group" aria-label="腿长状态">
+        <button data-state="0" class="active">低姿态</button>
+        <button data-state="1">常规</button>
+        <button data-state="2">高姿态</button>
+        <button data-auto="true">自动</button>
+      </div>
+    </div>
+    <div class="stage">
+      <canvas id="preview" width="1920" height="1080"></canvas>
+    </div>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width;
+    const H = canvas.height;
+
+    const states = [
+      { id: 0, value: "L0", cn: "低姿态", name: "CROUCH", reach: 245, knee: 168, color: "#ff5fa2" },
+      { id: 1, value: "L1", cn: "常规", name: "NORMAL", reach: 340, knee: 108, color: "#39d7ff" },
+      { id: 2, value: "L2", cn: "高姿态", name: "EXTEND", reach: 445, knee: 52, color: "#49e66f" },
+    ];
+
+    let selected = 0;
+    let auto = false;
+    let lastTs = performance.now();
+    let autoTimer = 0;
+    let displayReach = states[selected].reach;
+    let displayKnee = states[selected].knee;
+
+    function y(v) {
+      return H - v;
+    }
+
+    function line(x1, y1, x2, y2, color, width = 4, alpha = 1) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x1, y(y1));
+      ctx.lineTo(x2, y(y2));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function circle(x, cy, radius, color, width = 4, fill = false, alpha = 1) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.arc(x, y(cy), radius, 0, Math.PI * 2);
+      if (fill) {
+        ctx.fillStyle = color;
+        ctx.fill();
+      } else {
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function text(value, x, cy, size, color, align = "center", weight = 650) {
+      ctx.fillStyle = color;
+      ctx.font = `${weight} ${size}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      ctx.textAlign = align;
+      ctx.textBaseline = "middle";
+      ctx.fillText(value, x, y(cy));
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = "rgba(255,255,255,0.055)";
+      ctx.lineWidth = 1;
+      for (let xPos = 0; xPos <= W; xPos += 120) {
+        ctx.beginPath();
+        ctx.moveTo(xPos, 0);
+        ctx.lineTo(xPos, H);
+        ctx.stroke();
+      }
+      for (let yPos = 0; yPos <= H; yPos += 90) {
+        ctx.beginPath();
+        ctx.moveTo(0, y(yPos));
+        ctx.lineTo(W, y(yPos));
+        ctx.stroke();
+      }
+
+      line(72, 72, 220, 72, "rgba(57,215,255,0.45)", 3);
+      line(72, 72, 72, 220, "rgba(57,215,255,0.45)", 3);
+      text("O", 52, 52, 24, "rgba(232,237,242,0.55)");
+    }
+
+    function drawStateLadder(cx, baseY, active) {
+      const railX = cx + 390;
+      const tickYs = states.map((state) => baseY + state.reach);
+
+      line(railX, tickYs[0] - 52, railX, tickYs[2] + 52, "rgba(232,237,242,0.36)", 3);
+
+      states.forEach((state, index) => {
+        const isActive = index === active.id;
+        const color = isActive ? state.color : "rgba(232,237,242,0.35)";
+        const width = isActive ? 8 : 4;
+        line(railX - 50, tickYs[index], railX + 50, tickYs[index], color, width);
+        circle(railX, tickYs[index], isActive ? 13 : 8, color, 3, isActive);
+        text(state.value, railX + 80, tickYs[index], isActive ? 30 : 22, color, "left", isActive ? 780 : 560);
+      });
+    }
+
+    function drawParallelLink(x1, y1, x2, y2, color, width, offsetX) {
+      line(x1 - offsetX, y1, x2 - offsetX, y2, color, width, 0.95);
+      line(x1 + offsetX, y1, x2 + offsetX, y2, color, width, 0.95);
+    }
+
+    function drawLeg(hipX, hipY, wheelX, wheelY, kneeOffset, side, color) {
+      const kneeX = hipX + side * kneeOffset;
+      const kneeY = wheelY + (hipY - wheelY) * 0.47;
+      const ankleX = wheelX + side * 14;
+      const ankleY = wheelY + 78;
+      const pairOffset = 14;
+
+      drawParallelLink(hipX, hipY, kneeX, kneeY, "rgba(232,237,242,0.56)", 7, pairOffset);
+      drawParallelLink(kneeX, kneeY, ankleX, ankleY, color, 8, pairOffset);
+      line(kneeX - side * 36, kneeY + 24, ankleX, ankleY, "rgba(232,237,242,0.36)", 4);
+
+      circle(hipX, hipY, 20, color, 5);
+      circle(kneeX, kneeY, 18, color, 5);
+      circle(ankleX, ankleY, 16, color, 5);
+      circle(wheelX, wheelY, 56, "rgba(232,237,242,0.86)", 8);
+      circle(wheelX, wheelY, 20, color, 6);
+
+      text("H", hipX, hipY + 38, 18, "rgba(232,237,242,0.48)");
+      text("K", kneeX, kneeY + 36, 18, "rgba(232,237,242,0.48)");
+    }
+
+    function drawRobot() {
+      const active = states[selected];
+      displayReach += (active.reach - displayReach) * 0.16;
+      displayKnee += (active.knee - displayKnee) * 0.16;
+
+      const cx = 930;
+      const footY = 235;
+      const bodyY = footY + displayReach + 88;
+      const hipY = bodyY - 48;
+      const leftHipX = cx - 145;
+      const rightHipX = cx + 145;
+      const leftWheelX = cx - 212;
+      const rightWheelX = cx + 212;
+      const color = active.color;
+
+      drawStateLadder(cx, footY, active);
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 8;
+      ctx.lineJoin = "round";
+      ctx.strokeRect(cx - 250, y(bodyY + 44), 500, 88);
+      line(cx - 215, bodyY, cx + 215, bodyY, "rgba(232,237,242,0.68)", 4);
+      line(leftHipX, hipY, rightHipX, hipY, color, 7);
+      circle(leftHipX, hipY, 12, color, 4, true);
+      circle(rightHipX, hipY, 12, color, 4, true);
+
+      drawLeg(leftHipX, hipY, leftWheelX, footY, displayKnee, -1, color);
+      drawLeg(rightHipX, hipY, rightWheelX, footY, displayKnee, 1, color);
+
+      text(active.cn, cx, bodyY + 98, 40, color);
+      text(`${active.value}  ${active.name}`, cx, bodyY + 145, 26, "rgba(232,237,242,0.72)");
+      text("PARALLEL HIND-LEG LINKAGE", cx, bodyY + 182, 20, "rgba(232,237,242,0.48)");
+
+      const gaugeX = cx - 460;
+      line(gaugeX, footY + states[0].reach, gaugeX, footY + states[2].reach, "rgba(232,237,242,0.22)", 8);
+      line(gaugeX, footY + states[0].reach, gaugeX, footY + displayReach, color, 10);
+      circle(gaugeX, footY + displayReach, 15, color, 4, true);
+    }
+
+    function draw() {
+      drawBackground();
+      drawRobot();
+    }
+
+    function setState(next) {
+      selected = next;
+      document.querySelectorAll("[data-state]").forEach((button) => {
+        button.classList.toggle("active", Number(button.dataset.state) === selected && !auto);
+      });
+      document.querySelector("[data-auto]").classList.toggle("active", auto);
+    }
+
+    document.querySelectorAll("[data-state]").forEach((button) => {
+      button.addEventListener("click", () => {
+        auto = false;
+        setState(Number(button.dataset.state));
+      });
+    });
+
+    document.querySelector("[data-auto]").addEventListener("click", () => {
+      auto = !auto;
+      setState(selected);
+    });
+
+    function frame(ts) {
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+
+      if (auto) {
+        autoTimer += dt;
+        if (autoTimer >= 1.35) {
+          autoTimer = 0;
+          selected = (selected + 1) % states.length;
+          setState(selected);
+        }
+      }
+
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    setState(selected);
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

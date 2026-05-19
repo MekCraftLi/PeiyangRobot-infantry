@@ -1,0 +1,1383 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RM Integrated HUD</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #191c22;
+      --panel-2: #12151a;
+      --line: #303642;
+      --text: #e8edf2;
+      --muted: #95a2b0;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+      --main: #ffd24a;
+      --pink: #ff5fa2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.42 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .left {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .toolbar,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      min-height: 56px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    .title strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    button,
+    select {
+      min-height: 36px;
+      border: 1px solid #414856;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 11px;
+    }
+
+    button {
+      min-width: 74px;
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover {
+      border-color: #687486;
+    }
+
+    button.active {
+      border-color: var(--cyan);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--cyan);
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--cyan);
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 104px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      gap: 12px;
+    }
+
+    .group {
+      border: 1px solid #2b313b;
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .fields {
+      display: grid;
+      gap: 8px;
+    }
+
+    label,
+    .status {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status strong {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .command-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid #2c333e;
+      border-radius: 6px;
+      background: #171a20;
+      color: #cbd5df;
+      font-size: 12px;
+    }
+
+    .command code {
+      color: #dce6ef;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    @media (max-width: 960px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="left">
+      <div class="toolbar">
+        <div class="title">
+          <strong>RM Integrated HUD</strong>
+          <span>capacitor / emblem / switch deck / wheel-leg / auto aim</span>
+        </div>
+        <div class="controls">
+          <button type="button" data-preset="base">Base</button>
+          <button type="button" data-preset="match">Match</button>
+          <button type="button" data-preset="combat">Combat</button>
+        </div>
+      </div>
+      <div class="stage">
+        <canvas id="preview" width="1920" height="1080" aria-label="Integrated referee UI preview"></canvas>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="group">
+        <h2>View</h2>
+        <div class="fields">
+          <label>Grid
+            <select id="gridMode">
+              <option value="axes">Axes</option>
+              <option value="full">Full</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label>Mask
+            <input id="maskToggle" type="checkbox" checked />
+          </label>
+          <div class="status">Reference <strong id="referenceStatus">-</strong></div>
+          <div class="status">Primitives <strong id="primitiveStatus">-</strong></div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Frame Queue</h2>
+        <div class="fields">
+          <div class="status">Drain <strong id="queueDrainStatus">7 / 33ms</strong></div>
+          <div class="status">Pending <strong id="queuePendingStatus">-</strong></div>
+          <div class="status">Rate <strong id="queueRateStatus">-</strong></div>
+          <div class="status">Load <strong id="queueLoadStatus">-</strong></div>
+          <div class="status">Last <strong id="queueLastStatus">-</strong></div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Signal</h2>
+        <div class="fields">
+          <label>Voltage
+            <input id="voltageSlider" type="range" min="0" max="28" step="0.1" value="22.5" />
+          </label>
+          <label>Aim
+            <select id="aimMode">
+              <option value="0">Vehicle</option>
+              <option value="1">Energy A</option>
+              <option value="2">Energy B</option>
+              <option value="3">Outpost</option>
+            </select>
+          </label>
+          <label>Aim State
+            <select id="aimState">
+              <option value="none">No Target</option>
+              <option value="locked">Target</option>
+              <option value="fire">Fire</option>
+            </select>
+          </label>
+          <label>Cap
+            <input id="capSwitch" type="checkbox" checked />
+          </label>
+          <label>Turbo
+            <input id="turboSwitch" type="checkbox" />
+          </label>
+          <label>Feeder
+            <input id="feederSwitch" type="checkbox" checked />
+          </label>
+          <label>Spin
+            <input id="spinSwitch" type="checkbox" />
+          </label>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Links</h2>
+        <div class="fields">
+          <a href="./index-unlimited.html">index-unlimited.html</a>
+          <a href="./wheel-leg.html">wheel-leg.html</a>
+          <a href="./capacitor-voltage.html">capacitor-voltage.html</a>
+          <a href="./bottom-holographic-dashboard.html">bottom-holographic-dashboard.html</a>
+        </div>
+      </section>
+
+      <section class="group command-list" id="commandList" aria-label="Primitive groups"></section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const gridMode = document.getElementById("gridMode");
+    const maskToggle = document.getElementById("maskToggle");
+    const referenceStatus = document.getElementById("referenceStatus");
+    const primitiveStatus = document.getElementById("primitiveStatus");
+    const queueDrainStatus = document.getElementById("queueDrainStatus");
+    const queuePendingStatus = document.getElementById("queuePendingStatus");
+    const queueRateStatus = document.getElementById("queueRateStatus");
+    const queueLoadStatus = document.getElementById("queueLoadStatus");
+    const queueLastStatus = document.getElementById("queueLastStatus");
+    const commandList = document.getElementById("commandList");
+    const voltageSlider = document.getElementById("voltageSlider");
+    const aimMode = document.getElementById("aimMode");
+    const aimState = document.getElementById("aimState");
+    const capSwitch = document.getElementById("capSwitch");
+    const turboSwitch = document.getElementById("turboSwitch");
+    const feederSwitch = document.getElementById("feederSwitch");
+    const spinSwitch = document.getElementById("spinSwitch");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const color = {
+      cyan: "#39d7ff",
+      main: "#ffd24a",
+      white: "#e8edf2",
+      green: "#49e66f",
+      orange: "#ff9d3a",
+      pink: "#ff5fa2",
+      purple: "#b76cff",
+      red: "#ff5d6c",
+    };
+    const previewColor = {
+      maskFill: "#2d2d2d",
+      maskStroke: "#686868",
+      grid: "#15171c",
+      axis: "#238aa3",
+    };
+
+    const clientMaskRects = [
+      { id: "TOP", x: 0, y: 925, w: 1920, h: 155 },
+      { id: "LEFT_MAIN", x: 0, y: 0, w: 422, h: 516 },
+      { id: "LEFT_STEP", x: 422, y: 0, w: 82, h: 258 },
+      { id: "LEFT_FLOAT", x: 473, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_FLOAT", x: 1357, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_MAIN", x: 1461, y: 0, w: 459, h: 333 },
+    ];
+
+    const capGauge = {
+      cx: 960,
+      cy: 1000,
+      dynamicCy: 980,
+      rx: 800,
+      ry: 220,
+      startAngle: 140,
+      centerAngle: 180,
+      endAngle: 220,
+      centerGap: 10,
+      textX: 915,
+      textY: 790,
+    };
+    const maxVoltage = 26;
+    const voltageThresholds = [7, 15, 22, 26];
+    const emblemCenter = { x: 960, y: 900 };
+    const legWidget = { cx: 960, cy: 174, scale: 0.48, phase: 0 };
+    const queuePeriodMs = 33;
+    const queueBatchSize = 7;
+    const realTimePeriodMs = 50;
+    const slowUpdatePeriodMs = 1000;
+    const targetStatePeriodMs = 10000;
+    const targetStateCycle = ["none", "locked", "fire"];
+    const switchControls = [capSwitch, turboSwitch, feederSwitch, spinSwitch];
+    const switchIds = ["SWC", "SWT", "SWF", "SWS"];
+    const targetTrackIds = new Set(["AAF0", "AAF1", "AAF3", "AAF5", "AAF6", "AAF8"]);
+    const linkCapacityPerSecond = (queueBatchSize * 1000) / queuePeriodMs;
+    const uiQueue = {
+      pending: [],
+      head: 0,
+      visible: new Map(),
+      initialized: false,
+      lastDrainAt: 0,
+      nextRealTimeAt: 0,
+      nextAimAt: 0,
+      nextSwitchAt: 0,
+      nextTargetAt: 0,
+      aimCursor: 0,
+      switchCursor: 0,
+      targetCursor: 0,
+      enqueuedTotal: 0,
+      sentTotal: 0,
+      sampleAt: 0,
+      sampleEnqueued: 0,
+      sampleSent: 0,
+      inputRate: 0,
+      outputRate: 0,
+      lastEvent: "-",
+      pendingAimUpdates: [],
+      pendingSwitchUpdates: [],
+      pendingTargetUpdate: false,
+    };
+    let commands = [];
+    let captureOnly = false;
+    let preset = new URLSearchParams(location.search).get("preset") ?? "match";
+    let lastFrameTime = 0;
+    let autoTime = 0;
+
+    const schoolEmblemCommands = [
+      { id: "SE01", type: "Arc", stroke: color.cyan, start: 130, end: 210, width: 3, cx: -14, cy: 20, rx: 20, ry: 20 },
+      { id: "SE02", type: "Arc", stroke: color.cyan, start: 155, end: 225, width: 3, cx: 14, cy: 20, rx: 20, ry: 20 },
+      { id: "SE03", type: "Arc", stroke: color.cyan, start: 298, end: 315, width: 3, cx: 3, cy: -55, rx: 40, ry: 80 },
+      { id: "SE04", type: "Arc", stroke: color.cyan, start: 43, end: 62, width: 3, cx: -3, cy: -55, rx: 40, ry: 80 },
+      { id: "SE05", type: "Arc", stroke: color.cyan, start: 15, end: 180, width: 3, cx: -35, cy: -25, rx: 10, ry: 7 },
+      { id: "SE06", type: "Arc", stroke: color.cyan, start: 180, end: 345, width: 3, cx: 35, cy: -25, rx: 10, ry: 7 },
+      { id: "SE07", type: "Arc", stroke: color.cyan, start: 230, end: 270, width: 3, cx: 7, cy: -33, rx: 40, ry: 40 },
+      { id: "SE08", type: "Arc", stroke: color.cyan, start: 90, end: 130, width: 3, cx: -7, cy: -33, rx: 40, ry: 40 },
+      { id: "SE09", type: "Arc", stroke: color.cyan, start: 217, end: 230, width: 3, cx: 91, cy: 18, rx: 150, ry: 120 },
+      { id: "SE10", type: "Arc", stroke: color.cyan, start: 130, end: 143, width: 3, cx: -91, cy: 18, rx: 150, ry: 120 },
+      { id: "SE11", type: "Arc", stroke: color.white, start: 33, end: 327, width: 3, cx: 0, cy: -70, rx: 40, ry: 15 },
+      { id: "SE12", type: "Arc", stroke: color.white, start: 33, end: 327, width: 3, cx: 0, cy: -76, rx: 50, ry: 23 },
+      { id: "SE13", type: "Line", stroke: color.white, width: 3, x1: -20, y1: -25, x2: -6, y2: -25 },
+      { id: "SE14", type: "Line", stroke: color.white, width: 3, x1: -13, y1: -25, x2: -13, y2: -45 },
+      { id: "SE15", type: "Line", stroke: color.white, width: 3, x1: 0, y1: -23, x2: 0, y2: -40 },
+      { id: "SE16", type: "Arc", stroke: color.white, start: 80, end: 250, width: 3, cx: -5, cy: -40, rx: 5, ry: 5 },
+      { id: "SE17", type: "Line", stroke: color.white, width: 3, x1: 6, y1: -23, x2: 6, y2: -40 },
+      { id: "SE18", type: "Line", stroke: color.white, width: 4, x1: 20, y1: -23, x2: 20, y2: -40 },
+      { id: "SE19", type: "Arc", stroke: color.white, start: 80, end: 280, width: 3, cx: 13, cy: -40, rx: 7, ry: 5 },
+    ];
+
+    const switchModules = [
+      { id: "SWC", x: 612, y: 98, r: -12, scale: 0.78, on: () => capSwitch.checked, icon: drawCapSwitchIcon },
+      { id: "SWT", x: 760, y: 134, r: -7, scale: 0.9, on: () => turboSwitch.checked, icon: drawTurboSwitchIcon },
+      { id: "SWF", x: 1160, y: 134, r: 7, scale: 0.9, on: () => feederSwitch.checked, icon: drawFeederSwitchIcon },
+      { id: "SWS", x: 1308, y: 98, r: 12, scale: 0.78, on: () => spinSwitch.checked, icon: drawSpinSwitchIcon },
+    ];
+
+    function by(y) {
+      return H - y;
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(Number(value) || 0, min), max);
+    }
+
+    function rectToCanvas(rect) {
+      return { x: rect.x, y: H - rect.y - rect.h, w: rect.w, h: rect.h };
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function track(name, type, layer, colorValue, width, args, scope = "STATIC") {
+      commands.push({ name, type, layer, color: colorValue, width, args, scope });
+    }
+
+    function paintLine(x1, y1, x2, y2, stroke, width) {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(x1, by(y1));
+      ctx.lineTo(x2, by(y2));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawLine(name, x1, y1, x2, y2, stroke = color.cyan, width = 2, layer = 0, scope = "STATIC") {
+      if (!captureOnly) paintLine(x1, y1, x2, y2, stroke, width);
+      track(name, "Line", layer, stroke, width, { x1, y1, x2, y2 }, scope);
+    }
+
+    function paintEllipseArc(
+      x,
+      y,
+      rx,
+      ry,
+      startDeg,
+      endDeg,
+      stroke,
+      width,
+    ) {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      const start = (-endDeg * Math.PI) / 180;
+      const end = (-startDeg * Math.PI) / 180;
+      ctx.ellipse(x, by(y), rx, ry, 0, start, end);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawEllipseArc(
+      name,
+      x,
+      y,
+      rx,
+      ry,
+      startDeg,
+      endDeg,
+      stroke = color.cyan,
+      width = 2,
+      layer = 0,
+      scope = "STATIC",
+    ) {
+      if (!captureOnly) paintEllipseArc(x, y, rx, ry, startDeg, endDeg, stroke, width);
+      track(name, "Arc", layer, stroke, width, { x, y, rx, ry, startDeg, endDeg }, scope);
+    }
+
+    function paintRefArc(
+      x,
+      y,
+      rx,
+      ry,
+      startDeg,
+      endDeg,
+      stroke,
+      width,
+    ) {
+      let end = endDeg;
+      while (end < startDeg) end += 360;
+      const span = end - startDeg;
+      const steps = Math.max(8, Math.ceil(span / 3));
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const deg = startDeg + (span * i) / steps;
+        const rad = (deg * Math.PI) / 180;
+        const px = x + rx * Math.sin(rad);
+        const py = y + ry * Math.cos(rad);
+        if (i === 0) ctx.moveTo(px, by(py));
+        else ctx.lineTo(px, by(py));
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawRefArc(
+      name,
+      x,
+      y,
+      rx,
+      ry,
+      startDeg,
+      endDeg,
+      stroke = color.cyan,
+      width = 2,
+      layer = 0,
+      scope = "STATIC",
+    ) {
+      if (!captureOnly) paintRefArc(x, y, rx, ry, startDeg, endDeg, stroke, width);
+      track(name, "Arc", layer, stroke, width, { x, y, rx, ry, startDeg, endDeg, mode: "ref" }, scope);
+    }
+
+    function drawArc(name, x, y, r, startDeg, endDeg, stroke = color.cyan, width = 2, layer = 0, scope = "STATIC") {
+      drawEllipseArc(name, x, y, r, r, startDeg, endDeg, stroke, width, layer, scope);
+    }
+
+    function paintCircle(x, y, r, stroke, width) {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.arc(x, by(y), r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawCircle(name, x, y, r, stroke = color.cyan, width = 2, layer = 0, scope = "STATIC") {
+      if (!captureOnly) paintCircle(x, y, r, stroke, width);
+      track(name, "Circle", layer, stroke, width, { x, y, r }, scope);
+    }
+
+    function paintFloat(value, x, y, size, stroke) {
+      ctx.save();
+      ctx.fillStyle = stroke;
+      ctx.font = `700 ${size}px 'Cascadia Mono', Consolas, monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(formatVoltage(value), x, by(y));
+      ctx.restore();
+    }
+
+    function drawFloat(name, value, x, y, size, stroke = color.white, layer = 1, scope = "DYNAMIC") {
+      if (!captureOnly) paintFloat(value, x, y, size, stroke);
+      track(name, "Float", layer, stroke, 1, { x, y, value, size }, scope);
+    }
+
+    function ellipsePoint(x, y, rx, ry, deg) {
+      const rad = (deg * Math.PI) / 180;
+      return {
+        x: x + Math.cos(rad) * rx,
+        y: y + Math.sin(rad) * ry,
+      };
+    }
+
+    function capArcPoint(angle, centerY = capGauge.cy, radiusX = capGauge.rx, radiusY = capGauge.ry) {
+      const rad = (angle * Math.PI) / 180;
+      return {
+        x: capGauge.cx + radiusX * Math.sin(rad),
+        y: centerY + radiusY * Math.cos(rad),
+      };
+    }
+
+    function formatVoltage(value) {
+      return Number(value).toPrecision(3);
+    }
+
+    function colorForVoltage() {
+      const voltage = Number(voltageSlider.value);
+      if (!capSwitch.checked) return color.cyan;
+      if (voltage >= voltageThresholds[2]) return color.green;
+      if (voltage >= voltageThresholds[1]) return color.orange;
+      if (voltage >= voltageThresholds[0]) return color.pink;
+      return color.red;
+    }
+
+    function drawGrid() {
+      if (gridMode.value === "off") return;
+      ctx.save();
+      if (gridMode.value === "full") {
+        ctx.strokeStyle = previewColor.grid;
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 120) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= H; y += 90) {
+          ctx.beginPath();
+          ctx.moveTo(0, by(y));
+          ctx.lineTo(W, by(y));
+          ctx.stroke();
+        }
+      }
+
+      ctx.strokeStyle = previewColor.axis;
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(220, by(72));
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(72, by(220));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawForbiddenPreview() {
+      if (!maskToggle.checked) return;
+      clientMaskRects.forEach((rect) => {
+        const cr = rectToCanvas(rect);
+        ctx.fillStyle = previewColor.maskFill;
+        ctx.fillRect(cr.x, cr.y, cr.w, cr.h);
+        ctx.strokeStyle = previewColor.maskStroke;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cr.x, cr.y, cr.w, cr.h);
+      });
+    }
+
+    function drawCapacitorVoltage() {
+      drawRefArc("CT0", capGauge.cx, capGauge.cy, capGauge.rx, capGauge.ry, capGauge.startAngle, capGauge.centerAngle - capGauge.centerGap, color.white, 5, 0);
+      drawRefArc("CT1", capGauge.cx, capGauge.cy, capGauge.rx, capGauge.ry, capGauge.centerAngle + capGauge.centerGap, capGauge.endAngle, color.white, 5, 0);
+
+      voltageThresholds.forEach((threshold, index) => {
+        const sweep = capGauge.endAngle - capGauge.centerAngle - capGauge.centerGap;
+        const span = capGauge.centerGap + (sweep * threshold) / maxVoltage;
+        const leftOuter = capArcPoint(capGauge.centerAngle + span);
+        const leftInner = capArcPoint(capGauge.centerAngle + span, capGauge.cy, capGauge.rx - 28, capGauge.ry - 10);
+        const rightOuter = capArcPoint(capGauge.centerAngle - span);
+        const rightInner = capArcPoint(capGauge.centerAngle - span, capGauge.cy, capGauge.rx - 28, capGauge.ry - 10);
+        drawLine(`TK${index}`, leftInner.x, leftInner.y, leftOuter.x, leftOuter.y, color.white, 2, 0);
+        drawLine(`TK${index + 4}`, rightInner.x, rightInner.y, rightOuter.x, rightOuter.y, color.white, 2, 0);
+      });
+
+      const voltage = clamp(voltageSlider.value, 0, 28);
+      const ratio = clamp(voltage / maxVoltage, 0, 1);
+      const dynamicColor = colorForVoltage();
+      const sweep = capGauge.endAngle - capGauge.centerAngle - capGauge.centerGap;
+      const visibleSpan = Math.max(capGauge.centerGap + 0.6, capGauge.centerGap + sweep * ratio);
+      drawRefArc("CL0", capGauge.cx, capGauge.dynamicCy, capGauge.rx, capGauge.ry, capGauge.centerAngle + capGauge.centerGap, capGauge.centerAngle + visibleSpan, dynamicColor, 15, 1, "DYNAMIC");
+      drawRefArc("CR0", capGauge.cx, capGauge.dynamicCy, capGauge.rx, capGauge.ry, capGauge.centerAngle - visibleSpan, capGauge.centerAngle - capGauge.centerGap, dynamicColor, 15, 1, "DYNAMIC");
+      drawFloat("CV0", voltage, capGauge.textX, capGauge.textY, 26, dynamicColor, 1, "DYNAMIC");
+    }
+
+    function drawSchoolEmblem() {
+      schoolEmblemCommands.forEach((cmd) => {
+        if (cmd.type === "Line") {
+          drawLine(
+            cmd.id,
+            emblemCenter.x + cmd.x1,
+            emblemCenter.y + cmd.y1,
+            emblemCenter.x + cmd.x2,
+            emblemCenter.y + cmd.y2,
+            cmd.stroke,
+            cmd.width,
+            0,
+          );
+        } else {
+          drawRefArc(
+            cmd.id,
+            emblemCenter.x + cmd.cx,
+            emblemCenter.y + cmd.cy,
+            cmd.rx,
+            cmd.ry,
+            cmd.start,
+            cmd.end,
+            cmd.stroke,
+            cmd.width,
+            0,
+          );
+        }
+      });
+    }
+
+    function drawHudBalanceFrame() {
+      drawLine("F00", 520, 58, 650, 84, color.cyan, 3, 1);
+      drawLine("F01", 690, 92, 848, 128, color.cyan, 3, 1);
+      drawLine("F02", 588, 124, 666, 142, color.white, 2, 1);
+      drawLine("F03", 720, 154, 852, 184, color.white, 2, 1);
+      drawLine("F04", 520, 58, 576, 112, color.white, 1, 0);
+      drawLine("F05", 656, 86, 684, 146, color.white, 1, 0);
+      drawLine("F06", 790, 116, 810, 174, color.white, 1, 0);
+
+      drawLine("F07", 1400, 58, 1270, 84, color.cyan, 3, 1);
+      drawLine("F08", 1230, 92, 1072, 128, color.cyan, 3, 1);
+      drawLine("F09", 1332, 124, 1254, 142, color.white, 2, 1);
+      drawLine("F10", 1200, 154, 1068, 184, color.white, 2, 1);
+      drawLine("F11", 1400, 58, 1344, 112, color.white, 1, 0);
+      drawLine("F12", 1264, 86, 1236, 146, color.white, 1, 0);
+      drawLine("F13", 1130, 116, 1110, 174, color.white, 1, 0);
+
+      drawLine("F14", 850, 92, 878, 176, color.cyan, 3, 1);
+      drawLine("F15", 878, 176, 918, 220, color.cyan, 3, 1);
+      drawLine("F16", 918, 220, 950, 220, color.cyan, 3, 1);
+      drawLine("F17", 970, 220, 1002, 220, color.cyan, 3, 1);
+      drawLine("F18", 1002, 220, 1042, 176, color.cyan, 3, 1);
+      drawLine("F19", 1042, 176, 1070, 92, color.cyan, 3, 1);
+      drawLine("F20", 904, 48, 940, 70, color.white, 2, 1);
+      drawLine("F21", 980, 70, 1016, 48, color.white, 2, 1);
+      drawLine("F22", 850, 92, 820, 122, color.cyan, 2, 1);
+      drawLine("F23", 1070, 92, 1100, 122, color.cyan, 2, 1);
+    }
+
+    function switchPoint(module, x, y) {
+      const scale = module.scale ?? 1;
+      const rad = (module.r * Math.PI) / 180;
+      const px = x * scale;
+      const py = y * scale;
+      return {
+        x: module.x + Math.cos(rad) * px - Math.sin(rad) * py,
+        y: module.y + Math.sin(rad) * px + Math.cos(rad) * py,
+      };
+    }
+
+    function switchLine(module, suffix, x1, y1, x2, y2, stroke, width = 2, layer = 3, scope = "STATIC") {
+      const start = switchPoint(module, x1, y1);
+      const end = switchPoint(module, x2, y2);
+      drawLine(`${module.id}${suffix}`, start.x, start.y, end.x, end.y, stroke, width, layer, scope);
+    }
+
+    function switchCircle(module, suffix, x, y, radius, stroke, width = 2, layer = 3, scope = "STATIC") {
+      const center = switchPoint(module, x, y);
+      const scale = module.scale ?? 1;
+      drawCircle(`${module.id}${suffix}`, center.x, center.y, radius * scale, stroke, width * scale, layer, scope);
+    }
+
+    function switchArc(module, suffix, x, y, radius, startDeg, endDeg, stroke, width = 2, layer = 3, scope = "STATIC") {
+      const center = switchPoint(module, x, y);
+      const scale = module.scale ?? 1;
+      drawArc(`${module.id}${suffix}`, center.x, center.y, radius * scale, startDeg + module.r, endDeg + module.r, stroke, width * scale, layer, scope);
+    }
+
+    function drawSwitchDeck() {
+      switchModules.forEach((module) => {
+        const on = module.on();
+        const active = on ? color.main : color.white;
+        const rail = on ? color.main : color.white;
+        const fill = color.white;
+        switchLine(module, "B0", -58, -22, -42, 22, rail, on ? 3 : 2, 2);
+        switchLine(module, "B1", -42, 22, -12, 22, rail, on ? 3 : 2, 2);
+        switchLine(module, "B2", 12, 22, 42, 22, rail, on ? 3 : 2, 2);
+        switchLine(module, "B3", 42, 22, 58, -22, rail, on ? 3 : 2, 2);
+        switchLine(module, "B4", -58, -22, -24, -22, color.white, 1, 2);
+        switchLine(module, "B5", 24, -22, 58, -22, color.white, 1, 2);
+        switchCircle(module, "C0", 0, 0, on ? 24 : 20, active, on ? 4 : 2, 3, "DYNAMIC");
+        switchCircle(module, "C1", 0, 0, 5, fill, 2, 4, "DYNAMIC");
+        module.icon(module, on, active, fill);
+      });
+    }
+
+    function drawCapSwitchIcon(module, on, active, fill) {
+      switchLine(module, "I0", -10, 12, -10, -8, fill, 3, 4, "DYNAMIC");
+      switchLine(module, "I1", 10, 12, 10, -8, fill, 3, 4, "DYNAMIC");
+      switchLine(module, "I2", -18, 0, -10, 0, active, 2, 4, "DYNAMIC");
+      switchLine(module, "I3", 10, 0, 18, 0, active, 2, 4, "DYNAMIC");
+      switchLine(module, "I4", -2, 15, -8, 3, active, 2, 4, "DYNAMIC");
+      switchLine(module, "I5", -8, 3, 4, 3, active, 2, 4, "DYNAMIC");
+      switchLine(module, "I6", 4, 3, -2, -13, active, 2, 4, "DYNAMIC");
+    }
+
+    function drawTurboSwitchIcon(module, on, active, fill) {
+      switchLine(module, "I0", -21, -12, -5, 0, fill, 3, 4, "DYNAMIC");
+      switchLine(module, "I1", -5, 0, -21, 12, fill, 3, 4, "DYNAMIC");
+      switchLine(module, "I2", -3, -12, 13, 0, active, 4, 4, "DYNAMIC");
+      switchLine(module, "I3", 13, 0, -3, 12, active, 4, 4, "DYNAMIC");
+      switchLine(module, "I4", 15, -12, 27, 0, active, 3, 4, "DYNAMIC");
+      switchLine(module, "I5", 27, 0, 15, 12, active, 3, 4, "DYNAMIC");
+    }
+
+    function drawFeederSwitchIcon(module, on, active, fill) {
+      switchCircle(module, "I0", -13, 0, 10, fill, 3, 4, "DYNAMIC");
+      switchCircle(module, "I1", 13, 0, 10, fill, 3, 4, "DYNAMIC");
+      switchLine(module, "I2", -3, 0, 3, 0, active, 4, 4, "DYNAMIC");
+      switchLine(module, "I3", 27, 0, 40, 0, active, 4, 4, "DYNAMIC");
+      switchLine(module, "I4", 34, 6, 40, 0, active, 3, 4, "DYNAMIC");
+      switchLine(module, "I5", 34, -6, 40, 0, active, 3, 4, "DYNAMIC");
+    }
+
+    function drawSpinSwitchIcon(module, on, active, fill) {
+      switchArc(module, "I0", 0, 0, 18, 35, 300, active, 4, 4, "DYNAMIC");
+      switchLine(module, "I1", 15, 13, 25, 13, active, 3, 4, "DYNAMIC");
+      switchLine(module, "I2", 25, 13, 20, 3, active, 3, 4, "DYNAMIC");
+      switchLine(module, "I3", -12, -4, 12, -4, fill, 2, 4, "DYNAMIC");
+      switchLine(module, "I4", -8, 8, 8, 8, fill, 2, 4, "DYNAMIC");
+    }
+
+    function centralLegLocal(x, y) {
+      return {
+        x: legWidget.cx + x * legWidget.scale,
+        y: legWidget.cy + y * legWidget.scale,
+      };
+    }
+
+    function drawCentralLegInstrument() {
+      const scale = legWidget.scale;
+      const upperLink = 105 * scale;
+      const lowerLink = 125 * scale;
+      const distanceMid = 135;
+      const distanceAmp = 40;
+      const legs = [
+        { id: "LG", color: color.cyan, phase: 0, hipOffset: -6 },
+        { id: "RG", color: color.orange, phase: Math.PI, hipOffset: 6 },
+      ];
+      const hullSegments = [
+        ["CG0", -78, -20, -68, 18, color.cyan],
+        ["CG1", -68, 18, -42, 32, color.cyan],
+        ["CG2", -42, 32, -8, 32, color.cyan],
+        ["CG3", 8, 32, 46, 32, color.orange],
+        ["CG4", 46, 32, 74, 14, color.orange],
+        ["CG5", 74, 14, 78, -10, color.orange],
+        ["CG6", 78, -10, 54, -24, color.orange],
+        ["CG7", 54, -24, 8, -24, color.orange],
+        ["CG8", -8, -24, -56, -24, color.cyan],
+        ["CG9", -56, -24, -78, -20, color.cyan],
+      ];
+      hullSegments.forEach(([name, x1, y1, x2, y2, stroke]) => {
+        const start = centralLegLocal(x1, y1);
+        const end = centralLegLocal(x2, y2);
+        drawLine(name, start.x, start.y, end.x, end.y, stroke, 2, 2);
+      });
+      const deckA = centralLegLocal(-54, 18);
+      const deckLeft = centralLegLocal(-6, 18);
+      const deckRight = centralLegLocal(6, 18);
+      const deckB = centralLegLocal(48, 18);
+      const hipCenter = centralLegLocal(0, 0);
+      drawLine("CG10", deckA.x, deckA.y, deckLeft.x, deckLeft.y, color.cyan, 1, 2);
+      drawLine("CG11", deckRight.x, deckRight.y, deckB.x, deckB.y, color.orange, 1, 2);
+      drawCircle("CG12", hipCenter.x, hipCenter.y, 4, color.white, 2, 2);
+      [95, 135, 175].forEach((distance, index) => {
+        const tickY = legWidget.cy - distance * scale;
+        const tickColor = index === 1 ? color.cyan : color.white;
+        drawLine(`CGT${index}`, legWidget.cx - 48 * scale, tickY, legWidget.cx - 28 * scale, tickY, tickColor, 1, 1);
+      });
+
+      legs.forEach((leg) => {
+        const wave = Math.sin(legWidget.phase + leg.phase);
+        const hipWheelDistance = distanceMid + distanceAmp * wave;
+        const hip = centralLegLocal(leg.hipOffset, 0);
+        const wheel = centralLegLocal(leg.hipOffset, -hipWheelDistance);
+        const distance = hipWheelDistance * scale;
+        const clampedDistance = Math.max(1, Math.min(distance, upperLink + lowerLink - 1));
+        const along =
+          (clampedDistance * clampedDistance + upperLink * upperLink - lowerLink * lowerLink) / (2 * clampedDistance);
+        const lateral = Math.sqrt(Math.max(0, upperLink * upperLink - along * along));
+        const knee = { x: hip.x + lateral, y: hip.y - along };
+        drawLine(`${leg.id}0`, hip.x, hip.y, knee.x, knee.y, leg.color, 5, 3, "DYNAMIC");
+        drawLine(`${leg.id}1`, knee.x, knee.y, wheel.x, wheel.y, leg.color, 5, 3, "DYNAMIC");
+        drawCircle(`${leg.id}2`, wheel.x, wheel.y, 9, leg.color, 3, 4, "DYNAMIC");
+      });
+    }
+
+    function aimScale(mode) {
+      return mode.size ?? 1;
+    }
+
+    function aimPoint(mode, x, y) {
+      const s = aimScale(mode);
+      const rad = ((mode.rot ?? 0) * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const dx = x - (mode.anchorX ?? 0);
+      const dy = y - (mode.anchorY ?? 0);
+      return {
+        x: mode.x + (dx * cos - dy * sin) * s,
+        y: mode.y + (dx * sin + dy * cos) * s,
+      };
+    }
+
+    function aimLine(mode, suffix, x1, y1, x2, y2, stroke, width = 3) {
+      const start = aimPoint(mode, x1, y1);
+      const end = aimPoint(mode, x2, y2);
+      drawLine(`${mode.id}${suffix}`, start.x, start.y, end.x, end.y, stroke, width * aimScale(mode), 3, "DYNAMIC");
+    }
+
+    function aimCircle(mode, suffix, x, y, radius, stroke, width = 3) {
+      const center = aimPoint(mode, x, y);
+      drawCircle(`${mode.id}${suffix}`, center.x, center.y, radius * aimScale(mode), stroke, width * aimScale(mode), 3, "DYNAMIC");
+    }
+
+    function aimArc(mode, suffix, x, y, radius, startDeg, endDeg, stroke, width = 3) {
+      const center = aimPoint(mode, x, y);
+      drawArc(`${mode.id}${suffix}`, center.x, center.y, radius * aimScale(mode), startDeg + (mode.rot ?? 0), endDeg + (mode.rot ?? 0), stroke, width * aimScale(mode), 3, "DYNAMIC");
+    }
+
+    function aimMain(active) {
+      return active ? color.main : color.white;
+    }
+
+    function drawVehicleAim(mode, active) {
+      const main = aimMain(active);
+      const detail = color.white;
+      aimArc(mode, "V0", 0, 0, 25, 25, 125, main, 3);
+      aimArc(mode, "V1", 0, 0, 25, 205, 305, main, 3);
+      aimLine(mode, "V2", 0, 16, 16, 0, detail, 3);
+      aimLine(mode, "V3", 16, 0, 0, -16, detail, 3);
+      aimLine(mode, "V4", 0, -16, -16, 0, detail, 3);
+      aimLine(mode, "V5", -16, 0, 0, 16, detail, 3);
+      aimLine(mode, "V6", -24, 0, 24, 0, main, 2);
+      aimCircle(mode, "VC", 0, 0, 4, main, 2);
+    }
+
+    function drawAimFan(mode, active, phaseDeg) {
+      const blade = aimMain(active);
+      for (let i = 0; i < 5; i++) {
+        const angle = phaseDeg + i * 72;
+        aimArc(mode, `F${i}`, 0, 0, 19, angle - 17, angle + 17, blade, 5);
+      }
+      aimCircle(mode, "FC", 0, 0, 5, color.white, 2);
+    }
+
+    function drawEnergyStaticAim(mode, active) {
+      drawAimFan(mode, active, -90);
+      aimLine(mode, "B0", -11, -29, 11, -29, aimMain(active), 3);
+    }
+
+    function drawEnergySweepAim(mode, active) {
+      drawAimFan(mode, active, -54);
+      aimArc(mode, "R0", 0, 0, 30, 18, 120, aimMain(active), 3);
+      aimLine(mode, "A0", 27, 16, 34, 23, aimMain(active), 3);
+    }
+
+    function drawOutpostAim(mode, active) {
+      const main = aimMain(active);
+      const detail = color.white;
+      const mainWidth = active ? 6 : 3;
+      const coreWidth = active ? 4 : 2;
+      aimArc(mode, "P0", 0, 8, 17, 42, 138, main, mainWidth);
+      aimLine(mode, "P1", -10, 14, 10, 14, detail, 3);
+      aimLine(mode, "P2", 0, 18, 0, -18, detail, 3);
+      aimLine(mode, "P3", -15, -20, 0, 13, detail, 3);
+      aimLine(mode, "P4", 15, -20, 0, 13, detail, 3);
+      aimLine(mode, "P5", -19, -22, 19, -22, main, mainWidth);
+      aimCircle(mode, "PC", 0, 2, 5, main, coreWidth);
+    }
+
+    function aimTrackColor() {
+      if (aimState.value === "fire") return color.purple;
+      if (aimState.value === "locked") return color.green;
+      return color.pink;
+    }
+
+    function drawAutoAimStatus() {
+      const selected = Number(aimMode.value);
+      const trackColor = aimTrackColor();
+      const modes = [
+        { id: "AA0", x: 674, y: 575, size: 0.78, rot: 0, anchorY: 0, tickX0: 746, tickX1: 704, draw: drawVehicleAim },
+        { id: "AA1", x: 674, y: 465, size: 0.76, rot: 0, anchorY: -5, tickX0: 746, tickX1: 704, draw: drawEnergyStaticAim },
+        { id: "AA2", x: 1246, y: 465, size: 0.76, rot: 0, anchorX: 2, anchorY: 0, tickX0: 1174, tickX1: 1216, draw: drawEnergySweepAim },
+        { id: "AA3", x: 1246, y: 575, size: 0.78, rot: 0, anchorY: 1, tickX0: 1174, tickX1: 1216, draw: drawOutpostAim },
+      ];
+      drawLine("AAF0", 746, 420, 746, 620, trackColor, 2, 2);
+      drawLine("AAF1", 746, 620, 710, 644, trackColor, 2, 2);
+      drawLine("AAF2", 710, 644, 642, 644, color.white, 1, 2);
+      drawLine("AAF3", 746, 420, 710, 396, trackColor, 2, 2);
+      drawLine("AAF4", 710, 396, 642, 396, color.white, 1, 2);
+      drawLine("AAF5", 1174, 420, 1174, 620, trackColor, 2, 2);
+      drawLine("AAF6", 1174, 620, 1210, 644, trackColor, 2, 2);
+      drawLine("AAF7", 1210, 644, 1278, 644, color.white, 1, 2);
+      drawLine("AAF8", 1174, 420, 1210, 396, trackColor, 2, 2);
+      drawLine("AAF9", 1210, 396, 1278, 396, color.white, 1, 2);
+      modes.forEach((mode, index) => {
+        const tickColor = index === selected ? color.main : color.white;
+        drawLine(`AAT${index}`, mode.tickX0, mode.y, mode.tickX1, mode.y, tickColor, index === selected ? 3 : 1, 2, "DYNAMIC");
+      });
+      modes.forEach((mode, index) => mode.draw(mode, index === selected));
+    }
+
+    function drawBottomHud() {
+      drawHudBalanceFrame();
+      drawCentralLegInstrument();
+      drawSwitchDeck();
+      drawAutoAimStatus();
+    }
+
+    function commandBounds(cmd) {
+      const pad = Math.max(4, cmd.width + 2);
+      const args = cmd.args;
+      if (cmd.type === "Line") {
+        const x = Math.min(args.x1, args.x2) - pad;
+        const y = Math.min(args.y1, args.y2) - pad;
+        return { x, y, w: Math.abs(args.x2 - args.x1) + pad * 2, h: Math.abs(args.y2 - args.y1) + pad * 2 };
+      }
+      if (cmd.type === "Circle") {
+        const r = args.r + pad;
+        return { x: args.x - r, y: args.y - r, w: r * 2, h: r * 2 };
+      }
+      if (cmd.type === "Arc") {
+        let end = args.endDeg;
+        while (end < args.startDeg) end += 360;
+        const span = end - args.startDeg;
+        const steps = Math.max(8, Math.ceil(span / 4));
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        for (let i = 0; i <= steps; i++) {
+          const deg = args.startDeg + (span * i) / steps;
+          const point =
+            args.mode === "ref"
+              ? {
+                  x: args.x + args.rx * Math.sin((deg * Math.PI) / 180),
+                  y: args.y + args.ry * Math.cos((deg * Math.PI) / 180),
+                }
+              : ellipsePoint(args.x, args.y, args.rx, args.ry, deg);
+          minX = Math.min(minX, point.x - pad);
+          minY = Math.min(minY, point.y - pad);
+          maxX = Math.max(maxX, point.x + pad);
+          maxY = Math.max(maxY, point.y + pad);
+        }
+        return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+      }
+      if (cmd.type === "Float") {
+        const size = args.size || 16;
+        const w = String(formatVoltage(args.value)).length * size * 0.62;
+        return { x: args.x - w / 2 - pad, y: args.y - size / 2 - pad, w: w + pad * 2, h: size + pad * 2 };
+      }
+      return null;
+    }
+
+    function placementSafe() {
+      return !commands.some((cmd) => {
+        const bounds = commandBounds(cmd);
+        return bounds && clientMaskRects.some((rect) => intersects(bounds, rect));
+      });
+    }
+
+    function copyCommand(cmd) {
+      return { ...cmd, args: { ...cmd.args } };
+    }
+
+    function pendingQueueLength() {
+      return uiQueue.pending.length - uiQueue.head;
+    }
+
+    function compactQueue() {
+      if (uiQueue.head > 1024 && uiQueue.head * 2 > uiQueue.pending.length) {
+        uiQueue.pending = uiQueue.pending.slice(uiQueue.head);
+        uiQueue.head = 0;
+      }
+    }
+
+    function enqueueCommands(label, predicate, timestamp) {
+      const batch = commands.filter(predicate);
+      if (!batch.length) return 0;
+      batch.forEach((cmd) => {
+        uiQueue.pending.push({ label, queuedAt: timestamp, command: copyCommand(cmd) });
+      });
+      uiQueue.enqueuedTotal += batch.length;
+      uiQueue.lastEvent = `${label} +${batch.length}`;
+      return batch.length;
+    }
+
+    function isRealTimeCommand(cmd) {
+      return cmd.name === "CL0" || cmd.name === "CR0" || cmd.name === "CV0" || /^[LR]G[0-4]$/.test(cmd.name);
+    }
+
+    function enqueueAimMode(index, timestamp) {
+      const prefix = `AA${index}`;
+      return enqueueCommands(`AIM${index}`, (cmd) => cmd.name.startsWith(prefix) || cmd.name === `AAT${index}`, timestamp);
+    }
+
+    function enqueueSwitchModule(index, timestamp) {
+      const prefix = switchIds[index];
+      return enqueueCommands(`SW${index}`, (cmd) => cmd.name.startsWith(prefix), timestamp);
+    }
+
+    function enqueueTargetTrack(timestamp) {
+      return enqueueCommands("TARGET", (cmd) => targetTrackIds.has(cmd.name), timestamp);
+    }
+
+    function initializeQueue(timestamp) {
+      uiQueue.visible.clear();
+      commands.forEach((cmd) => uiQueue.visible.set(cmd.name, copyCommand(cmd)));
+      uiQueue.pending = [];
+      uiQueue.head = 0;
+      uiQueue.initialized = true;
+      uiQueue.lastDrainAt = timestamp;
+      uiQueue.nextRealTimeAt = timestamp + realTimePeriodMs;
+      uiQueue.nextAimAt = timestamp + slowUpdatePeriodMs;
+      uiQueue.nextSwitchAt = timestamp + slowUpdatePeriodMs;
+      uiQueue.nextTargetAt = timestamp + targetStatePeriodMs;
+      uiQueue.aimCursor = Number(aimMode.value) || 0;
+      uiQueue.switchCursor = 0;
+      uiQueue.targetCursor = targetStateCycle.indexOf(aimState.value);
+      if (uiQueue.targetCursor < 0) uiQueue.targetCursor = 0;
+      uiQueue.enqueuedTotal = 0;
+      uiQueue.sentTotal = 0;
+      uiQueue.sampleAt = timestamp;
+      uiQueue.sampleEnqueued = 0;
+      uiQueue.sampleSent = 0;
+      uiQueue.inputRate = 0;
+      uiQueue.outputRate = 0;
+      uiQueue.lastEvent = "INIT";
+    }
+
+    function updateSlowSignals(timestamp) {
+      if (!uiQueue.initialized) return;
+      while (timestamp >= uiQueue.nextAimAt) {
+        const nextAim = uiQueue.aimCursor % 4;
+        aimMode.value = String(nextAim);
+        uiQueue.pendingAimUpdates.push(nextAim);
+        uiQueue.aimCursor = (uiQueue.aimCursor + 1) % 4;
+        uiQueue.nextAimAt += slowUpdatePeriodMs;
+      }
+
+      while (timestamp >= uiQueue.nextSwitchAt) {
+        const nextSwitch = uiQueue.switchCursor % switchControls.length;
+        switchControls[nextSwitch].checked = !switchControls[nextSwitch].checked;
+        uiQueue.pendingSwitchUpdates.push(nextSwitch);
+        uiQueue.switchCursor = (uiQueue.switchCursor + 1) % switchControls.length;
+        uiQueue.nextSwitchAt += slowUpdatePeriodMs;
+      }
+
+      while (timestamp >= uiQueue.nextTargetAt) {
+        uiQueue.targetCursor = (uiQueue.targetCursor + 1) % targetStateCycle.length;
+        aimState.value = targetStateCycle[uiQueue.targetCursor];
+        uiQueue.pendingTargetUpdate = true;
+        uiQueue.nextTargetAt += targetStatePeriodMs;
+      }
+    }
+
+    function pumpQueue(timestamp) {
+      if (!uiQueue.initialized) initializeQueue(timestamp);
+
+      while (timestamp >= uiQueue.nextRealTimeAt) {
+        enqueueCommands("RT", isRealTimeCommand, uiQueue.nextRealTimeAt);
+        uiQueue.nextRealTimeAt += realTimePeriodMs;
+      }
+
+      uiQueue.pendingAimUpdates.forEach((index) => enqueueAimMode(index, timestamp));
+      uiQueue.pendingSwitchUpdates.forEach((index) => enqueueSwitchModule(index, timestamp));
+      if (uiQueue.pendingTargetUpdate) enqueueTargetTrack(timestamp);
+      uiQueue.pendingAimUpdates = [];
+      uiQueue.pendingSwitchUpdates = [];
+      uiQueue.pendingTargetUpdate = false;
+
+      while (timestamp - uiQueue.lastDrainAt >= queuePeriodMs) {
+        let sent = 0;
+        while (sent < queueBatchSize && uiQueue.head < uiQueue.pending.length) {
+          const item = uiQueue.pending[uiQueue.head++];
+          uiQueue.visible.set(item.command.name, item.command);
+          sent += 1;
+        }
+        uiQueue.sentTotal += sent;
+        uiQueue.lastDrainAt += queuePeriodMs;
+      }
+      compactQueue();
+
+      if (timestamp - uiQueue.sampleAt >= 1000) {
+        const elapsed = timestamp - uiQueue.sampleAt;
+        uiQueue.inputRate = ((uiQueue.enqueuedTotal - uiQueue.sampleEnqueued) * 1000) / elapsed;
+        uiQueue.outputRate = ((uiQueue.sentTotal - uiQueue.sampleSent) * 1000) / elapsed;
+        uiQueue.sampleAt = timestamp;
+        uiQueue.sampleEnqueued = uiQueue.enqueuedTotal;
+        uiQueue.sampleSent = uiQueue.sentTotal;
+      }
+    }
+
+    function renderVisibleCommands() {
+      commands.forEach((cmd) => {
+        const visible = uiQueue.visible.get(cmd.name);
+        if (!visible) return;
+        if (visible.type === "Line") {
+          const args = visible.args;
+          paintLine(args.x1, args.y1, args.x2, args.y2, visible.color, visible.width);
+        } else if (visible.type === "Circle") {
+          const args = visible.args;
+          paintCircle(args.x, args.y, args.r, visible.color, visible.width);
+        } else if (visible.type === "Arc") {
+          const args = visible.args;
+          if (args.mode === "ref") paintRefArc(args.x, args.y, args.rx, args.ry, args.startDeg, args.endDeg, visible.color, visible.width);
+          else paintEllipseArc(args.x, args.y, args.rx, args.ry, args.startDeg, args.endDeg, visible.color, visible.width);
+        } else if (visible.type === "Float") {
+          const args = visible.args;
+          paintFloat(args.value, args.x, args.y, args.size, visible.color);
+        }
+      });
+    }
+
+    function countCommands(predicate) {
+      return commands.filter(predicate).length;
+    }
+
+    function expectedQueueInputRate() {
+      const realTimeRate = (countCommands(isRealTimeCommand) * 1000) / realTimePeriodMs;
+      const aimRate =
+        [0, 1, 2, 3].reduce((sum, index) => {
+          const prefix = `AA${index}`;
+          return sum + countCommands((cmd) => cmd.name.startsWith(prefix) || cmd.name === `AAT${index}`);
+        }, 0) / 4;
+      const switchRate =
+        switchIds.reduce((sum, prefix) => sum + countCommands((cmd) => cmd.name.startsWith(prefix)), 0) / switchIds.length;
+      const targetRate = countCommands((cmd) => targetTrackIds.has(cmd.name)) / (targetStatePeriodMs / 1000);
+      return realTimeRate + aimRate + switchRate + targetRate;
+    }
+
+    function drawQueueStatus() {
+      const pending = pendingQueueLength();
+      const expectedInput = expectedQueueInputRate();
+      const overload = expectedInput > linkCapacityPerSecond + 1 || pending > 256;
+      queueDrainStatus.textContent = `${queueBatchSize} / ${queuePeriodMs}ms`;
+      queuePendingStatus.textContent = String(pending);
+      queueRateStatus.textContent = `${expectedInput.toFixed(0)} need / ${linkCapacityPerSecond.toFixed(0)} cap`;
+      queueLoadStatus.textContent = overload ? "BACKLOG" : "OK";
+      queueLoadStatus.style.color = overload ? "var(--pink)" : "var(--green)";
+      queueLastStatus.textContent = uiQueue.lastEvent;
+    }
+
+    function drawCommandList() {
+      commandList.innerHTML = "";
+      const title = document.createElement("h2");
+      title.textContent = "Primitive Groups";
+      commandList.appendChild(title);
+      [
+        [
+          "CAP",
+          commands.filter(
+            (cmd) =>
+              cmd.name.startsWith("CT") ||
+              cmd.name.startsWith("TK") ||
+              cmd.name === "CL0" ||
+              cmd.name === "CR0" ||
+              cmd.name === "CV0",
+          ).length,
+        ],
+        ["EMBLEM", commands.filter((cmd) => cmd.name.startsWith("SE")).length],
+        ["SWITCH", commands.filter((cmd) => cmd.name.startsWith("SW")).length],
+        ["LEG", commands.filter((cmd) => cmd.name.startsWith("CG") || cmd.name.startsWith("LG") || cmd.name.startsWith("RG")).length],
+        ["AIM", commands.filter((cmd) => cmd.name.startsWith("AA")).length],
+        ["DYNAMIC", commands.filter((cmd) => cmd.scope === "DYNAMIC").length],
+      ].forEach(([name, count]) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${name}</code><span>integrated HUD</span><span>${count}</span>`;
+        commandList.appendChild(row);
+      });
+    }
+
+    function draw(timestamp = performance.now()) {
+      updateSlowSignals(timestamp);
+      commands = [];
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      drawForbiddenPreview();
+
+      captureOnly = true;
+      drawSchoolEmblem();
+      drawCapacitorVoltage();
+      drawBottomHud();
+      captureOnly = false;
+
+      if (!uiQueue.initialized) initializeQueue(timestamp);
+      pumpQueue(timestamp);
+      renderVisibleCommands();
+      drawCommandList();
+      drawQueueStatus();
+      const safe = placementSafe();
+      referenceStatus.textContent = `${safe ? "SAFE" : "CHECK"} / 24+25`;
+      referenceStatus.style.color = safe ? "var(--green)" : "var(--pink)";
+      primitiveStatus.textContent = `${commands.length} total`;
+    }
+
+    function applyPreset(name) {
+      preset = name;
+      const next =
+        {
+          base: { voltage: 17.5, aim: 0, aimState: "none", switches: [true, false, true, false] },
+          match: { voltage: 22.5, aim: 2, aimState: "locked", switches: [true, false, true, false] },
+          combat: { voltage: 25.8, aim: 3, aimState: "fire", switches: [true, true, true, true] },
+        }[name] ?? { voltage: 22.5, aim: 2, aimState: "locked", switches: [true, false, true, false] };
+      voltageSlider.value = String(next.voltage);
+      aimMode.value = String(next.aim);
+      aimState.value = next.aimState;
+      capSwitch.checked = Boolean(next.switches[0]);
+      turboSwitch.checked = Boolean(next.switches[1]);
+      feederSwitch.checked = Boolean(next.switches[2]);
+      spinSwitch.checked = Boolean(next.switches[3]);
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.preset === preset);
+      });
+      uiQueue.initialized = false;
+      draw();
+    }
+
+    document.querySelectorAll("[data-preset]").forEach((button) => {
+      button.addEventListener("click", () => applyPreset(button.dataset.preset));
+    });
+    [gridMode, maskToggle, voltageSlider, aimMode, aimState, capSwitch, turboSwitch, feederSwitch, spinSwitch].forEach((control) => {
+      control.addEventListener("input", draw);
+      control.addEventListener("change", draw);
+    });
+
+    applyPreset(preset);
+    function animate(timestamp) {
+      if (!lastFrameTime) lastFrameTime = timestamp;
+      const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.05);
+      lastFrameTime = timestamp;
+      autoTime += dt;
+      legWidget.phase += dt * ((Math.PI * 2) / 3.2);
+      if (preset === "combat") {
+        voltageSlider.value = String((20 + 5.8 * (0.5 + 0.5 * Math.sin(autoTime * 0.9))).toFixed(1));
+      }
+      draw(timestamp);
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RM July 2024 UI</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #191c22;
+      --panel-2: #12151a;
+      --line: #303642;
+      --text: #e8edf2;
+      --muted: #95a2b0;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+      --pink: #ff5fa2;
+      --amber: #ffbc3d;
+      --red: #ff5d6c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.42 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .left {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .toolbar,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    .title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .title strong {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    select,
+    input[type="number"] {
+      border: 1px solid #414856;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 11px;
+      min-height: 36px;
+      font: inherit;
+    }
+
+    button {
+      min-width: 72px;
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover,
+    input[type="number"]:hover {
+      border-color: #687486;
+    }
+
+    button.active {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(57, 215, 255, 0.45);
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 104px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+    }
+
+    .group {
+      border: 1px solid #2b313b;
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #cdd6df;
+    }
+
+    .fields {
+      display: grid;
+      gap: 8px;
+    }
+
+    label,
+    .status {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--cyan);
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--cyan);
+    }
+
+    .status strong {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .command-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 66px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid #2c333e;
+      border-radius: 6px;
+      background: #171a20;
+      color: #cbd5df;
+      font-size: 12px;
+    }
+
+    .command code {
+      color: #dce6ef;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        overflow: auto;
+      }
+
+      main {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        grid-template-rows: auto;
+      }
+    }
+
+    @media (max-width: 680px) {
+      main {
+        padding: 10px;
+      }
+
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .title {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 2px;
+        white-space: normal;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+      }
+
+      button {
+        min-width: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="left">
+      <div class="toolbar">
+        <div class="title">
+          <strong>RM July 2024 UI</strong>
+          <span>rm 3504a9b4 / chassis referee UI</span>
+        </div>
+        <div class="controls" role="group" aria-label="Aim mode">
+          <button data-mode="0" class="active">Manual</button>
+          <button data-mode="1">Auto</button>
+          <button data-mode="2">Small</button>
+          <button data-mode="3">Big</button>
+        </div>
+      </div>
+
+      <div class="stage">
+        <canvas id="preview" width="1920" height="1080"></canvas>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="group">
+        <h2>View</h2>
+        <div class="fields">
+          <label>
+            Grid
+            <select id="gridMode">
+              <option value="origin">Axes</option>
+              <option value="full">Full</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label>
+            Mask
+            <input id="maskToggle" type="checkbox" checked />
+          </label>
+          <label>
+            Team
+            <select id="teamColor">
+              <option value="cyan">Blue</option>
+              <option value="pink">Red</option>
+            </select>
+          </label>
+          <div class="status">
+            Source
+            <strong>2024-07-31</strong>
+          </div>
+          <div class="status">
+            Budget
+            <strong id="budgetStatus">0 GFX</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Runtime</h2>
+        <div class="fields">
+          <label>
+            Voltage
+            <input id="voltageInput" type="number" min="8" max="26" step="0.5" value="24.5" />
+          </label>
+          <label>
+            Angle
+            <input id="angleInput" type="range" min="-180" max="180" step="1" value="28" />
+          </label>
+          <label>
+            Super
+            <input id="superToggle" type="checkbox" checked />
+          </label>
+          <label>
+            Gyro
+            <input id="gyroToggle" type="checkbox" />
+          </label>
+          <label>
+            Fire
+            <input id="fireToggle" type="checkbox" checked />
+          </label>
+          <label>
+            Cap
+            <input id="capToggle" type="checkbox" checked />
+          </label>
+          <label>
+            Cap Err
+            <input id="capErrToggle" type="checkbox" />
+          </label>
+          <label>
+            Contact
+            <input id="contactToggle" type="checkbox" />
+          </label>
+        </div>
+      </section>
+
+      <section class="group command-list" id="commandList" aria-label="Primitive groups"></section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const commandList = document.getElementById("commandList");
+    const gridMode = document.getElementById("gridMode");
+    const maskToggle = document.getElementById("maskToggle");
+    const teamColor = document.getElementById("teamColor");
+    const budgetStatus = document.getElementById("budgetStatus");
+    const voltageInput = document.getElementById("voltageInput");
+    const angleInput = document.getElementById("angleInput");
+    const superToggle = document.getElementById("superToggle");
+    const gyroToggle = document.getElementById("gyroToggle");
+    const fireToggle = document.getElementById("fireToggle");
+    const capToggle = document.getElementById("capToggle");
+    const capErrToggle = document.getElementById("capErrToggle");
+    const contactToggle = document.getElementById("contactToggle");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const PI = Math.PI;
+
+    const rmColors = {
+      main: "#39d7ff",
+      yellow: "#f7df4f",
+      green: "#49e66f",
+      orange: "#ff9d3d",
+      purple: "#a66cff",
+      pink: "#ff5fa2",
+      cyan: "#39d7ff",
+      black: "#07080a",
+      white: "#e8edf2",
+    };
+
+    const clientMaskRects = [
+      { id: "TOP", x: 0, y: 925, w: 1920, h: 155 },
+      { id: "LEFT_MAIN", x: 0, y: 0, w: 422, h: 516 },
+      { id: "LEFT_STEP", x: 422, y: 0, w: 82, h: 258 },
+      { id: "LEFT_FLOAT", x: 473, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_FLOAT", x: 1357, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_MAIN", x: 1461, y: 0, w: 459, h: 333 },
+    ];
+
+    let mode = Number(new URLSearchParams(location.search).get("mode") ?? 0);
+    let commands = [];
+
+    function by(y) {
+      return H - y;
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(Number(value) || 0, min), max);
+    }
+
+    function color(name) {
+      if (name === "main") return teamColor.value === "pink" ? rmColors.pink : rmColors.cyan;
+      return rmColors[name] || name;
+    }
+
+    function push(group, type, name, layer, stroke, width, args) {
+      commands.push({ group, type, name, layer, stroke, width, args });
+    }
+
+    function line(group, name, stroke, width, x1, y1, x2, y2, layer = 0) {
+      push(group, "Line", name, layer, stroke, width, { x1, y1, x2, y2 });
+    }
+
+    function circle(group, name, stroke, width, x, y, r, layer = 0) {
+      push(group, "Circle", name, layer, stroke, width, { x, y, r });
+    }
+
+    function ellipse(group, name, stroke, width, x, y, rx, ry, layer = 0) {
+      push(group, "Ellipse", name, layer, stroke, width, { x, y, rx, ry });
+    }
+
+    function arc(group, name, stroke, width, start, end, x, y, rx, ry, layer = 0) {
+      push(group, "Arc", name, layer, stroke, width, { start, end, x, y, rx, ry });
+    }
+
+    function rect(group, name, stroke, width, x1, y1, x2, y2, layer = 0) {
+      push(group, "Rect", name, layer, stroke, width, { x1, y1, x2, y2 });
+    }
+
+    function text(group, name, stroke, size, width, x, y, value, layer = 0) {
+      push(group, "Text", name, layer, stroke, width, { x, y, value, size });
+    }
+
+    function arcPoint(args, deg) {
+      const rad = (deg * PI) / 180;
+      return {
+        x: args.x + args.rx * Math.sin(rad),
+        y: args.y + args.ry * Math.cos(rad),
+      };
+    }
+
+    function drawPrimitive(cmd) {
+      const stroke = color(cmd.stroke);
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.fillStyle = stroke;
+      ctx.lineWidth = Math.max(1, cmd.width);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      if (cmd.type === "Line") {
+        ctx.beginPath();
+        ctx.moveTo(cmd.args.x1, by(cmd.args.y1));
+        ctx.lineTo(cmd.args.x2, by(cmd.args.y2));
+        ctx.stroke();
+      } else if (cmd.type === "Circle") {
+        ctx.beginPath();
+        ctx.arc(cmd.args.x, by(cmd.args.y), cmd.args.r, 0, PI * 2);
+        ctx.stroke();
+      } else if (cmd.type === "Ellipse") {
+        ctx.beginPath();
+        ctx.ellipse(cmd.args.x, by(cmd.args.y), cmd.args.rx, cmd.args.ry, 0, 0, PI * 2);
+        ctx.stroke();
+      } else if (cmd.type === "Arc") {
+        let end = cmd.args.end;
+        while (end < cmd.args.start) end += 360;
+        const span = end - cmd.args.start;
+        const steps = Math.max(10, Math.ceil(span / 3));
+        ctx.beginPath();
+        for (let i = 0; i <= steps; i++) {
+          const p = arcPoint(cmd.args, cmd.args.start + (span * i) / steps);
+          if (i === 0) ctx.moveTo(p.x, by(p.y));
+          else ctx.lineTo(p.x, by(p.y));
+        }
+        ctx.stroke();
+      } else if (cmd.type === "Rect") {
+        const x = Math.min(cmd.args.x1, cmd.args.x2);
+        const y = Math.min(cmd.args.y1, cmd.args.y2);
+        const w = Math.abs(cmd.args.x2 - cmd.args.x1);
+        const h = Math.abs(cmd.args.y2 - cmd.args.y1);
+        ctx.strokeRect(x, by(y + h), w, h);
+      } else if (cmd.type === "Text") {
+        ctx.font = `700 ${Math.max(10, cmd.args.size)}px 'Cascadia Mono', Consolas, monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(cmd.args.value), cmd.args.x, by(cmd.args.y));
+      }
+
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      if (gridMode.value === "off") return;
+      ctx.save();
+      if (gridMode.value === "full") {
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 120) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= H; y += 90) {
+          ctx.beginPath();
+          ctx.moveTo(0, by(y));
+          ctx.lineTo(W, by(y));
+          ctx.stroke();
+        }
+      }
+
+      ctx.strokeStyle = "rgba(57,215,255,0.45)";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(220, by(72));
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(72, by(220));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawMask() {
+      if (!maskToggle.checked) return;
+      ctx.save();
+      clientMaskRects.forEach((rect) => {
+        ctx.fillStyle = "rgba(150,150,150,0.26)";
+        ctx.strokeStyle = "rgba(175,175,175,0.34)";
+        ctx.lineWidth = 2;
+        ctx.fillRect(rect.x, by(rect.y + rect.h), rect.w, rect.h);
+        ctx.strokeRect(rect.x, by(rect.y + rect.h), rect.w, rect.h);
+      });
+      ctx.restore();
+    }
+
+    function emitOuterLine() {
+      const k1 = -0.3;
+      const k2 = 0.3;
+      const b1 = 980;
+      const b2 = 404;
+      const b3 = 100;
+      const b4 = 676;
+      const x1 = 250;
+      const x2 = 650;
+      const x3 = 1270;
+      const x4 = 1500;
+      line("OUTER", "001", "white", 2, x1, k1 * x1 + b1, x2, k1 * x2 + b1);
+      line("OUTER", "002", "white", 5, x2, k1 * x2 + b1, x2, 750);
+      line("OUTER", "003", "white", 2, x3, k2 * x3 + b2, x4, k2 * x4 + b2);
+      line("OUTER", "004", "white", 5, x3, k2 * x3 + b2, x3, 750);
+      line("OUTER", "005", "white", 2, x1, k2 * x1 + b3, x2, x2 * k2 + b3);
+      line("OUTER", "006", "white", 2, x3, k1 * x3 + b4, x4, x4 * k1 + b4);
+    }
+
+    function emitAimIcon(kind, cx, cy, active) {
+      const stroke = active ? "cyan" : "white";
+      if (kind === 0) {
+        const r = active ? 14 : 10;
+        circle("AIM", "a04", stroke, 0.2 * r, cx, cy, r);
+        line("AIM", "a05", stroke, 0.9 * r, cx + 0.2 * r, cy - 1.8 * r, cx + 1.8 * r, cy - 0.2 * r);
+        line("AIM", "a06", stroke, 0.5 * r, cx - 0.1 * r, cy - 1.8 * r, cx - 0.95 * r, cy - 0.95 * r);
+        line("AIM", "a07", stroke, 0.5 * r, cx + 0.95 * r, cy + 0.95 * r, cx + 1.8 * r, cy + 0.1 * r);
+        line("AIM", "a08", stroke, 0.2 * r, cx, cy, cx + 0.7 * r, cy - 0.7 * r);
+      } else if (kind === 1) {
+        const r = active ? 18 : 15;
+        circle("AIM", "a09", stroke, 0.3 * r, cx, cy, r);
+        line("AIM", "a11", stroke, 0.2 * r, cx - r, cy, cx - 0.3 * r, cy);
+        line("AIM", "a12", stroke, 0.2 * r, cx + r, cy, cx + 0.3 * r, cy);
+        line("AIM", "a13", stroke, 0.2 * r, cx, cy - r, cx, cy - 0.3 * r);
+        line("AIM", "a14", stroke, 0.2 * r, cx, cy + r, cx, cy + 0.3 * r);
+      } else if (kind === 2) {
+        const r = active ? 18 : 15;
+        circle("AIM", "a15", stroke, 0.2 * r, cx, cy, r);
+        circle("AIM", "a16", stroke, 0.2 * r, cx, cy, 0.1 * r);
+      } else {
+        const r = active ? 18 : 15;
+        circle("AIM", "a17", stroke, 0.2 * r, cx, cy, r);
+        circle("AIM", "a18", stroke, 0.1 * r, cx, cy, 0.4 * r);
+      }
+    }
+
+    function emitAimSign() {
+      const px = 300;
+      const py = 840;
+      const k = -0.25;
+      const staticB = py - px * k;
+      const startX1 = px - 165;
+      const startX2 = px + 30;
+      const endX1 = px - 145;
+      const endX2 = px + 50;
+      line("AIM", "a01", "white", 2, px, py + 25, px, py - 25);
+      line("AIM", "a02", "white", 20, startX1, k * startX1 + staticB, endX1, k * endX1 + staticB);
+      line("AIM", "a03", "white", 20, startX2, k * startX2 + staticB, endX2, k * endX2 + staticB);
+      text("AIM", "a19", "black", 24, 1, startX1 + 5, k * (startX1 - 15) + staticB, "B");
+      text("AIM", "a20", "black", 24, 1, startX2 + 5, k * (startX2 - 15) + staticB, "C");
+
+      const b = 840 - px * k;
+      const xs = [px - 115, px - 40, px + 80, px + 155];
+      const ys = xs.map((x) => k * x + b);
+      emitAimIcon(3, xs[0], ys[0], mode === 3);
+      emitAimIcon(2, xs[1], ys[1], mode === 2);
+      emitAimIcon(1, xs[2], ys[2], mode === 1);
+      emitAimIcon(0, xs[3], ys[3], mode === 0);
+
+      const idx = 3 - mode;
+      line("AIM", "a21", "cyan", 2, xs[idx] - 25, k * (xs[idx] - 25) + b - 10, xs[idx] - 25, k * (xs[idx] - 25) + b - 35);
+      line("AIM", "a22", "cyan", 5, xs[idx] - 25, k * (xs[idx] - 25) + b - 35, xs[idx] + 25, k * (xs[idx] + 25) + b - 35);
+      line("AIM", "a23", "cyan", 2, xs[idx] + 25, k * (xs[idx] + 25) + b - 10, xs[idx] + 25, k * (xs[idx] + 25) + b - 35);
+    }
+
+    function emitSight() {
+      const cx = 960;
+      const cy = 540;
+      line("SIGHT", "i01", "white", 2, cx - 40, cy + 6, cx - 23, cy + 6);
+      line("SIGHT", "i02", "white", 3, cx - 23, cy + 6, cx - 15, cy + 15);
+      line("SIGHT", "i03", "white", 3, cx - 15, cy + 15, cx - 11, cy + 15);
+      line("SIGHT", "i04", "white", 2, cx - 40, cy - 6, cx - 23, cy - 6);
+      line("SIGHT", "i05", "white", 3, cx - 23, cy - 6, cx - 15, cy - 15);
+      line("SIGHT", "i06", "white", 3, cx - 15, cy - 15, cx - 11, cy - 15);
+      line("SIGHT", "i07", "white", 2, cx + 40, cy + 6, cx + 23, cy + 6);
+      line("SIGHT", "i08", "white", 3, cx + 23, cy + 6, cx + 15, cy + 15);
+      line("SIGHT", "i09", "white", 3, cx + 15, cy + 15, cx + 11, cy + 15);
+      line("SIGHT", "i10", "white", 2, cx + 40, cy - 6, cx + 23, cy - 6);
+      line("SIGHT", "i11", "white", 3, cx + 23, cy - 6, cx + 15, cy - 15);
+      line("SIGHT", "i12", "white", 3, cx + 15, cy - 15, cx + 11, cy - 15);
+
+      const fire = fireToggle.checked ? 1 : 0;
+      const reticle = fire ? "yellow" : "pink";
+      const secondary = fire ? "white" : "pink";
+      if (mode === 0) {
+        arc("SIGHT", "i13", reticle, 2, 220, 320, cx, cy, 13 + fire * 4, 10 + fire * 2, 1);
+        arc("SIGHT", "i14", reticle, 2, 40, 140, cx, cy, 13 + fire * 4, 10 + fire * 2, 1);
+        line("SIGHT", "i15", secondary, 1, cx - 5, cy + 4, cx + 5, cy - 4, 1);
+        line("SIGHT", "i16", secondary, 1, cx + 5, cy + 4, cx - 5, cy - 4, 1);
+      } else if (mode === 1) {
+        line("SIGHT", "i13", reticle, 2, cx - 3, cy + 7 + fire, cx - 8, cy + 2 + fire, 1);
+        line("SIGHT", "i14", reticle, 2, cx + 3, cy + 7 + fire, cx + 8, cy + 2 + fire, 1);
+        line("SIGHT", "i15", reticle, 2, cx - 3, cy - 7 - fire, cx - 8, cy - 2 - fire, 1);
+        line("SIGHT", "i16", reticle, 2, cx + 3, cy - 7 - fire, cx + 8, cy - 2 - fire, 1);
+      } else {
+        arc("SIGHT", "i13", reticle, 2, 270, 360, cx - fire * 3, cy + fire * 3, 8, 8, 1);
+        arc("SIGHT", "i14", reticle, 2, 0, 90, cx + fire * 3, cy + fire * 3, 8, 8, 1);
+        arc("SIGHT", "i15", reticle, 2, 90, 180, cx + fire * 3, cy - fire * 3, 8, 8, 1);
+        arc("SIGHT", "i16", reticle, 2, 180, 270, cx - fire * 3, cy - fire * 3, 8, 8, 1);
+        if (mode === 3) circle("SIGHT", "i17", "pink", 2, cx, cy, 2 + fire, 1);
+      }
+    }
+
+    function emitCampInstructor() {
+      const x = 960;
+      const y = 150;
+      arc("CAMP", "c01", "main", 3, 130, 210, x - 14, y + 20, 20, 20);
+      arc("CAMP", "c02", "main", 3, 155, 225, x + 14, y + 20, 20, 20);
+      arc("CAMP", "c03", "main", 3, 298, 315, x + 3, y - 55, 40, 80);
+      arc("CAMP", "c04", "main", 3, 43, 62, x - 3, y - 55, 40, 80);
+      arc("CAMP", "c05", "main", 3, 15, 180, x - 35, y - 25, 10, 7);
+      arc("CAMP", "c06", "main", 3, 180, 345, x + 35, y - 25, 10, 7);
+      arc("CAMP", "c07", "main", 3, 230, 270, x + 7, y - 33, 40, 40);
+      arc("CAMP", "c08", "main", 3, 90, 130, x - 7, y - 33, 40, 40);
+      arc("CAMP", "c09", "main", 3, 217, 230, x + 91, y + 18, 150, 120);
+      arc("CAMP", "c10", "main", 3, 130, 143, x - 91, y + 18, 150, 120);
+      arc("CAMP", "c11", "white", 3, 33, 327, x, y - 70, 40, 15);
+      arc("CAMP", "c12", "white", 3, 33, 327, x, y - 76, 50, 23);
+      line("CAMP", "c13", "white", 3, x - 20, y - 25, x - 6, y - 25);
+      line("CAMP", "c14", "white", 3, x - 13, y - 25, x - 13, y - 45);
+      line("CAMP", "c15", "white", 3, x, y - 23, x, y - 40);
+      arc("CAMP", "c16", "white", 3, 80, 250, x - 5, y - 40, 5, 5);
+      line("CAMP", "c17", "white", 3, x + 6, y - 23, x + 6, y - 40);
+      line("CAMP", "c18", "white", 4, x + 20, y - 23, x + 20, y - 40);
+      arc("CAMP", "c19", "white", 3, 80, 280, x + 13, y - 40, 7, 5);
+    }
+
+    function emitRushLogo(cx, cy) {
+      line("FUNC", "r01", "green", 10, cx - 32, cy + 12, cx - 12, cy - 2);
+      line("FUNC", "r02", "green", 10, cx - 32, cy - 12, cx - 12, cy + 2);
+      line("FUNC", "r03", "orange", 10, cx, cy, cx - 30, cy + 20);
+      line("FUNC", "r04", "orange", 10, cx, cy, cx - 30, cy - 20);
+      line("FUNC", "r05", "pink", 10, cx - 18, cy + 20, cx + 12, cy - 3);
+      line("FUNC", "r06", "pink", 10, cx - 18, cy - 20, cx + 12, cy + 3);
+    }
+
+    function emitGyroLogo(cx, cy) {
+      circle("FUNC", "g16", "purple", 20, cx, cy, 15);
+      let angle = 0;
+      arc("FUNC", "g17", "white", 3, 300, 120, cx + 8 * Math.cos(angle), cy + 8 * Math.sin(angle), 18, 18);
+      angle += (2 * PI) / 3;
+      arc("FUNC", "g18", "white", 3, 180, 360, cx + 8 * Math.cos(angle), cy + 8 * Math.sin(angle), 18, 18);
+      angle += (2 * PI) / 3;
+      arc("FUNC", "g19", "white", 3, 60, 240, cx + 8 * Math.cos(angle), cy + 8 * Math.sin(angle), 18, 18);
+    }
+
+    function emitFireLogo(cx, cy) {
+      line("FUNC", "f00", "yellow", 15, cx, cy + 10, cx - 10, cy - 20);
+      line("FUNC", "f01", "yellow", 15, cx - 10, cy - 20, cx + 10, cy - 20);
+      line("FUNC", "f02", "yellow", 15, cx + 10, cy - 20, cx, cy + 10);
+      cy += 10;
+      arc("FUNC", "f03", "pink", 5, 270, 335, cx + 4, cy, 7, 15);
+      arc("FUNC", "f04", "pink", 5, 25, 90, cx - 4, cy, 7, 15);
+      line("FUNC", "f05", "pink", 10, cx, cy + 5, cx, cy - 15);
+      cx -= 10;
+      cy -= 30;
+      arc("FUNC", "f06", "pink", 5, 270, 335, cx + 4, cy, 7, 15);
+      arc("FUNC", "f07", "pink", 5, 25, 90, cx - 4, cy, 7, 15);
+      line("FUNC", "f08", "pink", 10, cx, cy + 5, cx, cy - 15);
+      cx += 20;
+      arc("FUNC", "f09", "pink", 5, 270, 335, cx + 4, cy, 7, 15);
+      arc("FUNC", "f10", "pink", 5, 25, 90, cx - 4, cy, 7, 15);
+      line("FUNC", "f11", "pink", 10, cx, cy + 5, cx, cy - 15);
+    }
+
+    function emitCapLogo(cx, cy) {
+      line("FUNC", "p01", "green", 40, cx - 20, cy, cx + 20, cy);
+      line("FUNC", "p02", "white", 7, cx - 25, cy + 15, cx + 25, cy + 15);
+      line("FUNC", "p03", "white", 7, cx - 25, cy - 15, cx + 25, cy - 15);
+      rect("FUNC", "p04", "white", 2, cx - 10, cy + 25, cx - 15, cy + 20);
+      rect("FUNC", "p05", "white", 2, cx + 10, cy + 25, cx + 15, cy + 20);
+      line("FUNC", "p06", "yellow", 2, cx, cy + 10, cx - 10, cy);
+      line("FUNC", "p07", "yellow", 2, cx - 10, cy, cx + 5, cy - 5);
+      line("FUNC", "p08", "yellow", 2, cx + 5, cy - 5, cx, cy - 10);
+      line("FUNC", "p09", "yellow", 2, cx, cy + 10, cx - 5, cy + 5);
+      line("FUNC", "p10", "yellow", 2, cx - 5, cy + 5, cx + 10, cy);
+      line("FUNC", "p11", "yellow", 2, cx + 10, cy, cx, cy - 10);
+    }
+
+    function emitFunctionPanel() {
+      line("FUNC", "u09", "white", 2, 520, 60, 640, 140);
+      line("FUNC", "u10", "white", 2, 600, 140, 700, 140);
+      line("FUNC", "u11", "white", 2, 1400, 60, 1280, 140);
+      line("FUNC", "u12", "white", 2, 1320, 140, 1220, 140);
+      arc("FUNC", "u13", "white", 2, 280, 80, 960, 130, 50, 40);
+      line("FUNC", "u14", "white", 2, 780, 140, 800, 140);
+      line("FUNC", "u15", "white", 2, 1140, 140, 1120, 140);
+      emitRushLogo(750, 150);
+      emitGyroLogo(850, 150);
+      emitFireLogo(1070, 150);
+      emitCapLogo(1180, 140);
+      arc("FUNC", "u01", "white", 15, 160, 200, 740, 150, 80, 50);
+      arc("FUNC", "u02", "white", 15, 160, 200, 850, 150, 80, 50);
+      arc("FUNC", "u03", "white", 15, 160, 200, 1070, 150, 80, 50);
+      arc("FUNC", "u04", "white", 15, 160, 200, 1180, 150, 80, 50);
+
+      line("FUNC", "u05", superToggle.checked ? "green" : "pink", 10, 720, 105, 760, 105);
+      line("FUNC", "u06", gyroToggle.checked ? "green" : "pink", 10, 830, 105, 870, 105);
+      line("FUNC", "u07", fireToggle.checked ? "green" : "pink", 10, 1050, 105, 1090, 105);
+      line("FUNC", "u08", capErrToggle.checked ? "black" : capToggle.checked ? "green" : "pink", 10, 1160, 105, 1200, 105);
+    }
+
+    function emitCapVolume() {
+      line("CAPVOL", "v01", "white", 10, 1320, 760, 1320, 740);
+      line("CAPVOL", "v02", "white", 2, 1324, 740, 1324, 340);
+      line("CAPVOL", "v03", "white", 2, 1324, 760, 1345, 766);
+      line("CAPVOL", "v04", "white", 10, 1320, 340, 1320, 320);
+      line("CAPVOL", "v05", "white", 2, 1324, 320, 1345, 314);
+      line("CAPVOL", "v06", "yellow", 2, 1305, 540, 1324, 540);
+      line("CAPVOL", "v07", "white", 2, 1315, 600, 1324, 600);
+      line("CAPVOL", "v08", "white", 2, 1315, 660, 1324, 660);
+      line("CAPVOL", "v09", "white", 2, 1315, 480, 1324, 480);
+      line("CAPVOL", "v10", "white", 2, 1315, 420, 1324, 420);
+
+      const voltage = clamp(Number(voltageInput.value), 8, 26);
+      let length = clamp((50 * (voltage - 8)) / 3, 0, 300);
+      const fullSegments = Math.floor(length / 50);
+      const remain = length % 50;
+      let fill = fullSegments > 4 ? "green" : fullSegments > 2 ? "orange" : "pink";
+      let segments = fullSegments;
+      if (!capToggle.checked) {
+        segments = 6;
+        length = 300;
+        fill = "cyan";
+      } else if (capErrToggle.checked) {
+        segments = 6;
+        length = 300;
+        fill = "black";
+      }
+
+      for (let i = 0; i < 6; i++) {
+        const y0 = 365 + i * 60;
+        const segmentFill = i < segments ? 50 : i === segments ? remain : 0;
+        const y1 = y0 + segmentFill;
+        line("CAPVOL", `v${11 + i}`, fill, 15, 1315, y1, 1315, y0);
+      }
+      text("CAPVOL", "v17", fill, 34, 4, 1250, 700, voltage.toFixed(1));
+    }
+
+    function emitFriendlyBullets() {
+      const rows = [
+        { i: 0, label: 5, y: 710, remain: 210, max: 300, arcName: "lra", intName: "lri" },
+        { i: 1, label: 4, y: 760, remain: 260, max: 300, arcName: "lba", intName: "lbi" },
+        { i: 4, label: 1, y: 810, remain: 18, max: 25, arcName: "lha", intName: "lhi" },
+      ];
+      const x = 1550;
+      rows.forEach((row) => {
+        line("BULLET", `l${row.label}a`, "white", 20, x - 5, row.y + 8, x + 15, row.y - 5);
+        line("BULLET", `l${row.label}b`, "white", 20, x - 5, row.y + 15, x - 5, row.y - 12);
+        arc("BULLET", `l${row.label}c`, "white", 7, 20, 120, x - 60, row.y - 30, 240, 35);
+        text("BULLET", `l${row.label}d`, "main", 34, 2, x - 5, row.y + 11, row.label);
+        const ratio = clamp(row.remain / row.max, 0, 1);
+        const start = clamp(120 - ratio * 100, 21, 119);
+        arc("BULLET", row.arcName, "purple", 2, start, 120, x - 10, row.y - 28, 248, 25);
+        text("BULLET", row.intName, "cyan", 24, 3, x + 120, row.y - 25, row.remain);
+      });
+    }
+
+    function emitCentralRing() {
+      let rad = (Number(angleInput.value) * PI) / 180;
+      if (gyroToggle.checked) rad = performance.now() * 0.0012;
+      const start = (((rad - PI / 7) * 180) / PI + 360) % 360;
+      const end = (((rad + PI / 7) * 180) / PI + 360) % 360;
+      arc("CENTER", "d02", "yellow", 10, start, end, 960, 540, 100, 100);
+      circle("CENTER", "d01", "white", 5, 960, 540, 100);
+    }
+
+    function emitAnglePointer() {
+      let angle = Number(angleInput.value);
+      if (angle > 180) angle -= 360;
+      if (angle < -180) angle += 360;
+      const rad = ((angle * PI) / 180) * 0.6667 - PI / 2;
+      const xHalf = 500;
+      const yHalf = 100;
+      const x = 960 + xHalf * Math.cos(rad);
+      const y = 950 + yHalf * Math.sin(rad);
+      line("ANGLE", "h07", "main", 3, x, y + 10, x, y - 50);
+      circle("ANGLE", "h08", "orange", 8, x, y - 3, 4);
+    }
+
+    function emitEnemyHealth() {
+      if (!contactToggle.checked) return;
+      const y = 680;
+      line("ENEMY", "n01", "white", 45, 960, y + 30, 960, y - 33, 2);
+      text("ENEMY", "n02", "pink", 34, 5, 955, y + 25, 3, 2);
+      line("ENEMY", "n03", "white", 2, 760, y, 1160, y, 2);
+      line("ENEMY", "n04", "white", 8, 760, y - 6, 760, y, 2);
+      line("ENEMY", "n05", "white", 8, 1160, y - 6, 1160, y, 2);
+      line("ENEMY", "n06", "pink", 250, 960, y, 960, y - 7, 2);
+      text("ENEMY", "n07", "orange", 30, 2, 940, y - 15, 200, 2);
+    }
+
+    function emitCommands() {
+      commands = [];
+      emitOuterLine();
+      emitAimSign();
+      emitSight();
+      emitCampInstructor();
+      emitFunctionPanel();
+      emitCapVolume();
+      emitFriendlyBullets();
+      emitAnglePointer();
+      emitCentralRing();
+      emitEnemyHealth();
+    }
+
+    function renderCommandList() {
+      commandList.innerHTML = "";
+      const title = document.createElement("h2");
+      title.textContent = "Primitive Groups";
+      commandList.appendChild(title);
+
+      const groups = [...new Set(commands.map((cmd) => cmd.group))];
+      groups.forEach((group) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${group}</code><span>July UI layer</span><span>${commands.filter((cmd) => cmd.group === group).length}</span>`;
+        commandList.appendChild(row);
+      });
+
+      commands.slice(0, 36).forEach((cmd) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${cmd.name}</code><span>${cmd.type}</span><span>L${cmd.layer}</span>`;
+        commandList.appendChild(row);
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      drawMask();
+      rmColors.main = teamColor.value === "pink" ? rmColors.pink : rmColors.cyan;
+      emitCommands();
+      commands.sort((a, b) => a.layer - b.layer).forEach(drawPrimitive);
+      budgetStatus.textContent = `${commands.length} GFX`;
+      renderCommandList();
+    }
+
+    document.querySelectorAll("[data-mode]").forEach((button) => {
+      button.classList.toggle("active", Number(button.dataset.mode) === mode);
+      button.addEventListener("click", () => {
+        mode = Number(button.dataset.mode);
+        document.querySelectorAll("[data-mode]").forEach((item) => item.classList.toggle("active", item === button));
+        draw();
+      });
+    });
+
+    [
+      gridMode,
+      maskToggle,
+      teamColor,
+      voltageInput,
+      angleInput,
+      superToggle,
+      gyroToggle,
+      fireToggle,
+      capToggle,
+      capErrToggle,
+      contactToggle,
+    ].forEach((input) => {
+      input.addEventListener("input", draw);
+      input.addEventListener("change", draw);
+    });
+
+    function frame() {
+      if (gyroToggle.checked) draw();
+      requestAnimationFrame(frame);
+    }
+
+    draw();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

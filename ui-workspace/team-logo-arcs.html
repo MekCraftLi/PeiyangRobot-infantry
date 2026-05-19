@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Team Logo Arc UI</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #191c22;
+      --panel-2: #12151a;
+      --line: #303642;
+      --text: #e8edf2;
+      --muted: #95a2b0;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.42 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .left {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .toolbar,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    .title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .title strong {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    select,
+    input[type="checkbox"] {
+      border: 1px solid #414856;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      min-height: 36px;
+      font: inherit;
+    }
+
+    button,
+    select {
+      padding: 8px 11px;
+    }
+
+    button {
+      min-width: 74px;
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover {
+      border-color: #687486;
+    }
+
+    button.active {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(57, 215, 255, 0.45);
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 104px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+    }
+
+    .group {
+      border: 1px solid #2b313b;
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #cdd6df;
+    }
+
+    label,
+    .status {
+      display: grid;
+      grid-template-columns: 94px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--cyan);
+    }
+
+    .fields {
+      display: grid;
+      gap: 8px;
+    }
+
+    .status strong {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .command-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid #2c333e;
+      border-radius: 6px;
+      background: #171a20;
+      color: #cbd5df;
+      font-size: 12px;
+    }
+
+    .command code {
+      color: #dce6ef;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="left">
+      <div class="toolbar">
+        <div class="title">
+          <strong>Team Logo Arc UI</strong>
+          <span>1920 x 1080 / bottom-left origin</span>
+        </div>
+        <div class="controls">
+          <button data-scale="3.0">Small</button>
+          <button data-scale="4.0" class="active">Large</button>
+          <button data-scale="5.0">XL</button>
+        </div>
+      </div>
+
+      <div class="stage">
+        <canvas id="preview" width="1920" height="1080" aria-label="Team logo arc preview"></canvas>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="group">
+        <h2>View</h2>
+        <div class="fields">
+          <label>
+            Grid
+            <select id="gridMode">
+              <option value="axes" selected>Axes</option>
+              <option value="full">Full</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label>
+            Reference
+            <input id="referenceToggle" type="checkbox" checked />
+          </label>
+          <div class="status">
+            Placement
+            <strong id="placementStatus">CENTER SAFE</strong>
+          </div>
+          <div class="status">
+            Budget
+            <strong id="budgetStatus">19 ARC</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Primitive Budget</h2>
+        <div class="fields">
+          <div class="status">
+            Limit
+            <strong>&lt; 20 ARC</strong>
+          </div>
+          <div class="status">
+            Current
+            <strong id="arcCountStatus">19 ARC</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="group command-list" id="commandList" aria-label="Arc commands"></section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const commandList = document.getElementById("commandList");
+    const gridMode = document.getElementById("gridMode");
+    const referenceToggle = document.getElementById("referenceToggle");
+    const placementStatus = document.getElementById("placementStatus");
+    const budgetStatus = document.getElementById("budgetStatus");
+    const arcCountStatus = document.getElementById("arcCountStatus");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const image = new Image();
+    image.src = "./队徽.webp";
+
+    const logoArcs = [
+      { name: "LG0", cx: 26.2, cy: 35.8, rx: 85.0, ry: 47.8, start: 37.6, end: 65.8, width: 5.3 },
+      { name: "LG1", cx: 56.8, cy: -17.9, rx: 101.8, ry: 78.7, start: 349.0, end: 364.7, width: 4.9 },
+      { name: "LG2", cx: 55.6, cy: -1.1, rx: 75.1, ry: 73.3, start: 345.1, end: 365.4, width: 4.9 },
+      { name: "LG3", cx: 55.6, cy: -36.4, rx: 78.9, ry: 98.4, start: 332.0, end: 349.9, width: 3.1 },
+      { name: "LG4", cx: 21.0, cy: 43.5, rx: 90.3, ry: 39.5, start: 26.4, end: 71.9, width: 1.5 },
+      { name: "LG5", cx: 45.1, cy: 13.3, rx: 62.7, ry: 59.7, start: 14.4, end: 31.6, width: 2.3 },
+      { name: "LG6", cx: 112.8, cy: -2.6, rx: 24.2, ry: 58.8, start: 338.5, end: 349.5, width: 5.4 },
+      { name: "LG7", cx: 21.2, cy: 46.2, rx: 80.1, ry: 37.6, start: 40.8, end: 78.0, width: 3.5 },
+      { name: "LG8", cx: 58.4, cy: -14.5, rx: 100.4, ry: 89.5, start: 344.7, end: 356.5, width: 3.8 },
+      { name: "LG9", cx: 56.7, cy: 16.0, rx: 48.0, ry: 48.2, start: 342.4, end: 368.0, width: 2.0 },
+      { name: "LGA", cx: 10.6, cy: 53.9, rx: 95.0, ry: 29.4, start: 43.0, end: 75.2, width: 2.4 },
+      { name: "LGB", cx: 57.4, cy: 28.4, rx: 63.4, ry: 29.6, start: 332.8, end: 355.6, width: 2.1 },
+      { name: "LGC", cx: 74.8, cy: 33.4, rx: 31.1, ry: 28.8, start: 341.1, end: 345.2, width: 5.3 },
+      { name: "LGD", cx: 67.8, cy: 44.0, rx: 87.3, ry: 26.1, start: 340.3, end: 361.6, width: 2.2 },
+      { name: "LGE", cx: 40.1, cy: 54.2, rx: 62.9, ry: 24.8, start: 25.2, end: 32.4, width: 4.1 },
+      { name: "LGF", cx: 58.6, cy: 8.9, rx: 59.9, ry: 62.9, start: 337.5, end: 348.3, width: 3.3 },
+      { name: "LGG", cx: 32.0, cy: -2.6, rx: 109.9, ry: 83.0, start: 24.7, end: 44.0, width: 1.7 },
+      { name: "LGH", cx: 78.6, cy: 40.0, rx: 16.2, ry: 16.8, start: 24.8, end: 47.2, width: 1.6 },
+      { name: "LGI", cx: 22.9, cy: 35.2, rx: 83.7, ry: 40.3, start: 32.4, end: 37.4, width: 1.8 },
+    ];
+
+    const clientMaskRects = [
+      { id: "TOP", x: 0, y: 925, w: 1920, h: 155 },
+      { id: "LEFT_MAIN", x: 0, y: 0, w: 422, h: 516 },
+      { id: "LEFT_STEP", x: 422, y: 0, w: 82, h: 258 },
+      { id: "LEFT_FLOAT", x: 473, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_FLOAT", x: 1357, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_MAIN", x: 1461, y: 0, w: 459, h: 333 },
+    ];
+
+    let scale = initialScale();
+    let commands = [];
+
+    function initialScale() {
+      const raw = new URLSearchParams(location.search).get("scale");
+      const value = Number(raw);
+      return Number.isFinite(value) && value >= 2 && value <= 5 ? value : 4;
+    }
+
+    function initialReference() {
+      return new URLSearchParams(location.search).get("reference") !== "0";
+    }
+
+    function by(y) {
+      return H - y;
+    }
+
+    function rectToCanvas(rect) {
+      return { x: rect.x, y: H - rect.y - rect.h, w: rect.w, h: rect.h };
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function placement() {
+      const size = 128 * scale;
+      return {
+        x: (W - size) * 0.5,
+        y: 300,
+        w: size,
+        h: size,
+      };
+    }
+
+    function toBusiness(arc, place) {
+      return {
+        name: arc.name,
+        cx: Math.round(place.x + arc.cx * scale),
+        cy: Math.round(place.y + arc.cy * scale),
+        rx: Math.round(arc.rx * scale),
+        ry: Math.round(arc.ry * scale),
+        start: arc.start,
+        end: arc.end,
+        width: Math.max(1, Math.round(arc.width * scale)),
+      };
+    }
+
+    function arcPoint(arc, deg) {
+      const rad = (deg * Math.PI) / 180;
+      return {
+        x: arc.cx + arc.rx * Math.sin(rad),
+        y: arc.cy + arc.ry * Math.cos(rad),
+      };
+    }
+
+    function drawArc(cmd, color = "#e8edf2") {
+      let start = cmd.start;
+      let end = cmd.end;
+      while (end < start) end += 360;
+      const span = Math.max(0.5, end - start);
+      const steps = Math.max(8, Math.ceil(span / 3));
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = cmd.width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const deg = start + (span * i) / steps;
+        const point = arcPoint(cmd, deg);
+        if (i === 0) ctx.moveTo(point.x, by(point.y));
+        else ctx.lineTo(point.x, by(point.y));
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      if (gridMode.value === "off") return;
+      ctx.save();
+      if (gridMode.value === "full") {
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 120) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= H; y += 90) {
+          ctx.beginPath();
+          ctx.moveTo(0, by(y));
+          ctx.lineTo(W, by(y));
+          ctx.stroke();
+        }
+      }
+      ctx.strokeStyle = "rgba(57,215,255,0.45)";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(220, by(72));
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(72, by(220));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawForbiddenPreview() {
+      clientMaskRects.forEach((rect) => {
+        const cr = rectToCanvas(rect);
+        ctx.fillStyle = "rgba(150,150,150,0.26)";
+        ctx.fillRect(cr.x, cr.y, cr.w, cr.h);
+        ctx.strokeStyle = "rgba(175,175,175,0.34)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cr.x, cr.y, cr.w, cr.h);
+      });
+    }
+
+    function drawReference(place) {
+      if (!referenceToggle.checked || !image.complete) return;
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(image, place.x, by(place.y + place.h), place.w, place.h);
+      ctx.restore();
+    }
+
+    function renderCommandList() {
+      commandList.innerHTML = "";
+      const title = document.createElement("h2");
+      title.textContent = "Arc Commands";
+      commandList.appendChild(title);
+
+      commands.forEach((cmd) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${cmd.name}</code><span>${cmd.cx},${cmd.cy} / ${cmd.rx},${cmd.ry}</span><span>${cmd.start}-${cmd.end}</span>`;
+        commandList.appendChild(row);
+      });
+    }
+
+    function draw() {
+      const place = placement();
+      commands = logoArcs.map((arc) => toBusiness(arc, place));
+      const safe = !clientMaskRects.some((rect) => intersects(place, rect));
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      drawForbiddenPreview();
+      drawReference(place);
+      commands.forEach((cmd) => drawArc(cmd));
+      renderCommandList();
+
+      placementStatus.textContent = `CENTER ${safe ? "SAFE" : "CHECK"}`;
+      placementStatus.style.color = safe ? "var(--green)" : "#ff5d6c";
+      budgetStatus.textContent = `${commands.length} ARC`;
+      arcCountStatus.textContent = `${commands.length} ARC`;
+      arcCountStatus.style.color = commands.length < 20 ? "var(--green)" : "#ff5d6c";
+    }
+
+    document.querySelectorAll("[data-scale]").forEach((button) => {
+      button.classList.toggle("active", Math.abs(Number(button.dataset.scale) - scale) < 0.01);
+      button.addEventListener("click", () => {
+        scale = Number(button.dataset.scale);
+        document.querySelectorAll("[data-scale]").forEach((item) => {
+          item.classList.toggle("active", item === button);
+        });
+        draw();
+      });
+    });
+
+    referenceToggle.checked = initialReference();
+    gridMode.addEventListener("change", draw);
+    referenceToggle.addEventListener("change", draw);
+    image.addEventListener("load", draw);
+    draw();
+  </script>
+</body>
+</html>

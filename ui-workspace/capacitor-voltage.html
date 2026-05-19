@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Capacitor Voltage UI</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #191c22;
+      --panel-2: #12151a;
+      --line: #303642;
+      --text: #e8edf2;
+      --muted: #95a2b0;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+      --pink: #ff5fa2;
+      --amber: #ffbc3d;
+      --red: #ff5d6c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.42 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .left {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .toolbar,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    .title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .title strong {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    select,
+    input[type="number"] {
+      border: 1px solid #414856;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 11px;
+      min-height: 36px;
+      font: inherit;
+    }
+
+    button {
+      min-width: 72px;
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover,
+    input[type="number"]:hover {
+      border-color: #687486;
+    }
+
+    button.active {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(57, 215, 255, 0.45);
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 104px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+    }
+
+    .group {
+      border: 1px solid #2b313b;
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #cdd6df;
+    }
+
+    .fields {
+      display: grid;
+      gap: 8px;
+    }
+
+    label,
+    .status {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--cyan);
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--cyan);
+    }
+
+    .status strong {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .command-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 54px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid #2c333e;
+      border-radius: 6px;
+      background: #171a20;
+      color: #cbd5df;
+      font-size: 12px;
+    }
+
+    .command code {
+      color: #dce6ef;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        overflow: auto;
+      }
+
+      main {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        grid-template-rows: auto;
+      }
+    }
+
+    @media (max-width: 680px) {
+      main {
+        padding: 10px;
+      }
+
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .controls {
+        justify-content: flex-start;
+      }
+
+      button {
+        flex: 1 1 78px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="left">
+      <div class="toolbar">
+        <div class="title">
+          <strong>Capacitor Voltage UI</strong>
+          <span>1920 x 1080 / bottom-left origin</span>
+        </div>
+        <div class="controls" role="group" aria-label="Voltage presets">
+          <button data-voltage="6.0">Low</button>
+          <button data-voltage="15.0">Mid</button>
+          <button data-voltage="22.5" class="active">Good</button>
+          <button data-voltage="26.0">Full</button>
+          <button data-auto="true">Auto</button>
+        </div>
+      </div>
+
+      <div class="stage">
+        <canvas id="preview" width="1920" height="1080"></canvas>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="group">
+        <h2>View</h2>
+        <div class="fields">
+          <label>
+            Grid
+            <select id="gridMode">
+              <option value="origin">Axes</option>
+              <option value="full">Full</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label>
+            Scale
+            <select id="viewMode">
+              <option value="fit">Fit</option>
+              <option value="center">Center</option>
+            </select>
+          </label>
+          <label>
+            Mask
+            <input id="maskToggle" type="checkbox" checked />
+          </label>
+          <div class="status">
+            Placement
+            <strong id="placementStatus">Pending</strong>
+          </div>
+          <div class="status">
+            Update
+            <strong id="updateStatus">STATIC INIT / 3 DYN</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Signal</h2>
+        <div class="fields">
+          <label>
+            Voltage
+            <input id="voltageSlider" type="range" min="0" max="28" step="0.1" value="22.5" />
+          </label>
+          <label>
+            Value
+            <input id="voltageInput" type="number" min="0" max="28" step="0.1" value="22.5" />
+          </label>
+          <label>
+            Enable
+            <input id="enabledToggle" type="checkbox" checked />
+          </label>
+          <label>
+            Error
+            <input id="errorToggle" type="checkbox" />
+          </label>
+        </div>
+      </section>
+
+      <section class="group command-list" id="commandList" aria-label="Primitive groups"></section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const commandList = document.getElementById("commandList");
+    const gridMode = document.getElementById("gridMode");
+    const viewMode = document.getElementById("viewMode");
+    const maskToggle = document.getElementById("maskToggle");
+    const placementStatus = document.getElementById("placementStatus");
+    const updateStatus = document.getElementById("updateStatus");
+    const voltageSlider = document.getElementById("voltageSlider");
+    const voltageInput = document.getElementById("voltageInput");
+    const enabledToggle = document.getElementById("enabledToggle");
+    const errorToggle = document.getElementById("errorToggle");
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    const palette = {
+      cyan: "#39d7ff",
+      green: "#49e66f",
+      pink: "#ff5fa2",
+      amber: "#ffbc3d",
+      white: "#e8edf2",
+      dim: "rgba(232,237,242,0.22)",
+      red: "#ff5d6c",
+    };
+
+    const maxVoltage = 26;
+    const thresholds = [7, 15, 22, 26];
+    const gauge = {
+      cx: 960,
+      cy: 1000,
+      dynamicCy: 980,
+      rx: 800,
+      ry: 220,
+      startAngle: 140,
+      centerAngle: 180,
+      endAngle: 220,
+      centerGap: 10,
+      textX: 915,
+      textY: 790,
+    };
+    const staticBounds = { x: 430, y: 740, w: 1060, h: 120 };
+
+    const clientMaskRects = [
+      { id: "TOP", x: 0, y: 925, w: 1920, h: 155 },
+      { id: "LEFT_MAIN", x: 0, y: 0, w: 422, h: 516 },
+      { id: "LEFT_STEP", x: 422, y: 0, w: 82, h: 258 },
+      { id: "LEFT_FLOAT", x: 473, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_FLOAT", x: 1357, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_MAIN", x: 1461, y: 0, w: 459, h: 333 },
+    ];
+    const placementForbiddenRects = clientMaskRects;
+
+    let voltage = initialVoltage();
+    let auto = false;
+    let autoTime = 0;
+    let lastTs = performance.now();
+    let staticCommands = [];
+    let dynamicCommands = [];
+
+    function initialVoltage() {
+      const raw = new URLSearchParams(location.search).get("voltage");
+      const value = raw === null ? 22.5 : Number(raw);
+      return Number.isFinite(value) ? clamp(value, 0, 28) : 22.5;
+    }
+
+    function by(v) {
+      return H - v;
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(Number(value) || 0, min), max);
+    }
+
+    function rectToCanvas(rect) {
+      return { x: rect.x, y: H - rect.y - rect.h, w: rect.w, h: rect.h };
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function voltageRatio() {
+      return clamp(voltage / maxVoltage, 0, 1);
+    }
+
+    function voltageText(value) {
+      const v = clamp(Number(value), 0, 28);
+      if (v < 10) return v.toFixed(2);
+      return v.toFixed(1);
+    }
+
+    function colorForVoltage() {
+      if (!enabledToggle.checked) return palette.cyan;
+      if (errorToggle.checked) return palette.pink;
+      if (voltage >= thresholds[2]) return palette.green;
+      if (voltage >= thresholds[1]) return palette.amber;
+      if (voltage >= thresholds[0]) return palette.pink;
+      return palette.red;
+    }
+
+    function arcPoint(angle, centerY = gauge.cy, radiusX = gauge.rx, radiusY = gauge.ry) {
+      const rad = (angle * Math.PI) / 180;
+      return {
+        x: gauge.cx + radiusX * Math.sin(rad),
+        y: centerY + radiusY * Math.cos(rad),
+      };
+    }
+
+    function pushGraphic(name, type, layer, color, width, args, scope = "DYN") {
+      const command = { frame: "GFX", scope, name, type, layer, color, width, args };
+      if (scope === "STATIC") staticCommands.push(command);
+      else dynamicCommands.push(command);
+    }
+
+    function graphicLine(name, x1, y1, x2, y2, color, width = 4, layer = 0, scope = "DYN") {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x1, by(y1));
+      ctx.lineTo(x2, by(y2));
+      ctx.stroke();
+      ctx.restore();
+      pushGraphic(name, "Line", layer, color, width, { x1, y1, x2, y2 }, scope);
+    }
+
+    function graphicRect(name, x1, y1, x2, y2, color, width = 4, layer = 0, scope = "STATIC") {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineJoin = "round";
+      const left = Math.min(x1, x2);
+      const right = Math.max(x1, x2);
+      const top = Math.max(y1, y2);
+      const bottom = Math.min(y1, y2);
+      ctx.strokeRect(left, by(top), right - left, top - bottom);
+      ctx.restore();
+      pushGraphic(name, "Rectangle", layer, color, width, { x1: left, y1: bottom, x2: right, y2: top }, scope);
+    }
+
+    function graphicArc(name, startAngle, endAngle, color, width = 4, layer = 0, scope = "DYN", centerY = gauge.cy) {
+      let start = startAngle;
+      let end = endAngle;
+      while (end < start) end += 360;
+      const span = Math.max(0.5, end - start);
+      const steps = Math.max(8, Math.ceil(span / 3));
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const deg = start + (span * i) / steps;
+        const p = arcPoint(deg, centerY);
+        if (i === 0) ctx.moveTo(p.x, by(p.y));
+        else ctx.lineTo(p.x, by(p.y));
+      }
+      ctx.stroke();
+      ctx.restore();
+      pushGraphic(name, "Arc", layer, color, width, {
+        x: gauge.cx,
+        y: centerY,
+        radiusX: gauge.rx,
+        radiusY: gauge.ry,
+        startAngle,
+        endAngle,
+      }, scope);
+    }
+
+    function graphicFloat(name, x, y, value, color, width = 2, layer = 1, scope = "DYN") {
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.font = "700 28px 'Cascadia Mono', Consolas, monospace";
+      ctx.textBaseline = "alphabetic";
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#060709";
+      const text = voltageText(value);
+      ctx.strokeText(text, x, by(y));
+      ctx.fillText(text, x, by(y));
+      ctx.restore();
+      pushGraphic(name, "Float", layer, color, width, { x, y, value, fontSize: 20 }, scope);
+    }
+
+    function drawPreviewRect(rect, fill, stroke) {
+      const cr = rectToCanvas(rect);
+      ctx.save();
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(cr.x, cr.y, cr.w, cr.h);
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cr.x, cr.y, cr.w, cr.h);
+      }
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      if (gridMode.value === "off") return;
+
+      ctx.save();
+      if (gridMode.value === "full") {
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 120) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= H; y += 90) {
+          ctx.beginPath();
+          ctx.moveTo(0, by(y));
+          ctx.lineTo(W, by(y));
+          ctx.stroke();
+        }
+      }
+
+      ctx.strokeStyle = "rgba(57,215,255,0.45)";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(220, by(72));
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(72, by(220));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawForbiddenPreview() {
+      if (!maskToggle.checked) return;
+
+      clientMaskRects.forEach((rect) => {
+        drawPreviewRect(rect, "rgba(150,150,150,0.26)", "rgba(175,175,175,0.34)");
+      });
+    }
+
+    function drawStaticCapacitor() {
+      const trackColor = "rgba(232,237,242,0.34)";
+      const detailColor = "rgba(232,237,242,0.45)";
+
+      graphicArc("CT0", gauge.startAngle, gauge.centerAngle - gauge.centerGap, trackColor, 5, 0, "STATIC");
+      graphicArc("CT1", gauge.centerAngle + gauge.centerGap, gauge.endAngle, trackColor, 5, 0, "STATIC");
+
+      thresholds.forEach((threshold, index) => {
+        const sweep = gauge.endAngle - gauge.centerAngle - gauge.centerGap;
+        const span = gauge.centerGap + (sweep * threshold) / maxVoltage;
+        const leftOuter = arcPoint(gauge.centerAngle + span);
+        const leftInner = {
+          x: gauge.cx + (gauge.rx - 28) * Math.sin(((gauge.centerAngle + span) * Math.PI) / 180),
+          y: gauge.cy + (gauge.ry - 10) * Math.cos(((gauge.centerAngle + span) * Math.PI) / 180),
+        };
+        const rightOuter = arcPoint(gauge.centerAngle - span);
+        const rightInner = {
+          x: gauge.cx + (gauge.rx - 28) * Math.sin(((gauge.centerAngle - span) * Math.PI) / 180),
+          y: gauge.cy + (gauge.ry - 10) * Math.cos(((gauge.centerAngle - span) * Math.PI) / 180),
+        };
+        graphicLine(`TK${index}`, leftInner.x, leftInner.y, leftOuter.x, leftOuter.y, detailColor, 2, 0, "STATIC");
+        graphicLine(`TK${index + 4}`, rightInner.x, rightInner.y, rightOuter.x, rightOuter.y, detailColor, 2, 0, "STATIC");
+      });
+    }
+
+    function drawDynamicCapacitor() {
+      const color = colorForVoltage();
+      const ratio = voltageRatio();
+      const sweep = gauge.endAngle - gauge.centerAngle - gauge.centerGap;
+      const span = gauge.centerGap + sweep * ratio;
+      const visibleSpan = Math.max(gauge.centerGap + 0.6, span);
+      const leftEnd = gauge.centerAngle + visibleSpan;
+      const rightStart = gauge.centerAngle - visibleSpan;
+
+      graphicArc("CL0", gauge.centerAngle + gauge.centerGap, leftEnd, color, 15, 1, "DYN", gauge.dynamicCy);
+      graphicArc("CR0", rightStart, gauge.centerAngle - gauge.centerGap, color, 15, 1, "DYN", gauge.dynamicCy);
+      graphicFloat("CV0", gauge.textX, gauge.textY, voltage, color, 2, 1);
+    }
+
+    function renderCommandList() {
+      commandList.innerHTML = "";
+      const title = document.createElement("h2");
+      title.textContent = "Primitive Groups";
+      commandList.appendChild(title);
+
+      const staticFrame = document.createElement("div");
+      staticFrame.className = "command";
+      staticFrame.innerHTML = `<code>STATIC</code><span>Arc track and threshold ticks</span><span>${staticCommands.length}</span>`;
+      commandList.appendChild(staticFrame);
+
+      staticCommands.forEach((cmd) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${cmd.name}</code><span>${cmd.type}</span><span>L${cmd.layer}</span>`;
+        commandList.appendChild(row);
+      });
+
+      const dynamicFrame = document.createElement("div");
+      dynamicFrame.className = "command";
+      dynamicFrame.innerHTML = `<code>MOVE</code><span>Voltage update</span><span>${dynamicCommands.length}</span>`;
+      commandList.appendChild(dynamicFrame);
+
+      dynamicCommands.forEach((cmd) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${cmd.name}</code><span>${cmd.type}</span><span>L${cmd.layer}</span>`;
+        commandList.appendChild(row);
+      });
+    }
+
+    function draw() {
+      staticCommands = [];
+      dynamicCommands = [];
+      const safe = !placementForbiddenRects.some((rect) => intersects(staticBounds, rect));
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      drawForbiddenPreview();
+      drawStaticCapacitor();
+      drawDynamicCapacitor();
+      renderCommandList();
+
+      placementStatus.textContent = `TOP_CENTER ${safe ? "SAFE" : "CHECK"}`;
+      placementStatus.style.color = safe ? "var(--green)" : "var(--red)";
+      updateStatus.textContent = `STATIC INIT / ${dynamicCommands.length} DYN`;
+    }
+
+    function setVoltage(next) {
+      voltage = clamp(next, 0, 28);
+      voltageSlider.value = voltage.toFixed(1);
+      voltageInput.value = voltageText(voltage);
+      document.querySelectorAll("[data-voltage]").forEach((button) => {
+        button.classList.toggle("active", Math.abs(Number(button.dataset.voltage) - voltage) < 0.05 && !auto);
+      });
+      document.querySelector("[data-auto]").classList.toggle("active", auto);
+    }
+
+    document.querySelectorAll("[data-voltage]").forEach((button) => {
+      button.addEventListener("click", () => {
+        auto = false;
+        setVoltage(Number(button.dataset.voltage));
+      });
+    });
+
+    document.querySelector("[data-auto]").addEventListener("click", () => {
+      auto = !auto;
+      document.querySelector("[data-auto]").classList.toggle("active", auto);
+    });
+
+    voltageSlider.addEventListener("input", () => {
+      auto = false;
+      setVoltage(Number(voltageSlider.value));
+    });
+
+    voltageInput.addEventListener("change", () => {
+      auto = false;
+      setVoltage(Number(voltageInput.value));
+    });
+
+    gridMode.addEventListener("change", draw);
+    maskToggle.addEventListener("change", draw);
+    enabledToggle.addEventListener("change", draw);
+    errorToggle.addEventListener("change", draw);
+    viewMode.addEventListener("change", () => {
+      canvas.style.width = viewMode.value === "center" ? "960px" : "";
+    });
+
+    function frame(ts) {
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+
+      if (auto) {
+        autoTime += dt;
+        const phase = (Math.sin(autoTime * 1.2) + 1) * 0.5;
+        setVoltage(5.5 + 21.5 * phase);
+      }
+
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    setVoltage(voltage);
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

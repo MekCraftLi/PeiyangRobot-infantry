@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dual Wheel-Leg UI Workspace</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #191c22;
+      --panel-2: #12151a;
+      --line: #303642;
+      --text: #e8edf2;
+      --muted: #95a2b0;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+      --pink: #ff5fa2;
+      --orange: #ff9d3a;
+      --red: #ff5d6c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.42 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .left {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .toolbar,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    .title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .title strong {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    select {
+      border: 1px solid #414856;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 11px;
+      min-height: 36px;
+      font: inherit;
+    }
+
+    button {
+      min-width: 72px;
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover {
+      border-color: #687486;
+    }
+
+    button.active {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(57, 215, 255, 0.45);
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 104px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+    }
+
+    .group {
+      border: 1px solid #2b313b;
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #cdd6df;
+    }
+
+    .fields {
+      display: grid;
+      gap: 8px;
+    }
+
+    label,
+    .status {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .swatches {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .swatches button {
+      min-width: 0;
+      padding: 8px 4px;
+    }
+
+    .status strong {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .command-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 54px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid #2c333e;
+      border-radius: 6px;
+      background: #171a20;
+      color: #cbd5df;
+      font-size: 12px;
+    }
+
+    .command code {
+      color: #dce6ef;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    .command.text-frame {
+      border-color: rgba(255, 188, 61, 0.35);
+    }
+
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        grid-template-rows: auto;
+      }
+    }
+
+    @media (max-width: 680px) {
+      main {
+        padding: 10px;
+      }
+
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .controls {
+        justify-content: flex-start;
+      }
+
+      button {
+        flex: 1 1 78px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="left">
+      <div class="toolbar">
+        <div class="title">
+          <strong>Dual Wheel-Leg UI Workspace</strong>
+          <span>thigh angle + hip-wheel distance / 180 deg phase</span>
+        </div>
+        <div class="controls" role="group" aria-label="Leg simulation">
+          <button data-auto="true" class="active">Auto</button>
+          <button data-pause="true">Pause</button>
+        </div>
+      </div>
+
+      <div class="stage">
+        <canvas id="preview" width="1920" height="1080"></canvas>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="group">
+        <h2>View</h2>
+        <div class="fields">
+          <label>
+            Grid
+            <select id="gridMode">
+              <option value="origin">Axes</option>
+              <option value="full">Full</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label>
+            Scale
+            <select id="viewMode">
+              <option value="fit">Fit</option>
+              <option value="center">Center</option>
+            </select>
+          </label>
+          <label>
+            Mask
+            <input id="maskToggle" type="checkbox" checked />
+          </label>
+          <div class="status">
+            Placement
+            <strong id="placementStatus">Pending</strong>
+          </div>
+          <div class="status">
+            Update
+            <strong id="budgetStatus">STATIC INIT / 5 DYN</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Signal</h2>
+        <div class="fields">
+          <div class="status">
+            Left
+            <strong id="leftLegStatus">Pending</strong>
+          </div>
+          <div class="status">
+            Right
+            <strong id="rightLegStatus">Pending</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="group command-list" id="commandList" aria-label="Primitive groups"></section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const commandList = document.getElementById("commandList");
+    const gridMode = document.getElementById("gridMode");
+    const viewMode = document.getElementById("viewMode");
+    const maskToggle = document.getElementById("maskToggle");
+    const placementStatus = document.getElementById("placementStatus");
+    const budgetStatus = document.getElementById("budgetStatus");
+    const leftLegStatus = document.getElementById("leftLegStatus");
+    const rightLegStatus = document.getElementById("rightLegStatus");
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    const palette = {
+      pink: "#ff5fa2",
+      cyan: "#39d7ff",
+      green: "#49e66f",
+      orange: "#ff9d3a",
+      white: "#e8edf2",
+    };
+
+    const uiScale = 0.6;
+    const scaleCoord = (value) => value * uiScale;
+    const scaleStroke = (value) => Math.max(1, Math.round(value * uiScale));
+
+    const upperLinkLength = scaleCoord(105);
+    const lowerLinkLength = scaleCoord(125);
+    const distanceMin = scaleCoord(95);
+    const distanceMid = scaleCoord(135);
+    const distanceMax = scaleCoord(175);
+    const distanceAmplitude = (distanceMax - distanceMin) * 0.5;
+    const legConfigs = [
+      { id: "L", name: "Left", phase: 0, hipOffsetX: scaleCoord(-6), color: palette.cyan },
+      { id: "R", name: "Right", phase: Math.PI, hipOffsetX: scaleCoord(6), color: palette.orange },
+    ];
+
+    // Business-coordinate rectangles, origin at bottom-left.
+    const clientMaskRects = [
+      { id: "TOP", x: 0, y: 925, w: 1920, h: 155 },
+      { id: "LEFT_MAIN", x: 0, y: 0, w: 422, h: 516 },
+      { id: "LEFT_STEP", x: 422, y: 0, w: 82, h: 258 },
+      { id: "LEFT_FLOAT", x: 473, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_FLOAT", x: 1357, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_MAIN", x: 1461, y: 0, w: 459, h: 333 },
+    ];
+    const placementForbiddenRects = clientMaskRects;
+
+    const candidates = [
+      { id: "RIGHT_SAFE", hipX: 1705, hipY: 610, side: 1 },
+      { id: "UPPER_RIGHT", hipX: 1705, hipY: 700, side: 1 },
+      { id: "LEFT_FALLBACK", hipX: 215, hipY: 760, side: 1 },
+    ];
+
+    function initialState() {
+      const raw = new URLSearchParams(location.search).get("state");
+      const value = raw === null ? 1 : Number(raw);
+      return Number.isInteger(value) ? Math.min(Math.max(value, 0), 2) : 1;
+    }
+
+    let selected = initialState();
+    let auto = true;
+    let paused = false;
+    let simPhase = selected * (Math.PI * 2 / 3);
+    let lastTs = performance.now();
+    let staticCommands = [];
+    let dynamicCommands = [];
+    let lastPlacement = null;
+
+    function by(v) {
+      return H - v;
+    }
+
+    function rectToCanvas(rect) {
+      return { x: rect.x, y: H - rect.y - rect.h, w: rect.w, h: rect.h };
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function legPose(phaseOffset, waveOverride = null) {
+      const wave = waveOverride ?? Math.sin(simPhase + phaseOffset);
+      const hipWheelDistance = distanceMid + distanceAmplitude * wave;
+      return {
+        thighAngleDeg: thighAngleForDistance(hipWheelDistance),
+        hipWheelDistance,
+      };
+    }
+
+    function thighAngleForDistance(distance) {
+      const d = Math.max(1, Math.min(distance, upperLinkLength + lowerLinkLength - 1));
+      const along = (d * d + upperLinkLength * upperLinkLength - lowerLinkLength * lowerLinkLength) / (2 * d);
+      const ratio = Math.min(Math.max(along / upperLinkLength, -1), 1);
+      return 90 - (Math.acos(ratio) * 180) / Math.PI;
+    }
+
+    function legGeometry(pose, origin, leg) {
+      const hip = { x: origin.hipX + leg.hipOffsetX, y: origin.hipY };
+      const wheel = { x: origin.hipX + leg.hipOffsetX, y: origin.hipY - pose.hipWheelDistance };
+      const d = Math.max(1, Math.min(pose.hipWheelDistance, upperLinkLength + lowerLinkLength - 1));
+      const along = (d * d + upperLinkLength * upperLinkLength - lowerLinkLength * lowerLinkLength) / (2 * d);
+      const lateral = Math.sqrt(Math.max(0, upperLinkLength * upperLinkLength - along * along)) * origin.side;
+      return {
+        hip,
+        knee: { x: hip.x + lateral, y: hip.y - along },
+        wheel,
+      };
+    }
+
+    function offsetLinePoints(a, b, offset) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = (-dy / len) * offset;
+      const ny = (dx / len) * offset;
+      return {
+        a: { x: a.x + nx, y: a.y + ny },
+        b: { x: b.x + nx, y: b.y + ny },
+      };
+    }
+
+    function pushGraphic(name, type, layer, color, width, args, scope = "DYN") {
+      const command = { frame: "GFX", scope, name, type, layer, color, width, args };
+      if (scope === "STATIC") staticCommands.push(command);
+      else dynamicCommands.push(command);
+    }
+
+    function graphicLine(name, x1, y1, x2, y2, color, width = 4, layer = 0, scope = "DYN") {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x1, by(y1));
+      ctx.lineTo(x2, by(y2));
+      ctx.stroke();
+      ctx.restore();
+      pushGraphic(name, "Line", layer, color, width, { x1, y1, x2, y2 }, scope);
+    }
+
+    function graphicCircle(name, x, y, radius, color, width = 4, layer = 0, scope = "DYN") {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.arc(x, by(y), radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      pushGraphic(name, "Circle", layer, color, width, { x, y, radius }, scope);
+    }
+
+    function graphicRect(name, x1, y1, x2, y2, color, width = 4, layer = 0, scope = "STATIC") {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineJoin = "round";
+      const left = Math.min(x1, x2);
+      const right = Math.max(x1, x2);
+      const top = Math.max(y1, y2);
+      const bottom = Math.min(y1, y2);
+      ctx.strokeRect(left, by(top), right - left, top - bottom);
+      ctx.restore();
+      pushGraphic(name, "Rectangle", layer, color, width, { x1: left, y1: bottom, x2: right, y2: top }, scope);
+    }
+
+    function drawPreviewRect(rect, fill, stroke) {
+      const cr = rectToCanvas(rect);
+      ctx.save();
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(cr.x, cr.y, cr.w, cr.h);
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cr.x, cr.y, cr.w, cr.h);
+      }
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      if (gridMode.value === "off") return;
+
+      ctx.save();
+      if (gridMode.value === "full") {
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 120) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= H; y += 90) {
+          ctx.beginPath();
+          ctx.moveTo(0, by(y));
+          ctx.lineTo(W, by(y));
+          ctx.stroke();
+        }
+      }
+
+      ctx.strokeStyle = "rgba(57,215,255,0.45)";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(220, by(72));
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(72, by(220));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawForbiddenPreview() {
+      if (!maskToggle.checked) return;
+
+      clientMaskRects.forEach((rect) => {
+        drawPreviewRect(rect, "rgba(150,150,150,0.26)", "rgba(175,175,175,0.34)");
+      });
+    }
+
+    function widgetBounds(candidate) {
+      const geometries = [-1, 1].flatMap((wave) =>
+        legConfigs.map((leg) => legGeometry(legPose(leg.phase, wave), candidate, leg)),
+      );
+      const maxXRadius = scaleCoord(96);
+      const bodyYRadius = scaleCoord(44);
+      const wheelRadius = scaleCoord(24);
+      const allX = [
+        candidate.hipX - maxXRadius,
+        candidate.hipX + maxXRadius,
+        ...geometries.flatMap((geometry) => [
+          geometry.knee.x,
+          geometry.wheel.x - wheelRadius,
+          geometry.wheel.x + wheelRadius,
+        ]),
+      ];
+      const allY = [
+        candidate.hipY - bodyYRadius,
+        candidate.hipY + bodyYRadius,
+        ...geometries.flatMap((geometry) => [geometry.knee.y, geometry.wheel.y - wheelRadius]),
+      ];
+      const minX = Math.min(...allX);
+      const maxX = Math.max(...allX);
+      const minY = Math.min(...allY);
+      const maxY = Math.max(...allY);
+      return {
+        x: minX - 8,
+        y: minY - 8,
+        w: maxX - minX + 16,
+        h: maxY - minY + 16,
+      };
+    }
+
+    function choosePlacement() {
+      for (const candidate of candidates) {
+        const bounds = widgetBounds(candidate);
+        if (!placementForbiddenRects.some((rect) => intersects(bounds, rect))) {
+          return { candidate, bounds, safe: true };
+        }
+      }
+
+      const fallback = candidates[0];
+      return { candidate: fallback, bounds: widgetBounds(fallback), safe: false };
+    }
+
+    function drawBody(placement) {
+      const { hipX, hipY, side } = placement.candidate;
+      const leftBorderColor = palette.cyan;
+      const rightBorderColor = palette.orange;
+      const detailColor = palette.white;
+      const centerColor = palette.cyan;
+      const mountColor = palette.white;
+      const local = (x, y) => ({ x: hipX + side * scaleCoord(x), y: hipY + scaleCoord(y) });
+
+      const hullSegments = [
+        ["B00", -78, -20, -68, 18, leftBorderColor],
+        ["B10", -68, 18, -42, 32, leftBorderColor],
+        ["B20", -42, 32, -6, 32, leftBorderColor],
+        ["B30", 6, 32, 46, 32, rightBorderColor],
+        ["B40", 46, 32, 74, 14, rightBorderColor],
+        ["B50", 74, 14, 78, -10, rightBorderColor],
+        ["B60", 78, -10, 54, -24, rightBorderColor],
+        ["B70", 54, -24, 6, -24, rightBorderColor],
+        ["B80", -6, -24, -56, -24, leftBorderColor],
+        ["B90", -56, -24, -78, -20, leftBorderColor],
+      ];
+      hullSegments.forEach(([name, x1, y1, x2, y2, stroke]) => {
+        const start = local(x1, y1);
+        const end = local(x2, y2);
+        graphicLine(name, start.x, start.y, end.x, end.y, stroke, scaleStroke(4), 0, "STATIC");
+      });
+
+      const deckA = local(-54, 18);
+      const deckLeft = local(-6, 18);
+      const deckRight = local(6, 18);
+      const deckB = local(48, 18);
+      const bellyA = local(-48, -9);
+      const bellyLeft = local(-6, -9);
+      const bellyRight = local(6, -9);
+      const bellyB = local(42, -9);
+      const braceA0 = local(-36, -21);
+      const braceA1 = local(-14, 26);
+      const braceB0 = local(16, -21);
+      const braceB1 = local(42, 25);
+      graphicLine("D00", deckA.x, deckA.y, deckLeft.x, deckLeft.y, leftBorderColor, scaleStroke(2), 0, "STATIC");
+      graphicLine("D10", deckRight.x, deckRight.y, deckB.x, deckB.y, rightBorderColor, scaleStroke(2), 0, "STATIC");
+      graphicLine("D20", bellyA.x, bellyA.y, bellyLeft.x, bellyLeft.y, leftBorderColor, scaleStroke(2), 0, "STATIC");
+      graphicLine("D30", bellyRight.x, bellyRight.y, bellyB.x, bellyB.y, rightBorderColor, scaleStroke(2), 0, "STATIC");
+      graphicLine("D40", braceA0.x, braceA0.y, braceA1.x, braceA1.y, leftBorderColor, scaleStroke(2), 0, "STATIC");
+      graphicLine("D50", braceB0.x, braceB0.y, braceB1.x, braceB1.y, rightBorderColor, scaleStroke(2), 0, "STATIC");
+
+      graphicLine("C00", hipX, hipY + scaleCoord(36), hipX, hipY - scaleCoord(36), centerColor, scaleStroke(2), 0, "STATIC");
+      graphicCircle("C10", hipX, hipY + scaleCoord(16), scaleCoord(4), centerColor, scaleStroke(2), 0, "STATIC");
+
+      graphicCircle("H00", hipX, hipY, scaleCoord(9), mountColor, scaleStroke(3), 0, "STATIC");
+      graphicLine(
+        "H10",
+        hipX - scaleCoord(15),
+        hipY + scaleCoord(8),
+        hipX - scaleCoord(15),
+        hipY - scaleCoord(12),
+        mountColor,
+        scaleStroke(3),
+        0,
+        "STATIC",
+      );
+      graphicLine(
+        "H20",
+        hipX + scaleCoord(15),
+        hipY + scaleCoord(8),
+        hipX + scaleCoord(15),
+        hipY - scaleCoord(12),
+        mountColor,
+        scaleStroke(3),
+        0,
+        "STATIC",
+      );
+      graphicLine(
+        "H30",
+        hipX - scaleCoord(15),
+        hipY - scaleCoord(12),
+        hipX + scaleCoord(15),
+        hipY - scaleCoord(12),
+        mountColor,
+        scaleStroke(3),
+        0,
+        "STATIC",
+      );
+    }
+
+    function drawWheelTicks(placement) {
+      const { hipX, hipY, side } = placement.candidate;
+      const tickSide = -side;
+      const tickColor = "rgba(232,237,242,0.5)";
+      const inner = scaleCoord(28);
+      const outer = scaleCoord(48);
+      const centerExtra = scaleCoord(7);
+      const ticks = [distanceMin, distanceMid, distanceMax];
+
+      ticks.forEach((distance, index) => {
+        const y = hipY - distance;
+        const end = outer + (index === 1 ? centerExtra : 0);
+        graphicLine(
+          `T${index}0`,
+          hipX + tickSide * inner,
+          y,
+          hipX + tickSide * end,
+          y,
+          tickColor,
+          scaleStroke(3),
+          0,
+          "STATIC",
+        );
+      });
+    }
+
+    function drawLeg(placement, leg) {
+      const pose = legPose(leg.phase);
+      const geometry = legGeometry(pose, placement.candidate, leg);
+      const hip = geometry.hip;
+      const knee = geometry.knee;
+      const axle = geometry.wheel;
+
+      graphicLine(`${leg.id}U0`, hip.x, hip.y, knee.x, knee.y, leg.color, scaleStroke(6), 1);
+      graphicLine(`${leg.id}L0`, knee.x, knee.y, axle.x, axle.y, leg.color, scaleStroke(6), 1);
+      graphicCircle(`${leg.id}W0`, axle.x, axle.y, scaleCoord(20), leg.color, scaleStroke(4), 1);
+      graphicCircle(`${leg.id}K0`, knee.x, knee.y, scaleCoord(7), leg.color, scaleStroke(3), 1);
+      graphicCircle(`${leg.id}A0`, axle.x, axle.y, scaleCoord(5), "rgba(232,237,242,0.86)", scaleStroke(3), 1);
+      return pose;
+    }
+
+    function drawSideLegs(placement) {
+      const rightPose = drawLeg(placement, legConfigs[1]);
+      const leftPose = drawLeg(placement, legConfigs[0]);
+
+      lastPlacement = placement;
+      placementStatus.textContent = `${placement.candidate.id} ${placement.safe ? "SAFE" : "CHECK"}`;
+      placementStatus.style.color = placement.safe ? "var(--green)" : "var(--red)";
+      budgetStatus.textContent = `STATIC INIT / ${dynamicCommands.length} DYN`;
+      leftLegStatus.textContent = `${leftPose.thighAngleDeg.toFixed(0)}deg / ${Math.round(leftPose.hipWheelDistance / uiScale)}`;
+      rightLegStatus.textContent = `${rightPose.thighAngleDeg.toFixed(0)}deg / ${Math.round(rightPose.hipWheelDistance / uiScale)}`;
+    }
+
+    function renderCommandList() {
+      commandList.innerHTML = "";
+      const title = document.createElement("h2");
+      title.textContent = "Primitive Groups";
+      commandList.appendChild(title);
+
+      const staticFrame = document.createElement("div");
+      staticFrame.className = "command";
+      staticFrame.innerHTML = `<code>STATIC</code><span>Body drawn on init/reset</span><span>${staticCommands.length}</span>`;
+      commandList.appendChild(staticFrame);
+
+      staticCommands.forEach((cmd) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${cmd.name}</code><span>${cmd.type}</span><span>L${cmd.layer}</span>`;
+        commandList.appendChild(row);
+      });
+
+      const dynamicFrame = document.createElement("div");
+      dynamicFrame.className = "command";
+      dynamicFrame.innerHTML = `<code>MOVE</code><span>Dual-leg pose update</span><span>${dynamicCommands.length}</span>`;
+      commandList.appendChild(dynamicFrame);
+
+      dynamicCommands.forEach((cmd) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${cmd.name}</code><span>${cmd.type}</span><span>L${cmd.layer}</span>`;
+        commandList.appendChild(row);
+      });
+
+      const total = document.createElement("div");
+      total.className = "command text-frame";
+      total.innerHTML = `<code>TEXT</code><span>No character command generated</span><span>0</span>`;
+      commandList.appendChild(total);
+    }
+
+    function draw() {
+      staticCommands = [];
+      dynamicCommands = [];
+      const placement = choosePlacement();
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      drawForbiddenPreview();
+      drawBody(placement);
+      drawWheelTicks(placement);
+      drawSideLegs(placement);
+      renderCommandList();
+    }
+
+    function setState(next) {
+      selected = next;
+      document.querySelector("[data-auto]").classList.toggle("active", auto);
+      document.querySelector("[data-pause]").classList.toggle("active", paused);
+    }
+
+    document.querySelector("[data-auto]").addEventListener("click", () => {
+      auto = !auto;
+      paused = !auto;
+      setState(selected);
+    });
+
+    document.querySelector("[data-pause]").addEventListener("click", () => {
+      paused = !paused;
+      auto = !paused;
+      setState(selected);
+    });
+
+    gridMode.addEventListener("change", draw);
+    maskToggle.addEventListener("change", draw);
+    viewMode.addEventListener("change", () => {
+      canvas.style.width = viewMode.value === "center" ? "960px" : "";
+    });
+
+    function frame(ts) {
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+
+      if (auto && !paused) {
+        simPhase += dt * (Math.PI * 2 / 3.2);
+      }
+
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    setState(selected);
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

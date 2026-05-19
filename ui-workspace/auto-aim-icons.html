@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auto Aim Mode Icons</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #191c22;
+      --panel-2: #12151a;
+      --line: #303642;
+      --text: #e8edf2;
+      --muted: #95a2b0;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.42 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .left {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .toolbar,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      min-height: 56px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    .title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .title strong {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    button,
+    select {
+      border: 1px solid #414856;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      min-height: 36px;
+      font: inherit;
+      padding: 8px 11px;
+    }
+
+    button {
+      min-width: 74px;
+      cursor: pointer;
+    }
+
+    .toolbar > div:last-child {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    button:hover,
+    select:hover {
+      border-color: #687486;
+    }
+
+    button.active {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(57, 215, 255, 0.45);
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 104px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .group {
+      border: 1px solid #2b313b;
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #cdd6df;
+    }
+
+    label,
+    .status {
+      display: grid;
+      grid-template-columns: 94px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .fields {
+      display: grid;
+      gap: 8px;
+    }
+
+    .status strong {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .mode-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .mode {
+      display: grid;
+      grid-template-columns: 54px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid #2c333e;
+      border-radius: 6px;
+      background: #171a20;
+      color: #cbd5df;
+      font-size: 12px;
+    }
+
+    .mode code {
+      color: #dce6ef;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        align-items: stretch;
+      }
+
+      .toolbar > div:last-child {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="left">
+      <div class="toolbar">
+        <div class="title">
+          <strong>Auto Aim Mode Icons</strong>
+          <span>1920 x 1080 / bottom-left origin</span>
+        </div>
+        <div>
+          <button data-scale="1" class="active">1x</button>
+          <button data-scale="1.3">1.3x</button>
+          <button data-scale="1.6">1.6x</button>
+        </div>
+      </div>
+
+      <div class="stage">
+        <canvas id="preview" width="1920" height="1080" aria-label="Auto aim mode icon preview"></canvas>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="group">
+        <h2>View</h2>
+        <div class="fields">
+          <label>
+            Grid
+            <select id="gridMode">
+              <option value="axes" selected>Axes</option>
+              <option value="full">Full</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <div class="status">
+            Placement
+            <strong id="placementStatus">SAFE</strong>
+          </div>
+          <div class="status">
+            Current
+            <strong id="modeStatus">VEHICLE</strong>
+          </div>
+          <div class="status">
+            Primitives
+            <strong id="primitiveStatus">34 total</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="group mode-list" id="modeList" aria-label="Auto aim modes"></section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const gridMode = document.getElementById("gridMode");
+    const placementStatus = document.getElementById("placementStatus");
+    const modeStatus = document.getElementById("modeStatus");
+    const primitiveStatus = document.getElementById("primitiveStatus");
+    const modeList = document.getElementById("modeList");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const color = {
+      cyan: "#39d7ff",
+      main: "#ffd24a",
+      white: "#e8edf2",
+      muted: "rgba(232,237,242,0.42)",
+      gray: "rgba(150,150,150,0.26)",
+      red: "#ff5d6c",
+      green: "#49e66f",
+    };
+
+    const modes = [
+      { id: 0, code: "CAR", title: "Vehicle", x: 230, y: 718, size: 0.88, rot: 0, anchorY: 0, primitives: 8, draw: drawVehicleIcon },
+      { id: 1, code: "ENE-A", title: "Energy Fan A", x: 350, y: 710, size: 0.82, rot: 0, anchorY: -5, primitives: 7, draw: drawEnergyStaticIcon },
+      { id: 2, code: "ENE-B", title: "Energy Fan B", x: 475, y: 702, size: 0.76, rot: 0, anchorX: 2, anchorY: 0, primitives: 8, draw: drawEnergySweepIcon },
+      { id: 3, code: "POST", title: "Outpost", x: 600, y: 694, size: 0.7, rot: 0, anchorY: 1, primitives: 7, draw: drawOutpostIcon },
+    ];
+    const framePrimitives = 4;
+    const totalPrimitives = modes.reduce((sum, mode) => sum + mode.primitives, framePrimitives);
+
+    const clientMaskRects = [
+      { id: "TOP", x: 0, y: 925, w: 1920, h: 155 },
+      { id: "LEFT_MAIN", x: 0, y: 0, w: 422, h: 516 },
+      { id: "LEFT_STEP", x: 422, y: 0, w: 82, h: 258 },
+      { id: "LEFT_FLOAT", x: 473, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_FLOAT", x: 1357, y: 478, w: 92, h: 122 },
+      { id: "RIGHT_MAIN", x: 1461, y: 0, w: 459, h: 333 },
+    ];
+
+    let scale = 1;
+    let activeMode = initialMode();
+
+    function initialMode() {
+      const value = Number(new URLSearchParams(location.search).get("mode"));
+      return Number.isFinite(value) ? Math.max(0, Math.min(3, Math.trunc(value))) : 0;
+    }
+
+    function by(y) {
+      return H - y;
+    }
+
+    function rectToCanvas(rect) {
+      return { x: rect.x, y: H - rect.y - rect.h, w: rect.w, h: rect.h };
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function iconBox(mode) {
+      const r = 40 * modeScale(mode);
+      return { x: mode.x - r, y: mode.y - r, w: 2 * r, h: 2 * r };
+    }
+
+    function line(x1, y1, x2, y2, stroke = color.white, width = 3) {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width * scale;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(x1, by(y1));
+      ctx.lineTo(x2, by(y2));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function circle(x, y, r, stroke = color.white, width = 3) {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width * scale;
+      ctx.beginPath();
+      ctx.arc(x, by(y), r * scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function arc(x, y, r, startDeg, endDeg, stroke = color.cyan, width = 3) {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width * scale;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      const start = (-endDeg * Math.PI) / 180;
+      const end = (-startDeg * Math.PI) / 180;
+      ctx.arc(x, by(y), r * scale, start, end);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function modeScale(mode) {
+      return scale * (mode.size ?? 1);
+    }
+
+    function local(mode, x, y) {
+      const s = modeScale(mode);
+      const rad = ((mode.rot ?? 0) * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const dx = x - (mode.anchorX ?? 0);
+      const dy = y - (mode.anchorY ?? 0);
+      return {
+        x: mode.x + (dx * cos - dy * sin) * s,
+        y: mode.y + (dx * sin + dy * cos) * s,
+      };
+    }
+
+    function lineLocal(mode, x1, y1, x2, y2, stroke = color.white, width = 3) {
+      const p1 = local(mode, x1, y1);
+      const p2 = local(mode, x2, y2);
+      line(p1.x, p1.y, p2.x, p2.y, stroke, width * (mode.size ?? 1));
+    }
+
+    function circleLocal(mode, x, y, r, stroke = color.white, width = 3) {
+      const p = local(mode, x, y);
+      circle(p.x, p.y, r * (mode.size ?? 1), stroke, width * (mode.size ?? 1));
+    }
+
+    function arcLocal(mode, x, y, r, startDeg, endDeg, stroke = color.cyan, width = 3) {
+      const p = local(mode, x, y);
+      const rot = mode.rot ?? 0;
+      arc(p.x, p.y, r * (mode.size ?? 1), startDeg + rot, endDeg + rot, stroke, width * (mode.size ?? 1));
+    }
+
+    function drawVehicleIcon(mode, active) {
+      const main = active ? color.main : color.muted;
+      const detail = active ? color.white : color.muted;
+      arcLocal(mode, 0, 0, 25, 25, 125, main, 3);
+      arcLocal(mode, 0, 0, 25, 205, 305, main, 3);
+      lineLocal(mode, 0, 16, 16, 0, detail, 3);
+      lineLocal(mode, 16, 0, 0, -16, detail, 3);
+      lineLocal(mode, 0, -16, -16, 0, detail, 3);
+      lineLocal(mode, -16, 0, 0, 16, detail, 3);
+      lineLocal(mode, -24, 0, 24, 0, main, 2);
+      circleLocal(mode, 0, 0, 4, main, 2);
+    }
+
+    function drawFan(mode, active, phaseDeg) {
+      const blade = active ? color.main : color.muted;
+      for (let i = 0; i < 5; i++) {
+        const angle = phaseDeg + i * 72;
+        arcLocal(mode, 0, 0, 19, angle - 17, angle + 17, blade, 5);
+      }
+      circleLocal(mode, 0, 0, 5, active ? color.white : color.muted, 2);
+    }
+
+    function drawEnergyStaticIcon(mode, active) {
+      drawFan(mode, active, -90);
+      lineLocal(mode, -11, -29, 11, -29, active ? color.main : color.muted, 3);
+    }
+
+    function drawEnergySweepIcon(mode, active) {
+      const main = active ? color.main : color.muted;
+      drawFan(mode, active, -54);
+      arcLocal(mode, 0, 0, 30, 18, 120, main, 3);
+      lineLocal(mode, 27, 16, 34, 23, main, 3);
+    }
+
+    function drawOutpostIcon(mode, active) {
+      const main = active ? color.main : color.muted;
+      const detail = active ? color.white : color.muted;
+      const mainWidth = active ? 6 : 3;
+      const coreWidth = active ? 4 : 2;
+      arcLocal(mode, 0, 8, 17, 42, 138, main, mainWidth);
+      lineLocal(mode, -10, 14, 10, 14, detail, 3);
+      lineLocal(mode, 0, 18, 0, -18, detail, 3);
+      lineLocal(mode, -15, -20, 0, 13, detail, 3);
+      lineLocal(mode, 15, -20, 0, 13, detail, 3);
+      lineLocal(mode, -19, -22, 19, -22, main, mainWidth);
+      circleLocal(mode, 0, 2, 5, main, coreWidth);
+    }
+
+    function drawGroupFrame() {
+      const edge = "rgba(57,215,255,0.46)";
+      const dim = "rgba(232,237,242,0.20)";
+      line(176, 676, 246, 674, edge, 2);
+      line(176, 676, 196, 700, edge, 2);
+      line(604, 668, 670, 666, dim, 1);
+      line(670, 666, 648, 690, dim, 1);
+    }
+
+    function drawGrid() {
+      if (gridMode.value === "off") return;
+      ctx.save();
+      if (gridMode.value === "full") {
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 120) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= H; y += 90) {
+          ctx.beginPath();
+          ctx.moveTo(0, by(y));
+          ctx.lineTo(W, by(y));
+          ctx.stroke();
+        }
+      }
+      ctx.strokeStyle = "rgba(57,215,255,0.45)";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(220, by(72));
+      ctx.moveTo(72, by(72));
+      ctx.lineTo(72, by(220));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawForbiddenPreview() {
+      clientMaskRects.forEach((rect) => {
+        const cr = rectToCanvas(rect);
+        ctx.fillStyle = color.gray;
+        ctx.fillRect(cr.x, cr.y, cr.w, cr.h);
+        ctx.strokeStyle = "rgba(175,175,175,0.34)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cr.x, cr.y, cr.w, cr.h);
+      });
+    }
+
+    function renderModeList() {
+      modeList.innerHTML = "";
+      const title = document.createElement("h2");
+      title.textContent = "Modes";
+      modeList.appendChild(title);
+      modes.forEach((mode) => {
+        const row = document.createElement("button");
+        row.className = "mode";
+        row.type = "button";
+        row.classList.toggle("active", mode.id === activeMode);
+        row.innerHTML = `<code>${mode.code}</code><span>${mode.title}</span><span>${mode.id}</span>`;
+        row.addEventListener("click", () => {
+          activeMode = mode.id;
+          draw();
+        });
+        modeList.appendChild(row);
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      drawForbiddenPreview();
+      drawGroupFrame();
+
+      modes.forEach((mode) => {
+        mode.draw(mode, mode.id === activeMode);
+      });
+
+      const safe = !modes.some((mode) => clientMaskRects.some((rect) => intersects(iconBox(mode), rect)));
+      placementStatus.textContent = safe ? "SAFE" : "CHECK";
+      placementStatus.style.color = safe ? "var(--green)" : "#ff5d6c";
+      modeStatus.textContent = modes[activeMode].code;
+      primitiveStatus.textContent = `${totalPrimitives} total`;
+      renderModeList();
+    }
+
+    document.querySelectorAll("[data-scale]").forEach((button) => {
+      button.addEventListener("click", () => {
+        scale = Number(button.dataset.scale);
+        document.querySelectorAll("[data-scale]").forEach((item) => item.classList.toggle("active", item === button));
+        draw();
+      });
+    });
+
+    gridMode.addEventListener("change", draw);
+    draw();
+  </script>
+</body>
+</html>
