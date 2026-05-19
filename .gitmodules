@@ -4,3 +4,6 @@
 [submodule "Solution/ThirdParty/PYRo-uCtrl-Unity"]
 	path = Solution/ThirdParty/PYRo-uCtrl-Unity
 	url = git@github.com:MekCraftLi/PYRo-uCtrl-Unity.git
+[submodule "Solution/ThirdParty/referee-hud-ui"]
+	path = Solution/ThirdParty/referee-hud-ui
+	url = git@github.com:MekCraftLi/PeiyangRobot-infantry-UILib.git
