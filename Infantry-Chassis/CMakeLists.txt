@@ -46,6 +46,11 @@ add_executable(${CMAKE_PROJECT_NAME}
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
+add_subdirectory(
+        "${CMAKE_CURRENT_LIST_DIR}/../Solution/ThirdParty/referee-hud-ui"
+        "${CMAKE_CURRENT_BINARY_DIR}/referee-hud-ui"
+)
+
 
 
 
@@ -136,6 +141,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/Algorithm/Power/power-limiter.cpp"
 
         "../Solution/Application/movtion-ctrl-app.cpp"
+        "../Solution/Application/referee-hud-renderer-app.cpp"
         "../Solution/Application/ui-maker-app.cpp"
 
         "../Solution/Board-Support-Pack/BMI088/dev-bmi.cpp"
@@ -152,7 +158,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         "../Solution/System/Service/referee.cpp"
         "../Solution/System/Service/interrupt-callback.cpp"
         "../Solution/System/Service/super-cap-comm.cpp"
-        "../Solution/System/Service/ui-renderer-srvc.cpp"
 
         "../Solution/tools/crc.cpp"
 
@@ -249,6 +254,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         stm32cubemx
 
         # Add user defined libraries
+        referee_hud::ui
         CMSISDSP
         dsppp_lib
 )

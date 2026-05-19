@@ -63,7 +63,7 @@ UiRenderEngine::RmFigurePayload UiRenderEngine::_toPayload(const UiCommand& cmd)
             break;
         case CommandShape::Circle:
             p.type = static_cast<uint32_t>(GraphicType::Circle);
-            p.endX = cmd.circleRadius;
+            p.param3 = cmd.circleRadius;
             break;
         case CommandShape::FloatValue: {
             p.type = static_cast<uint32_t>(GraphicType::Float);
