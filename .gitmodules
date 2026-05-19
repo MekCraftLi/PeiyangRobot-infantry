@@ -7,3 +7,6 @@
 [submodule "Solution/ThirdParty/referee-hud-ui"]
 	path = Solution/ThirdParty/referee-hud-ui
 	url = git@github.com:MekCraftLi/PeiyangRobot-infantry-UILib.git
+[submodule "rm"]
+	path = rm
+	url = git@gitee.com:User_lwh/rm.git
