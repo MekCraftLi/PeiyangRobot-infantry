@@ -67,8 +67,10 @@
 static constexpr float ALIGN_TARGET_RAD = (5120.0f / 8192.0f) * 2.0f * M_PI;
 static constexpr float ALIGN_TOLERANCE  = 5.0f * M_PI / 180.0f;
 
+#ifdef GIMBAL
 static pyro::fsm_t<GimbalMotionCtx> motionFsm;
 static GimbalMotionCtx motionCtx;
+#endif
 
 // 专供 Ozone 示波器实时采样的底盘功率观测探针
 volatile struct PowerDebugOzone {

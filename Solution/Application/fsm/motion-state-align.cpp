@@ -43,7 +43,7 @@ void MovtionCtrlApp::StateAlign::enter(GimbalMotionCtx& ctx) {
     instance()._alignVelFilt  = 0.0f;
     instance()._alignPosPid.clear();
     instance()._alignSpdPid.clear();
-    ctx.output.pitchEn    = false;
+    ctx.output.pitchEn    = true;
     ctx.output.yawVoltage = 0.0f;
     MotActSrvc::instance().pitch.disable();
 }
@@ -68,7 +68,7 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     // 速度环: 编码器速度经 50Hz LPF 后作为反馈
     float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -errorRad);
     ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, instance()._alignVelFilt);
-    ctx.output.pitchEn    = false;
+    ctx.output.pitchEn    = true;
 
     // 误差 < ±5° → 累计稳定时间
     if (std::abs(errorRad) < ALIGN_TOLERANCE) {
@@ -80,4 +80,7 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     } else {
         instance()._alignStableMs = 0.0f;
     }
+
+    ctx.telem.targetPitchRad = - M_PI_2;
+
 }

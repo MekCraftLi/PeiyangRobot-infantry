@@ -75,17 +75,17 @@ void FireCtrlApp::StateSingleFire::execute(FireCtrlCtx& ctx) {
     while (err < -(float)M_PI) err += 2.0f * (float)M_PI;
 
     // --- 堵转检测 ---
-    if (std::abs(err) > (float)M_PI / 16.0f && std::abs(ctx.fdb.trigger.vel) < 10.0f) {
-        if (ctx.blockStartTick == 0) {
-            ctx.blockStartTick = xTaskGetTickCount();
-        } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(2000)) {
-            ctx.jamSourceState = FireState::SingleFire;
-            request_switch(&instance()._stateCaliReverse);
-            return;
-        }
-    } else {
-        ctx.blockStartTick = 0;
-    }
+    // if (std::abs(err) > (float)M_PI / 16.0f && std::abs(ctx.fdb.trigger.vel) < 10.0f) {
+    //     if (ctx.blockStartTick == 0) {
+    //         ctx.blockStartTick = xTaskGetTickCount();
+    //     } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(2000)) {
+    //         ctx.jamSourceState = FireState::SingleFire;
+    //         request_switch(&instance()._stateCaliReverse);
+    //         return;
+    //     }
+    // } else {
+    //     ctx.blockStartTick = 0;
+    // }
 
     // --- 到达目标 → 回到 Ready ---
     if (std::abs(ctx.currentTriggerEcd - ctx.targetTriggerEcd) < 3000) {
