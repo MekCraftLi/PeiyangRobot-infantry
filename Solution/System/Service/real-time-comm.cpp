@@ -134,8 +134,11 @@ void RealTimeCommApp::run() {
 #ifdef GIMBAL
     Blackboard::instance().g2cOutput.read(output);
 
-
-    output.msg.shootEn = static_cast<uint8_t>(FireCtrlApp::instance().getFireState()) > 0;
+    if ((output.msg.mode & 0x03U) == CHASSIS_RELAX) {
+        clearGimbalToChassisButtonState(output);
+    } else {
+        output.msg.shootEn = static_cast<uint8_t>(FireCtrlApp::instance().getFireState()) > 0;
+    }
     //
     //
     //output.msg.mode=CHASSIS_RELAX;

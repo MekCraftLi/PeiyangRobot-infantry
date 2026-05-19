@@ -362,19 +362,23 @@ void CommanderSrvc::run() {
             comm.msg.vy   = 0;
         }
     }
-    comm.msg.fn1Switch     = 0;
+    if ((comm.msg.mode & 0x03U) == CHASSIS_RELAX) {
+        clearGimbalToChassisButtonState(comm);
+    } else {
+        comm.msg.fn1Switch     = 0;
 
-    // 功能标志位
-    comm.msg.capSwitch     = actionCapSwitch.isTriggered() ? 1 : 0;
-    comm.msg.turboMode     = _turboModeActive ? 1 : 0;
-    comm.msg.stepClimb     = _stepClimbActive ? 1 : 0;
-    comm.msg.legLength     = triggers.legLengthCycle.getIndex(); // 0/1/2
-    comm.msg.selfRescue    = actionSelfRescue.isTriggered() ? 1 : 0;
-    comm.msg.manualRescue  = actionManualRescue.isTriggered() ? 1 : 0;
-    comm.msg.gimbalReverse = actionGimbalReverse.isTriggered() ? 1 : 0;
-    comm.msg.jump          = actionJump.isTriggered() ? 1 : 0;
-    comm.msg.fireState     = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
-    comm.msg.aimMode       = triggers.aimModeCycle.getIndex();
+        // 功能标志位
+        comm.msg.capSwitch     = actionCapSwitch.isTriggered() ? 1 : 0;
+        comm.msg.turboMode     = _turboModeActive ? 1 : 0;
+        comm.msg.stepClimb     = _stepClimbActive ? 1 : 0;
+        comm.msg.legLength     = triggers.legLengthCycle.getIndex(); // 0/1/2
+        comm.msg.selfRescue    = actionSelfRescue.isTriggered() ? 1 : 0;
+        comm.msg.manualRescue  = actionManualRescue.isTriggered() ? 1 : 0;
+        comm.msg.gimbalReverse = actionGimbalReverse.isTriggered() ? 1 : 0;
+        comm.msg.jump          = actionJump.isTriggered() ? 1 : 0;
+        comm.msg.fireState     = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
+        comm.msg.aimMode       = triggers.aimModeCycle.getIndex();
+    }
 
 #else
     // ========================================

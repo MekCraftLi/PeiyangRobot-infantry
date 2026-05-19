@@ -222,6 +222,22 @@ union GimbalToChassisComm {
 
     uint8_t buffer[8];
 };
+
+inline void clearGimbalToChassisButtonState(GimbalToChassisComm& comm) {
+    comm.msg.shootEn       = 0;
+    comm.msg.resetUI       = 0;
+    comm.msg.fn1Switch     = 0;
+    comm.msg.turboMode     = 0;
+    comm.msg.stepClimb     = 0;
+    comm.msg.legLength     = 0;
+    comm.msg.selfRescue    = 0;
+    comm.msg.manualRescue  = 0;
+    comm.msg.gimbalReverse = 0;
+    comm.msg.jump          = 0;
+    comm.msg.capSwitch     = 0;
+    comm.msg.fireState     = 0;
+    comm.msg.aimMode       = 0;
+}
 // ==========================================
 // [新增] 底盘向云台发送的通信联合体
 // ==========================================
