@@ -737,7 +737,7 @@
         const distance = hipWheelDistanceRatio * upperLink;
         const clampedDistance = Math.max(1, Math.min(distance, upperLink + lowerLink - 1));
         const knee = {
-          x: hip.x + Math.cos(thighAngleRad) * upperLink,
+          x: hip.x + Math.abs(Math.cos(thighAngleRad)) * upperLink,
           y: hip.y - Math.sin(thighAngleRad) * upperLink,
         };
         const hipToKneeX = knee.x - hip.x;
@@ -978,7 +978,7 @@
       const state = states[selected] ?? states[1];
       const distance = state.distanceRatio * upperLink;
       const angleRad = (state.angleDeg * Math.PI) / 180;
-      const knee = { x: hip.x + Math.cos(angleRad) * upperLink * side, y: hip.y - Math.sin(angleRad) * upperLink };
+      const knee = { x: hip.x + Math.abs(Math.cos(angleRad)) * upperLink * side, y: hip.y - Math.sin(angleRad) * upperLink };
       const hipToKneeX = knee.x - hip.x;
       const hipToKneeY = knee.y - hip.y;
       const centerDistance = Math.hypot(hipToKneeX, hipToKneeY) || upperLink;

@@ -417,7 +417,7 @@
       const hip = { x: origin.hipX + leg.hipOffsetX, y: origin.hipY };
       const angleRad = (pose.thighAngleDeg * Math.PI) / 180;
       const knee = {
-        x: hip.x + Math.cos(angleRad) * upperLinkLength * origin.side,
+        x: hip.x + Math.abs(Math.cos(angleRad)) * upperLinkLength * origin.side,
         y: hip.y - Math.sin(angleRad) * upperLinkLength,
       };
       const d = Math.max(1, Math.min(pose.hipWheelDistance * upperLinkLength, upperLinkLength + lowerLinkLength - 1));
