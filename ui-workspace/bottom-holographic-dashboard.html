@@ -686,8 +686,10 @@
       const scale = legWidget.scale;
       const upperLink = 105 * scale;
       const lowerLink = 125 * scale;
-      const distanceMid = 135;
-      const distanceAmp = 40;
+      const distanceMinRatio = 95 / 105;
+      const distanceMidRatio = 135 / 105;
+      const distanceMaxRatio = 175 / 105;
+      const distanceAmpRatio = (distanceMaxRatio - distanceMinRatio) * 0.5;
       const legs = [
         { id: "CL", color: color.cyan, phase: 0, hipOffset: -6 },
         { id: "CR", color: color.orange, phase: Math.PI, hipOffset: 6 },
@@ -719,26 +721,38 @@
       drawLine("CG10", deckA.x, deckA.y, deckLeft.x, deckLeft.y, color.cyan, 1, 2);
       drawLine("CG11", deckRight.x, deckRight.y, deckB.x, deckB.y, color.orange, 1, 2);
       drawCircle("CG12", hipCenter.x, hipCenter.y, 4, color.white, 2, 2);
-      [95, 135, 175].forEach((distance, index) => {
-        const tickY = legWidget.cy - distance * scale;
+      [distanceMinRatio, distanceMidRatio, distanceMaxRatio].forEach((distanceRatio, index) => {
+        const tickY = legWidget.cy - distanceRatio * upperLink;
         const tickColor = index === 1 ? color.cyan : color.white;
         drawLine(`CGT${index}`, legWidget.cx - 48 * scale, tickY, legWidget.cx - 28 * scale, tickY, tickColor, 1, 1);
       });
 
       legs.forEach((leg) => {
         const wave = Math.sin(legWidget.phase + leg.phase);
-        const hipWheelDistance = distanceMid + distanceAmp * wave;
+        const angleWave = Math.sin(legWidget.phase + leg.phase + Math.PI / 3);
+        const hipWheelDistanceRatio = distanceMidRatio + distanceAmpRatio * wave;
+        const thighAngleDeg = 30 + 14 * angleWave;
+        const thighAngleRad = (thighAngleDeg * Math.PI) / 180;
         const hip = centralLegLocal(leg.hipOffset, 0);
-        const wheel = centralLegLocal(leg.hipOffset, -hipWheelDistance);
-        const distance = hipWheelDistance * scale;
+        const distance = hipWheelDistanceRatio * upperLink;
         const clampedDistance = Math.max(1, Math.min(distance, upperLink + lowerLink - 1));
-        const along =
-          (clampedDistance * clampedDistance + upperLink * upperLink - lowerLink * lowerLink) / (2 * clampedDistance);
-        const lateral = Math.sqrt(Math.max(0, upperLink * upperLink - along * along));
         const knee = {
-          x: hip.x + lateral,
-          y: hip.y - along,
+          x: hip.x + Math.cos(thighAngleRad) * upperLink,
+          y: hip.y - Math.sin(thighAngleRad) * upperLink,
         };
+        const hipToKneeX = knee.x - hip.x;
+        const hipToKneeY = knee.y - hip.y;
+        const centerDistance = Math.hypot(hipToKneeX, hipToKneeY) || upperLink;
+        const dirX = hipToKneeX / centerDistance;
+        const dirY = hipToKneeY / centerDistance;
+        const along =
+          (clampedDistance * clampedDistance + centerDistance * centerDistance - lowerLink * lowerLink) /
+          (2 * centerDistance);
+        const height = Math.sqrt(Math.max(0, clampedDistance * clampedDistance - along * along));
+        const base = { x: hip.x + dirX * along, y: hip.y + dirY * along };
+        const wheelA = { x: base.x - dirY * height, y: base.y + dirX * height };
+        const wheelB = { x: base.x + dirY * height, y: base.y - dirX * height };
+        const wheel = wheelA.y < wheelB.y ? wheelA : wheelB;
 
         drawLine(`${leg.id}0`, hip.x, hip.y, knee.x, knee.y, leg.color, 4, 3, "DYNAMIC");
         drawLine(`${leg.id}1`, knee.x, knee.y, wheel.x, wheel.y, leg.color, 4, 3, "DYNAMIC");
@@ -957,15 +971,27 @@
       const hip = { x: 590, y: 222 };
       const side = -1;
       const states = [
-        { distance: sc(95), accent: color.green },
-        { distance: sc(135), accent: color.main },
-        { distance: sc(175), accent: color.pink },
+        { distanceRatio: 95 / 105, angleDeg: 16, accent: color.green },
+        { distanceRatio: 135 / 105, angleDeg: 30, accent: color.main },
+        { distanceRatio: 175 / 105, angleDeg: 44, accent: color.pink },
       ];
       const state = states[selected] ?? states[1];
-      const wheel = { x: hip.x, y: hip.y - state.distance };
-      const along = (state.distance * state.distance + upperLink * upperLink - lowerLink * lowerLink) / (2 * state.distance);
-      const lateral = Math.sqrt(Math.max(0, upperLink * upperLink - along * along)) * side;
-      const knee = { x: hip.x + lateral, y: hip.y - along };
+      const distance = state.distanceRatio * upperLink;
+      const angleRad = (state.angleDeg * Math.PI) / 180;
+      const knee = { x: hip.x + Math.cos(angleRad) * upperLink * side, y: hip.y - Math.sin(angleRad) * upperLink };
+      const hipToKneeX = knee.x - hip.x;
+      const hipToKneeY = knee.y - hip.y;
+      const centerDistance = Math.hypot(hipToKneeX, hipToKneeY) || upperLink;
+      const dirX = hipToKneeX / centerDistance;
+      const dirY = hipToKneeY / centerDistance;
+      const along =
+        (distance * distance + centerDistance * centerDistance - lowerLink * lowerLink) /
+        (2 * centerDistance);
+      const height = Math.sqrt(Math.max(0, distance * distance - along * along));
+      const base = { x: hip.x + dirX * along, y: hip.y + dirY * along };
+      const wheelA = { x: base.x - dirY * height, y: base.y + dirX * height };
+      const wheelB = { x: base.x + dirY * height, y: base.y - dirX * height };
+      const wheel = wheelA.y < wheelB.y ? wheelA : wheelB;
       const local = (x, y) => ({ x: hip.x + sc(x), y: hip.y + sc(y) });
 
       const hull = [
@@ -989,7 +1015,7 @@
       drawCircle("WL09", hip.x, hip.y, sc(9), color.white, 3, 3);
 
       states.forEach((item, index) => {
-        const y = hip.y - item.distance;
+        const y = hip.y - item.distanceRatio * upperLink;
         const tickColor = index === selected ? color.main : color.white;
         const tickEnd = hip.x + sc(index === selected ? 54 : 46);
         drawLine(`WL1${index}`, hip.x + sc(28), y, tickEnd, y, tickColor, index === selected ? 3 : 2, 2);

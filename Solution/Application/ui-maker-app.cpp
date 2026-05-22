@@ -82,7 +82,13 @@ class SimUiMakerInputSource final : public UiMakerInputSource {
 
         const float halfCycle = kCycleSeconds * 0.5f;
         const float ratio     = (_time < halfCycle) ? (_time / halfCycle) : ((kCycleSeconds - _time) / halfCycle);
-        const float legWave = std::sin(_time * 2.0f * RefereeHudSpec::kPi / kLegSignalCycleSeconds);
+        const float legPhase      = _time * 2.0f * RefereeHudSpec::kPi / kLegSignalCycleSeconds;
+        const float leftLegWave    = std::sin(legPhase);
+        const float rightLegWave   = std::sin(legPhase + RefereeHudSpec::kPi);
+        const float leftAngleWave  = std::sin(legPhase + RefereeHudSpec::kPi / 3.0f);
+        const float rightAngleWave = std::sin(legPhase + RefereeHudSpec::kPi + RefereeHudSpec::kPi / 3.0f);
+        const float legDistanceRatioAmp =
+            (RefereeHudSpec::kWheelLegDistanceMaxRatio - RefereeHudSpec::kWheelLegDistanceMinRatio) * 0.5f;
 
         UiMakerInputSnapshot input{};
         input.capVoltage     = 6.0f + 20.0f * ratio;
@@ -96,13 +102,11 @@ class SimUiMakerInputSource final : public UiMakerInputSource {
         input.aimModeState   = _aimModeState;
         input.aimTargetState = _aimTargetState;
         input.leftLegHipWheelDistance =
-            RefereeHudSpec::kWheelLegDistanceMidRaw +
-            (RefereeHudSpec::kWheelLegDistanceMaxRaw - RefereeHudSpec::kWheelLegDistanceMinRaw) * 0.5f * legWave;
-        input.leftLegThighAngleDeg = RefereeHudSpec::wheelLegAngleForDistance(input.leftLegHipWheelDistance);
+            RefereeHudSpec::kWheelLegDistanceMidRatio + legDistanceRatioAmp * leftLegWave;
+        input.leftLegThighAngleDeg = 30.0f + 14.0f * leftAngleWave;
         input.rightLegHipWheelDistance =
-            RefereeHudSpec::kWheelLegDistanceMidRaw -
-            (RefereeHudSpec::kWheelLegDistanceMaxRaw - RefereeHudSpec::kWheelLegDistanceMinRaw) * 0.5f * legWave;
-        input.rightLegThighAngleDeg = RefereeHudSpec::wheelLegAngleForDistance(input.rightLegHipWheelDistance);
+            RefereeHudSpec::kWheelLegDistanceMidRatio + legDistanceRatioAmp * rightLegWave;
+        input.rightLegThighAngleDeg = 30.0f + 14.0f * rightAngleWave;
         return input;
     }
 

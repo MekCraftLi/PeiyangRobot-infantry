@@ -350,10 +350,10 @@
 
     const upperLinkLength = scaleCoord(105);
     const lowerLinkLength = scaleCoord(125);
-    const distanceMin = scaleCoord(95);
-    const distanceMid = scaleCoord(135);
-    const distanceMax = scaleCoord(175);
-    const distanceAmplitude = (distanceMax - distanceMin) * 0.5;
+    const distanceMinRatio = 95 / 105;
+    const distanceMidRatio = 135 / 105;
+    const distanceMaxRatio = 175 / 105;
+    const distanceAmplitudeRatio = (distanceMaxRatio - distanceMinRatio) * 0.5;
     const legConfigs = [
       { id: "L", name: "Left", phase: 0, hipOffsetX: scaleCoord(-6), color: palette.cyan },
       { id: "R", name: "Right", phase: Math.PI, hipOffsetX: scaleCoord(6), color: palette.orange },
@@ -405,30 +405,36 @@
 
     function legPose(phaseOffset, waveOverride = null) {
       const wave = waveOverride ?? Math.sin(simPhase + phaseOffset);
-      const hipWheelDistance = distanceMid + distanceAmplitude * wave;
+      const angleWave = Math.sin(simPhase + phaseOffset + Math.PI / 3);
+      const hipWheelDistance = distanceMidRatio + distanceAmplitudeRatio * wave;
       return {
-        thighAngleDeg: thighAngleForDistance(hipWheelDistance),
+        thighAngleDeg: 30 + 14 * angleWave,
         hipWheelDistance,
       };
     }
 
-    function thighAngleForDistance(distance) {
-      const d = Math.max(1, Math.min(distance, upperLinkLength + lowerLinkLength - 1));
-      const along = (d * d + upperLinkLength * upperLinkLength - lowerLinkLength * lowerLinkLength) / (2 * d);
-      const ratio = Math.min(Math.max(along / upperLinkLength, -1), 1);
-      return 90 - (Math.acos(ratio) * 180) / Math.PI;
-    }
-
     function legGeometry(pose, origin, leg) {
       const hip = { x: origin.hipX + leg.hipOffsetX, y: origin.hipY };
-      const wheel = { x: origin.hipX + leg.hipOffsetX, y: origin.hipY - pose.hipWheelDistance };
-      const d = Math.max(1, Math.min(pose.hipWheelDistance, upperLinkLength + lowerLinkLength - 1));
-      const along = (d * d + upperLinkLength * upperLinkLength - lowerLinkLength * lowerLinkLength) / (2 * d);
-      const lateral = Math.sqrt(Math.max(0, upperLinkLength * upperLinkLength - along * along)) * origin.side;
+      const angleRad = (pose.thighAngleDeg * Math.PI) / 180;
+      const knee = {
+        x: hip.x + Math.cos(angleRad) * upperLinkLength * origin.side,
+        y: hip.y - Math.sin(angleRad) * upperLinkLength,
+      };
+      const d = Math.max(1, Math.min(pose.hipWheelDistance * upperLinkLength, upperLinkLength + lowerLinkLength - 1));
+      const hipToKneeX = knee.x - hip.x;
+      const hipToKneeY = knee.y - hip.y;
+      const centerDistance = Math.hypot(hipToKneeX, hipToKneeY) || upperLinkLength;
+      const dirX = hipToKneeX / centerDistance;
+      const dirY = hipToKneeY / centerDistance;
+      const along = (d * d + centerDistance * centerDistance - lowerLinkLength * lowerLinkLength) / (2 * centerDistance);
+      const height = Math.sqrt(Math.max(0, d * d - along * along));
+      const base = { x: hip.x + dirX * along, y: hip.y + dirY * along };
+      const wheelA = { x: base.x - dirY * height, y: base.y + dirX * height };
+      const wheelB = { x: base.x + dirY * height, y: base.y - dirX * height };
       return {
         hip,
-        knee: { x: hip.x + lateral, y: hip.y - along },
-        wheel,
+        knee,
+        wheel: wheelA.y < wheelB.y ? wheelA : wheelB,
       };
     }
 
@@ -681,7 +687,7 @@
       const inner = scaleCoord(28);
       const outer = scaleCoord(48);
       const centerExtra = scaleCoord(7);
-      const ticks = [distanceMin, distanceMid, distanceMax];
+      const ticks = [distanceMinRatio, distanceMidRatio, distanceMaxRatio].map((ratio) => ratio * upperLinkLength);
 
       ticks.forEach((distance, index) => {
         const y = hipY - distance;
@@ -723,8 +729,8 @@
       placementStatus.textContent = `${placement.candidate.id} ${placement.safe ? "SAFE" : "CHECK"}`;
       placementStatus.style.color = placement.safe ? "var(--green)" : "var(--red)";
       budgetStatus.textContent = `STATIC INIT / ${dynamicCommands.length} DYN`;
-      leftLegStatus.textContent = `${leftPose.thighAngleDeg.toFixed(0)}deg / ${Math.round(leftPose.hipWheelDistance / uiScale)}`;
-      rightLegStatus.textContent = `${rightPose.thighAngleDeg.toFixed(0)}deg / ${Math.round(rightPose.hipWheelDistance / uiScale)}`;
+      leftLegStatus.textContent = `${leftPose.thighAngleDeg.toFixed(0)}deg / ${leftPose.hipWheelDistance.toFixed(2)}L`;
+      rightLegStatus.textContent = `${rightPose.thighAngleDeg.toFixed(0)}deg / ${rightPose.hipWheelDistance.toFixed(2)}L`;
     }
 
     function renderCommandList() {
