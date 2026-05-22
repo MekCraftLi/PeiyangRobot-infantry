@@ -100,7 +100,7 @@ void FireCtrlApp::StateSafeBurst::execute(FireCtrlCtx& ctx) {
     if (std::abs(err) > (float)M_PI / 16.0f && std::abs(ctx.fdb.trigger.vel) < 10.0f) {
         if (ctx.blockStartTick == 0) {
             ctx.blockStartTick = xTaskGetTickCount();
-        } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(2000)) {
+        } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(800)) {
             ctx.jamSourceState = FireState::SafeBurst;
             request_switch(&instance()._stateCaliReverse);
             return;

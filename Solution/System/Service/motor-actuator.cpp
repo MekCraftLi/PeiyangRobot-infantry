@@ -159,8 +159,11 @@ void MotActSrvc::init() {
                            Config::Algorithm::Chassis::DM_MOTOR_TMAX); // 设定扭矩限位 (N.m)
 
     // 设置 MIT 模式下的阻抗参数 (若使用串级PID输出扭矩，Kp和Kd必须设为0)
-    pitch.set_runtime_kp(Config::Algorithm::Gimbal::DM_MOT_PITCH_KP);
-    pitch.set_runtime_kd(Config::Algorithm::Gimbal::DM_MOT_PITCH_KD);
+    pitch.set_runtime_kp(DM_MOT_PITCH_KP);
+    pitch.set_runtime_kd(DM_MOT_PITCH_KD);
+
+    
+
 
     // 发送使能指令 (0xFC)
     pitch.enable();
@@ -223,6 +226,8 @@ void MotActSrvc::run() {
     BoosterState bstate{.timestamp = gstate.timestamp};
     GimbalOutput gout{};
     BoosterOutput bout{};
+
+
 
     Blackboard::instance().boosterState.read(bstate);
 

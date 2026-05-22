@@ -64,7 +64,7 @@
         float _deadband                      = 0.3f;
 
         // 极限补偿幅度上限: 最多允许上下浮动 63 rad/s (折合约 600 RPM)
-        float _maxCompensation               = 63.0f;
+        float _maxCompensation               = 93.0f;
 
         // ==========================================================
         // 状态与滤波内存

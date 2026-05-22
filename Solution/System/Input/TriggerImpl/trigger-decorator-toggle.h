@@ -74,6 +74,10 @@ public:
         }
     }
 
+    // 添加 getter 方法来获取当前的 toggle 状态
+    bool isToggledOn() const {
+        return _isToggledOn;
+    }
     // 重写 reset，确保底层触发器和自身状态一并重置
     void reset() override {
         InputTrigger::reset();

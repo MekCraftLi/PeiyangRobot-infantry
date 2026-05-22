@@ -52,9 +52,9 @@
  */
 void FireCtrlApp::StateBurstFire::enter(FireCtrlCtx& ctx) {
     // --- 初始化 ---
-    ctx.isCalibrated            = false;
-    ctx.blockStartTick          = 0;
-    ctx.useTriggerSpeedLoopOnly = true;
+    ctx.isCalibrated            = false;//取消拨弹盘校准
+    ctx.blockStartTick          = 0;//堵转检测起始时刻 (0=未堵转)
+    ctx.useTriggerSpeedLoopOnly = true;//绕过位置环, 仅速度环 (连发/校准)
     ctx.state                   = FireState::BurstFire;
 }
 
@@ -79,14 +79,19 @@ void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
     }
 
     // --- 热控器动态调节安全射频 ---
+    /*返回值范围:
+    热量充足: 返回最大转速（高速连发）
+    热量紧张: 返回降低的转速（降速连发）
+    热量超限: 直接停转*/
     ctx.targetTriggerSpeed = ctx.heatController.getSafeBurstRpm(Config::Hardware::MotorTopo::TRIGGER_SPEED, 36.0f);
-
+    //targetTriggerSpeed会在calculateCurrents() 中应用
     // --- 堵转检测: 目标速度大但实际极低 ---
     float speedErr = std::abs(ctx.targetTriggerSpeed) - std::abs(ctx.fdb.trigger.vel);
+    //功能: 检测拨弹盘是否发生机械卡死
     if (speedErr > 50.0f && std::abs(ctx.fdb.trigger.vel) < 10.0f) {
         if (ctx.blockStartTick == 0) {
             ctx.blockStartTick = xTaskGetTickCount();
-        } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(2000)) {
+        } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(800)) {
             ctx.jamSourceState = FireState::BurstFire;
             request_switch(&instance()._stateCaliReverse);
             return;
@@ -94,6 +99,13 @@ void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
     } else {
         ctx.blockStartTick = 0;
     }
+    /*判断条件:
+    目标转速与实际转速差 > 50 RPM
+    实际转速 < 10 RPM（几乎静止）
+    处理逻辑:
+    开始计时（2000ms = 2秒）
+    超时后切换到 CaliReverse 状态进行校准恢复
+    记录堵转来源为 FireState::BurstFire*/
 }
 
 /**

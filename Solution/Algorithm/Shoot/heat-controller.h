@@ -42,7 +42,7 @@ class HeatController {
   public:
     static constexpr float HEAT_PER_BULLET     = 10.0f;
     static constexpr float BULLETS_PER_CIRCLE  = 8.0f;
-    static constexpr float SAFE_MARGIN         = 30.0f;
+    static constexpr float SAFE_MARGIN         = 20.0f;
 
     // 裁判系统最大延迟容忍时间 (毫秒)。通常 10Hz 更新对应 100ms，这里给 200ms 绝对安全
     static constexpr uint32_t REFEREE_DELAY_MS = 200;
@@ -60,6 +60,7 @@ class HeatController {
 
     void tickCooling(float dt) {
         if (_coolingRate > 0.0f && _localHeat > 0.0f) {
+            // 热量随时间自然衰减
             _localHeat -= _coolingRate * dt;
             if (_localHeat < 0.0f) {
                 _localHeat = 0.0f;
@@ -107,17 +108,19 @@ class HeatController {
     [[nodiscard]] bool isApproachingHeatLimit() const {
         if (noHeatLimitSystem()) return false;
         // 当剩余热量不足以容纳两发子弹时，视为逼近上限 (进入警戒区)
-        return (_localHeat + HEAT_PER_BULLET * 2.0f) > (_heatLimit - SAFE_MARGIN);
+        return _localHeat > (_heatLimit - SAFE_MARGIN);
     }
 
     [[nodiscard]] float getSafeBurstRpm(float maxMechRpm, float gearRatio) const {
-        if (noHeatLimitSystem()) return maxMechRpm;
-        if (_localHeat + HEAT_PER_BULLET > _heatLimit - SAFE_MARGIN)
-            return -maxMechRpm * 0.12f;
-        if (_localHeat < _heatLimit - SAFE_MARGIN - HEAT_PER_BULLET * 2.0f)
+        if (noHeatLimitSystem()) return maxMechRpm;//当热量上限为零 或 开关关闭时，视为无热量限制
+        if (_localHeat + HEAT_PER_BULLET > _heatLimit - SAFE_MARGIN)//单发都不安全了，直接禁止射击
+            return 0.0f;
+        if (_localHeat < _heatLimit - SAFE_MARGIN)//热量充足，允许全速射击
             return maxMechRpm;
 
+        // 计算在当前热量水平下，系统能够持续支持的射速 (考虑安全边际)，单位为子弹/秒
         float sustainBulletsPerSec = (_coolingRate / HEAT_PER_BULLET) * 0.95f;
+        // 转换为机械转速 (RPM)，考虑齿轮比和每圈子弹数
         float sustainRpm           = (sustainBulletsPerSec / BULLETS_PER_CIRCLE) * 60.0f;
 
         return std::min(sustainRpm, maxMechRpm);

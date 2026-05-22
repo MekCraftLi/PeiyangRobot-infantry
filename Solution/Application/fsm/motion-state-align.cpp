@@ -24,7 +24,7 @@
 #include "../movtion-ctrl-app.h"
 #include "System/Service/motor-actuator.h"
 
-static constexpr int32_t ALIGN_TARGET_ECD = 3600;
+static constexpr int32_t ALIGN_TARGET_ECD = _YAW_OFFSET; 
 static constexpr int32_t ECD_PER_REV      = 8192;
 static constexpr float   ALIGN_TOLERANCE  = 15.0f * M_PI / 180.0f;
 static constexpr float   ALIGN_STABLE_MS  = 800.0f;
@@ -53,6 +53,11 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
         request_switch(&instance()._stateRelax);
         return;
     }
+
+    #ifdef STEER
+    request_switch(&instance()._stateManual);
+    return;
+    #endif
 
     // 编码器差值 → 弧度 (与 IMU 无关)
     int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();

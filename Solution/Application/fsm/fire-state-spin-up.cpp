@@ -41,6 +41,7 @@
  * @brief 进入 SpinUp 状态
  * @param ctx FSM 上下文引用
  */
+
 void FireCtrlApp::StateSpinUp::enter(FireCtrlCtx& ctx) {
     // --- 设定摩擦轮目标 ---
     ctx.targetFricSpeed         = Config::Hardware::MotorTopo::FRIC_TARGET_SPEED;

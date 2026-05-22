@@ -64,6 +64,7 @@ void FireCtrlApp::StateSingleFire::execute(FireCtrlCtx& ctx) {
     }
 
     // --- 计算当前角度误差 ---
+    //这段代码是单发状态中的角度误差计算逻辑，用于精确控制拨弹盘到达目标子弹槽位。
     float targetAngle = (float)(ctx.targetTriggerEcd) / (float)(8192 * 36) * 2.0f * (float)M_PI;
 
     int32_t ecd = ctx.fdb.triggerEcd + ctx.fdb.triggerRound * 8192 - ctx.triggerOffset;
@@ -78,7 +79,7 @@ void FireCtrlApp::StateSingleFire::execute(FireCtrlCtx& ctx) {
     if (std::abs(err) > (float)M_PI / 16.0f && std::abs(ctx.fdb.trigger.vel) < 10.0f) {
         if (ctx.blockStartTick == 0) {
             ctx.blockStartTick = xTaskGetTickCount();
-        } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(2000)) {
+        } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(800)) {
             ctx.jamSourceState = FireState::SingleFire;
             request_switch(&instance()._stateCaliReverse);
             return;

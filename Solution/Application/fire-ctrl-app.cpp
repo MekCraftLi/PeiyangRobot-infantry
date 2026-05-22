@@ -62,6 +62,9 @@ volatile struct SpeedDebugOzone {
     float fric_left_real;      ///< 左摩擦轮实际反馈转速
     float comp_integration;    ///< 补偿增量
     uint8_t physical_shot;     ///< 物理发弹脉冲
+
+    
+
 } g_speed_debug;
 
 /**
@@ -76,7 +79,7 @@ debug_trigger_t debug_trigger;
 #define APPLICATION_STACK_SIZE 512
 #define APPLICATION_PRIORITY   4
 
-static StackType_t appStack[APPLICATION_STACK_SIZE];
+static StackType_t appStack[APPLICATION_STACK_SIZE]; //为FreeRTOS任务分配栈内存
 
 /* ------- 构造 & 生命周期 -------------------------------------------------------------------------------------------*/
 
@@ -87,8 +90,8 @@ FireCtrlApp::FireCtrlApp()
 void FireCtrlApp::init() {
     _fsm.change_state(&_statePassive);
     _fsm.enter(_ctx);
-    _ctx.heatController.setHeatLimitEnabled(false);
-}
+    _ctx.heatController.setHeatLimitEnabled(true);
+} 
 
 /* ------- 主循环 ----------------------------------------------------------------------------------------------------*/
 
@@ -109,10 +112,10 @@ void FireCtrlApp::run() {
         c2gData.msg.shooter17mmBarrelHeat, c2gData.msg.heatLimit,
         c2gData.msg.coolingRate, nowMs);
 
-    // ── 2b. 喂弹速补偿器 ──
+    // ── 2b. 喂弹速补偿器 ──（最终没有启用）
     _ctx.speedCompensator.update((float)c2gData.msg.initialSpeedX100 / 100.0f);
 
-    // ── 2c. 本地冷却推演 ──
+    // ── 2c. 本地冷却推演 ──//
     _ctx.heatController.tickCooling(dt);
 
     // ── 2d. 物理发弹检测 (编码器跨越一发跨度 → 注册热量) ──
@@ -128,22 +131,35 @@ void FireCtrlApp::run() {
     debug_trigger.state           = (uint8_t)_ctx.state;
     debug_trigger.offset          = _ctx.triggerOffset;
 
-    // 防抖: 差距过大 (如刚开机 / 校准后) → 直接对齐
+    // 防抖: 差距过大 (如刚开机 / 校准后) → 直接对齐//避免刚开机时误判为连续发射了多发子弹//
+    /* 问题场景分析
+    场景1: 系统刚启动
+    _ctx.rawTriggerEcd = 100000（拨弹盘当前位置）
+    lastShotContinuousEcd = 0（静态变量初始值）
+    差值 = 100000 - 0 = 100000
+    而 ECD_PER_BULLET * 10 = 368640
+    如果不处理，会误判为发射了 100000 / 36864 ≈ 2.7 发子弹！
+    场景2: 拨弹盘校准完成
+    校准过程中拨弹盘可能快速转动很多圈
+    校准前: lastShotContinuousEcd = 50000
+    校准后: _ctx.rawTriggerEcd = 200000
+    差值 = 150000，会误判为发射了4发子弹
+    */
     if (std::abs(_ctx.rawTriggerEcd - lastShotContinuousEcd) > ECD_PER_BULLET * 10) {
         lastShotContinuousEcd = _ctx.rawTriggerEcd;
     }
 
-    if (_ctx.rawTriggerEcd - lastShotContinuousEcd >= ECD_PER_BULLET) {
-        _ctx.heatController.recordBulletShot(nowMs);
-        lastShotContinuousEcd += ECD_PER_BULLET;
-        g_heat_debug.physical_shot  = 50;
+    if (_ctx.rawTriggerEcd - lastShotContinuousEcd >= ECD_PER_BULLET) {//检测到发弹
+        _ctx.heatController.recordBulletShot(nowMs);//向热量控制器注册一次发弹事件
+        lastShotContinuousEcd += ECD_PER_BULLET;//发弹检测的基准向前移动一发跨度
+        g_heat_debug.physical_shot  = 50;//调试信号: 在Ozone示波器上产生一个50的脉冲信号，用于可视化发弹时刻
         g_speed_debug.physical_shot = 50;
     } else {
         g_heat_debug.physical_shot  = 0;
         g_speed_debug.physical_shot = 0;
     }
 
-    // ── 3. 边沿事件提取 ──
+    // ── 3. 边沿事件提取 ──////供状态机读取
     updateTransientEvent();
 
     // ── 4. 驱动 FSM ──
@@ -159,7 +175,7 @@ void FireCtrlApp::run() {
     g_heat_debug.heat_limit       = c2gData.msg.heatLimit;
     g_heat_debug.safe_margin_line = c2gData.msg.heatLimit - HeatController::SAFE_MARGIN;
     g_heat_debug.target_rpm       = _ctx.targetTriggerSpeed;
-    g_speed_debug.ref_bullet_speed    = (float)c2gData.msg.initialSpeedX100 / 100.0f;
+    g_speed_debug.ref_bullet_speed    = c2gData.msg.initialSpeedX100 / 100.0f;
     g_speed_debug.target_bullet_speed = 23.5f;
     g_speed_debug.base_fric_target    = _ctx.targetFricSpeed;
     g_speed_debug.final_fric_target   = _ctx.speedCompensator.getCompensatedRadPerSec(_ctx.targetFricSpeed);
@@ -194,23 +210,31 @@ void FireCtrlApp::updateTransientEvent() {
  *
  * 安全锁: 摩擦轮目标 < 10 rad/s 时, 强制拨弹电流归零并清空 PID 积分.
  */
+
+ 
 void FireCtrlApp::calculateCurrents(BoosterOutput& out) {
     // ── 摩擦轮: 弹速闭环补偿 ──
-    //float finalFricTargetSpeed = _ctx.speedCompensator.getCompensatedRadPerSec(_ctx.targetFricSpeed);
-    float finalFricTargetSpeed = _ctx.targetFricSpeed;
-
+    float finalFricTargetSpeed = _ctx.speedCompensator.getCompensatedRadPerSec(_ctx.targetFricSpeed);
+    //float finalFricTargetSpeed = _ctx.targetFricSpeed;
+    
+    float bullet_L_speed = _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_LEFT_ID].vel;
+    float bullet_R_speed = _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_RIGHT_ID].vel;
     // 左摩擦轮
+
     out.fricLeftCurrent = _fricLeftSpdPid.calculate(
         finalFricTargetSpeed,
-        _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_LEFT_ID].vel);
+        bullet_L_speed);
 
     // 右摩擦轮 (反向安装, 目标取反)
     out.fricRightCurrent = _fricRightSpdPid.calculate(
         -finalFricTargetSpeed,
-        _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_RIGHT_ID].vel);
+        bullet_R_speed);
+
+
 
     // ── 拨弹盘 ──
-    if (_ctx.targetFricSpeed < 10.0f) {
+    if (_ctx.targetFricSpeed < 10.0f ) {
+            //目标值和实际值都检测一遍
         // 安全模式: 摩擦轮未启动 → 彻底断开拨弹盘动力
         out.triggerCurrent = 0.0f;
         _triggerPosPid.clear();

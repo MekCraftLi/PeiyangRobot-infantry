@@ -128,8 +128,8 @@ void CommanderSrvc::resolveMovement(GimbalCmd& gCmd, GimbalToChassisComm& comm) 
 #endif
 
     // 遥控器方向与运动坐标系部分相反, 取负补偿
-    comm.msg.vx   = moveXInput * Config::Algorithm::Chassis::MAX_VX * 10;
-    comm.msg.vy   = -moveYInput * Config::Algorithm::Chassis::MAX_VY * 10;
+    comm.msg.vx   = moveXInput * Config::Algorithm::Chassis::MAX_VX;
+    comm.msg.vy   = -moveYInput * Config::Algorithm::Chassis::MAX_VY;
     gCmd.yawVel   = -yawInput * Config::Algorithm::Gimbal::MAX_YAW_SPEED;
     gCmd.pitchVel = -pitchInput * Config::Algorithm::Gimbal::MAX_PITCH_SPEED;
 }
@@ -279,7 +279,9 @@ void CommanderSrvc::run() {
 
             if (actionShootBurst.isTriggered() || actionMouseBurst.isTriggered()) {
                 sCmd.state.burstShot = 1;
-            } else {
+            } 
+            
+            else {
                 sCmd.state.burstShot = 0;
             }
 
@@ -361,7 +363,11 @@ void CommanderSrvc::run() {
     comm.msg.jump          = actionJump.isTriggered() ? 1 : 0;
     comm.msg.fireState     = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
     comm.msg.aimMode       = triggers.aimModeCycle.getIndex();
-
+    #ifdef STEER
+    comm.msg.spining       = (triggers.spinKeyToggle.isToggledOn() ? 1 : 0)|| (triggers.spinToggle.isToggledOn() ? 1 : 0);
+    #endif
+    //#if (defined(DOG_1)||defined(DOG_2))
+    
 #else
     // ========================================
     //  Gamepad 专用逻辑
@@ -377,7 +383,7 @@ void CommanderSrvc::run() {
         gCmd.yawVel   = 0;
         gCmd.pitchVel = 0;
     } else {
-        gCmd.mode     = GIMBAL_NORMAL;
+        gCmd.mode     = GIMBAL_NORMAL;   
         comm.msg.mode = CHASSIS_NORMAL;
         gCmd.yawVel   = actionYaw.getValue();
 

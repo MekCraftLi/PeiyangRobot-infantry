@@ -31,6 +31,7 @@
 
 
 #include "Component/Motor/pyro_dji_motor_drv.h"
+#include "Config/Gimbal/algo-config.h"
 
 
 /*-------- 2. enum and define ----------------------------------------------------------------------------------------*/
@@ -198,7 +199,7 @@ struct BoosterOutput {
     float fricRightCurrent;
     float triggerCurrent;
 };
-
+#if defined(DOG_1)||defined(DOG_2)
 union GimbalToChassisComm {
 
     __attribute__((packed)) struct {
@@ -222,14 +223,45 @@ union GimbalToChassisComm {
 
     uint8_t buffer[8];
 };
+
+#endif
+
+#if defined(STEER)
+
+union GimbalToChassisComm {
+
+    __attribute__((packed)) struct {
+        int32_t vx    : 6; //  正方向： 向前
+        int32_t vy    : 6; // 正方向： 向左
+        uint32_t mode : 4;
+        uint32_t shootEn  : 1;
+        uint32_t resetUI  : 1;
+        uint32_t fn1Switch: 1;
+        uint32_t turboMode    : 1; // [R] 飞坡
+        uint32_t stepClimb    : 1; // [E] 上台阶
+        uint32_t legLength    : 2; // [Z] 腿长 (0/1/2)
+        uint32_t selfRescue   : 1; // [G] 自救
+        uint32_t manualRescue : 1; // [Ctrl] 手动自救
+        uint32_t gimbalReverse: 1; // [X] 调头
+        uint32_t jump         : 1; // [V] 跳跃
+        uint32_t capSwitch    : 1; // [C] 超级电容开关
+        uint32_t fireState    : 4; // 发射机构 FSM 状态 (FireState)
+        uint32_t aimMode      : 2; // [B] 自瞄模式 (0~3)
+        uint32_t spining  : 1;//小陀螺（舵）
+    } msg;
+
+    uint8_t buffer[8];
+};
+
+#endif
 // ==========================================
 // [新增] 底盘向云台发送的通信联合体
 // ==========================================
 union ChassisToGimbalComm {
     __attribute__((packed)) struct {
         // 将 float (4字节) 压缩为 uint16_t (2字节) 传初速度，乘以 100 发送，云台除以 100
-        uint32_t initialSpeedX100      : 7; // 弹丸初速度 * 100 (2 Bytes)
-        uint32_t shooter17mmBarrelHeat : 9; // 17mm 枪口当前热量 (2 Bytes)
+        uint32_t initialSpeedX100      : 16; // 弹丸初速度 * 100 (2 Bytes)
+        uint32_t shooter17mmBarrelHeat : 16; // 17mm 枪口当前热量 (2 Bytes)
         uint32_t heatLimit             : 9; // 热量上限 (如 150, 240, 360)
         uint32_t coolingRate           : 7; // 冷却速率 (如 40, 60, 80)
         uint8_t robotId;                    // 机器人 ID (1 Byte)

@@ -147,9 +147,10 @@ public:
 
 #elif defined(GIMBAL)
 
-    pyro::pid_t yawPosPid = pyro::pid_t(27.0f, 0.8f, 0.0f, 10.0f, 500.0f);
-    pyro::pid_t yawSpdPid = pyro::pid_t(18.0f, 0.0f, 0.0f, 0.0f, 24.0f);
-    pyro::pid_t pitchPosPid = pyro::pid_t(0.0f, Config::Algorithm::Gimbal::DM_MOT_PITCH_KI, 0.0f, 12.0f, 12.0f);
+    pyro::pid_t yawPosPid = pyro::pid_t(YAW_POS_PID_KP, YAW_POS_PID_KI, YAW_POS_PID_KD, 10.0f, 20.0f);
+    pyro::pid_t yawSpdPid = pyro::pid_t(YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD, 0.0f, 24.0f);
+    pyro::pid_t pitchPosPid = pyro::pid_t(PITCH_DM_MOT_KP, PITCH_DM_MOT_KI, PITCH_DM_MOT_KD, 12.0f, 12.0f);
+    //25 0 1
 
     void updatePitch(GimbalMotionCtx& ctx);
     void updateYaw(GimbalMotionCtx& ctx);
@@ -185,8 +186,8 @@ public:
     // ── Align 状态 ──
     float _alignStableMs = 0.0f;
     float _alignVelFilt  = 0.0f;  // 编码器速度 50Hz 低通滤波输出
-    pyro::pid_t _alignPosPid = pyro::pid_t(12.0f, 0.2f, 0.0f, 100.0f, 500.0f);
-    pyro::pid_t _alignSpdPid = pyro::pid_t(8.0f, 0.007f, 0.0f, 5.0f, 20.0f);
+    pyro::pid_t _alignPosPid = pyro::pid_t(6.0f, 0.2f, 0.0f, 100.0f, 500.0f);
+    pyro::pid_t _alignSpdPid = pyro::pid_t(4.0f, 0.007f, 0.0f, 5.0f, 20.0f);
 
 #endif
 

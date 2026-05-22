@@ -335,26 +335,30 @@ void MovtionCtrlApp::init() {
     motionFsm.enter(motionCtx);
 }
 
+
 void MovtionCtrlApp::run() {
     static uint32_t dwtCnt;
     motionCtx.dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
 
+    // ── 1. 读取黑板输入 ──
     Blackboard::instance().gimbalCmd.read(motionCtx.cmd);
     Blackboard::instance().imuState.read(motionCtx.imu);
     Blackboard::instance().gimbalState.read(motionCtx.state);
     Blackboard::instance().gimbalTelem.read(motionCtx.telem);
     Blackboard::instance().gimbalOut.read(motionCtx.output);
 
+    // ── 2. 更新 FSM 状态机 ──
     motionFsm.execute(motionCtx);
 
 
 
-    // 数据回写
+    // ── 3. 输出到黑板 ──
     Blackboard::instance().gimbalOut.write(motionCtx.output);
     Blackboard::instance().gimbalTelem.write(motionCtx.telem);
 }
 
 void MovtionCtrlApp::updatePitch(GimbalMotionCtx& ctx) {
+    // 在线检测
     if (!ctx.state.pitch.online) {
         pitchPosPid.clear();
         ctx.output.targetPitchSpeed       = 0.0f;
@@ -363,36 +367,56 @@ void MovtionCtrlApp::updatePitch(GimbalMotionCtx& ctx) {
         return;
     }
 
+    //功能: 根据控制模式决定如何更新目标俯仰角
+    //当处于视觉自瞄状态时，直接使用视觉系统提供的目标俯仰角
+    //条件 abs(ctx.cmd.targetYaw) < M_PI 确保目标角度有效（不是无效值）
+    // //暂时不清楚为什么要用yaw的 ai:偏航轴的运动范围更大，更容易出现超范围的情况
     if (ctx.cmd.mode == GIMBAL_AUTO && abs(ctx.cmd.targetYaw) < M_PI)
+    { 
         ctx.telem.targetPitchRad = ctx.cmd.targetPitch;
+    }
+        
     else
+    {
         ctx.telem.targetPitchRad += ctx.cmd.pitchVel * ctx.dt;
+    }
+        
 
+    //角度偏移补偿
     float offsetPitch    = ctx.imu.pitch - ctx.state.pitch.pos;
     float targetMotorRaw = ctx.telem.targetPitchRad - offsetPitch;
 
-    if (targetMotorRaw > Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT)
-        targetMotorRaw = Config::Algorithm::Gimbal::PITCH_DEPRESSION_LIMIT;
-    else if (targetMotorRaw < Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT)
-        targetMotorRaw = Config::Algorithm::Gimbal::PITCH_ELEVATION_LIMIT;
+    // 角度限制
+    if (targetMotorRaw > PITCH_LIMIT_MIN)
+        targetMotorRaw = PITCH_LIMIT_MIN;
+    else if (targetMotorRaw < PITCH_LIMIT_MAX)
+        targetMotorRaw = PITCH_LIMIT_MAX;
 
     ctx.telem.targetPitchRad = targetMotorRaw + offsetPitch;
 
-    static float gravityK;
-    float gravityFf           = gravityK * arm_cos_f32(ctx.imu.pitch);
-    float pitchIntegralTorque = pitchPosPid.calculate(ctx.telem.targetPitchRad, ctx.imu.pitch);
-    float totalFf             = gravityFf + pitchIntegralTorque;
+    //云台俯仰轴的重力补偿和位置控制
+    //static float gravityKcos;//重力补偿系数
+    //static float gravityKsin;//重力补偿
+    float gravityFf           = Config::Algorithm::Gimbal::PITCH_K_GRAVITY_COS * arm_cos_f32(ctx.imu.pitch) + Config::Algorithm::Gimbal::PITCH_K_GRAVITY_SIN * arm_sin_f32(ctx.imu.pitch);
 
-    if (abs(ctx.cmd.pitchVel) > 0.1f)
-        ctx.cmd.pitchVel = (ctx.cmd.pitchVel / ctx.cmd.pitchVel) * 0.1f;
+    //pid
+    float pitchIntegralTorque = pitchPosPid.calculate(ctx.telem.targetPitchRad, ctx.imu.pitch);
+
+    
+    float totalFf             = gravityFf + pitchIntegralTorque;//总扭矩合成
+
+    if (abs(ctx.cmd.pitchVel) > 0.1f)//如果俯仰速度过大，限幅
+        ctx.cmd.pitchVel = (ctx.cmd.pitchVel / ctx.cmd.pitchVel) * 0.1f;//这里好像有误
 
     ctx.output.targetPitchPos         = targetMotorRaw;
     ctx.output.targetPitchSpeed       = ctx.cmd.pitchVel;
     ctx.output.pitchFeedforwardTorque = totalFf;
     ctx.output.pitchEn                = true;
+
 }
 
 void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
+    /*1. 在线检测 */
     if (!ctx.state.yaw.online) {
         ctx.telem.targetYawRad = ctx.imu.yaw;
         yawPosPid.clear();
@@ -402,12 +426,19 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
     }
 
     float ffYawTorque = 0.0f;
-
+    //功能: 根据控制模式决定如何更新目标 yaw 角
+    //当处于视觉自瞄状态时，直接使用视觉系统提供的目标 yaw 角
+    //条件 abs(ctx.cmd.targetYaw) < M_PI 确保目标角度有效（不是无效值）
     if (ctx.cmd.mode == GIMBAL_AUTO && abs(ctx.cmd.targetYaw) < M_PI) {
+
+        yawPosPid.set_gains(AUTO_YAW_POS_PID_KP, AUTO_YAW_POS_PID_KI, AUTO_YAW_POS_PID_KD);
+        yawSpdPid.set_gains(AUTO_YAW_SPEED_PID_KP, AUTO_YAW_SPEED_PID_KI, AUTO_YAW_SPEED_PID_KD);
         ctx.telem.targetYawRad = ctx.cmd.targetYaw;
        // ffYawTorque            = Config::Algorithm::Gimbal::YAW_INERTIA_K * ctx.cmd.targetYawSpeed;
     } else {
-        ctx.telem.targetYawRad = wrapAngle(ctx.telem.targetYawRad + ctx.cmd.yawVel * ctx.dt);
+        yawPosPid.set_gains(YAW_POS_PID_KP, YAW_POS_PID_KI, YAW_POS_PID_KD);
+        yawSpdPid.set_gains(YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD);
+        ctx.telem.targetYawRad = wrapAngle(ctx.telem.targetYawRad + ctx.cmd.yawVel * ctx.dt);//这里的逻辑可以应用在其它地方
         //ffYawTorque            = 0.0f;
     }
 
@@ -417,16 +448,60 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
     }
 
     ChassisToGimbalComm c2g{};
+    GimbalToChassisComm g2c{};
     Blackboard::instance().c2gComm.read(c2g);
+    Blackboard::instance().g2cOutput.read(g2c);
+    //底盘运动前馈补偿
+    //只有当底盘旋转速度超过 0.5 rad/s（约28.6°/s）时才进行补偿
     if (abs(c2g.msg.chassisYawSpeed) > 0.5f)
         ffYawTorque += -0.11f * c2g.msg.chassisYawSpeed;
+    
 
+
+    #if (defined(DOG_1)||defined(DOG_2))
+    //pid控制
+    if(g2c.msg.stepClimb==1)
+    {
+        //角度归一化
+        //上台阶的时候，云台的目标角度设置为复位状态时的目标角度
+        //获取编码器角度
+        int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();
+        //角度归一化
+        float diff = (_YAW_OFFSET - curEcd);
+        while (diff > 4096) diff -= 8192;
+        while (diff < -4096) diff += 8192;
+        //转化弧度制
+        diff = (float)diff / 8192.0f * 2.0f * M_PI;
+        //计算
+        float yawPosOut       = yawPosPid.calculate(0.0f, -diff);
+        float tgtYawSpd       = yawPosOut;
+        ctx.telem.targetYawRotate = tgtYawSpd;
+        float yawSpdOut       = yawSpdPid.calculate(tgtYawSpd, ctx.imu.gyro[2]);
+        ctx.output.yawVoltage = yawSpdOut + ffYawTorque;
+    }
+    else
+    {
+        //角度归一化
+        float alignedTgtYaw   = ctx.imu.yaw + wrapAngle(ctx.telem.targetYawRad - ctx.imu.yaw);
+        float yawPosOut       = yawPosPid.calculate(alignedTgtYaw, ctx.imu.yaw);
+        float tgtYawSpd       = yawPosOut;
+        ctx.telem.targetYawRotate = tgtYawSpd;
+        float yawSpdOut       = yawSpdPid.calculate(tgtYawSpd, ctx.imu.gyro[2]);
+        ctx.output.yawVoltage = yawSpdOut + ffYawTorque;
+    }
+    
+    #endif
+    #ifdef STEER
+
+    //角度归一化
     float alignedTgtYaw   = ctx.imu.yaw + wrapAngle(ctx.telem.targetYawRad - ctx.imu.yaw);
     float yawPosOut       = yawPosPid.calculate(alignedTgtYaw, ctx.imu.yaw);
     float tgtYawSpd       = yawPosOut;
     ctx.telem.targetYawRotate = tgtYawSpd;
     float yawSpdOut       = yawSpdPid.calculate(tgtYawSpd, ctx.imu.gyro[2]);
     ctx.output.yawVoltage = yawSpdOut + ffYawTorque;
+
+    #endif
 }
 
 MovtionCtrlApp::MotionState MovtionCtrlApp::getMotionState() {

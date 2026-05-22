@@ -29,6 +29,7 @@
  *
  * 本应用为 Gimbal 专属, 负责摩擦轮启停、拨弹盘校准、单发/连发控制。
  * FSM 状态实现拆分到 fsm/ 目录下的独立文件。
+ * 这里有摩擦轮和拨弹盘的pid
  *
  *******************************************************************************
  * @note
@@ -63,6 +64,7 @@
 #include "./tools/crtp.h"
 #include "pyro_algo_pid.h"
 #include "pyro_core_fsm.h"
+#include "../Config/Gimbal/algo-config.h"
 
 /* IV. drivers */
 
@@ -226,10 +228,10 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
     StateJamClear   _stateJamClear;
 
     // --- PID 控制器 ---
-    pyro::pid_t _fricLeftSpdPid  = pyro::pid_t(0.22f, 0.0f, 0.0f, 0.0f, 20.0f);
-    pyro::pid_t _fricRightSpdPid = pyro::pid_t(0.22f, 0.0f, 0.0f, 0.0f, 20.0f);
-    pyro::pid_t _triggerPosPid   = pyro::pid_t(1000.0f, 0.0f, 0.0f, 100.0f, 1000.0f);
-    pyro::pid_t _triggerSpdPid   = pyro::pid_t(0.05f, 0.02f, 0.0f, 5.0f, 20.0f);
+    pyro::pid_t _fricLeftSpdPid  = pyro::pid_t(FRIC_SPEED_PID_KP, FRIC_SPEED_PID_KI, FRIC_SPEED_PID_KD, 0.0f, 20.0f);
+    pyro::pid_t _fricRightSpdPid = pyro::pid_t(FRIC_SPEED_PID_KP, FRIC_SPEED_PID_KI, FRIC_SPEED_PID_KD, 0.0f, 20.0f);
+    pyro::pid_t _triggerPosPid   = pyro::pid_t(TRIGGER_SINGLE_POS_PID_KP, TRIGGER_SINGLE_POS_PID_KI, TRIGGER_SINGLE_POS_PID_KD, 100.0f, 1000.0f);
+    pyro::pid_t _triggerSpdPid   = pyro::pid_t(TRIGGER_SINGLE_SPEED_PID_KP, TRIGGER_SINGLE_SPEED_PID_KI, TRIGGER_SINGLE_SPEED_PID_KD, 5.0f, 20.0f);
 
     ShootEvent _lastEvent = ShootEvent::NONE;
 };

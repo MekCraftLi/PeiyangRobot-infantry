@@ -163,7 +163,9 @@ struct TriggerConfig {
     TriggerToggle spinKeyToggle{shiftHold, false};
     TriggerEdge fn1Rise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerToggle fn1Toggle{fn1Rise, false};
-    // 持续触发 (电容)
+    // vt03遥控器单点触发 (电容)
+    TriggerToggle capToggle{fn1Rise, false};
+    //键盘C键长按触发（电容）
     TriggerHold continuousTrigger{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
                                   HoldCondition::GreaterOrEqual};
     // 按键 Toggle (各自独立上升沿基座)

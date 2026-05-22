@@ -29,7 +29,8 @@
 
 /*-------- 1. includes and imports -----------------------------------------------------------------------------------*/
 
-#include "../config.h"
+//#include "../config.h"
+
 
 
 
@@ -50,8 +51,8 @@ struct PidParam {
 // ========================================
 namespace Chassis {
 // 宏观运动速度限制
-constexpr float MAX_VX = 3.0f; // 前后最大平移速度 (m/s)
-constexpr float MAX_VY = 3.0f; // 左右最大平移速度 (m/s)
+constexpr float MAX_VX = 30.0f; // 前后最大平移速度 (m/s)
+constexpr float MAX_VY = 30.0f; // 左右最大平移速度 (m/s)
 constexpr float MAX_VW = 5.0f; // 最大旋转角速度 (rad/s)
 
 // 动力轮速度环 PID 默认参数 (需根据实际整定)
@@ -73,29 +74,280 @@ namespace Gimbal {
 constexpr float MAX_YAW_SPEED   = 6.28f; // 约 180度/秒
 constexpr float MAX_PITCH_SPEED = 6.28f;  // 约 114度/秒
 constexpr float YAW_INERTIA_K = 2.3f;
-// 云台 Pitch 轴物理限幅 (防止撞击底盘/弹仓)
-
-#if IDENTITY == DOG
-constexpr float PITCH_ELEVATION_LIMIT =  1.623f; // 抬头上限 (rad)
-constexpr float PITCH_DEPRESSION_LIMIT = 2.946f; // 低头下限 (rad)
-#elif IDENTITY == MYSELF
-constexpr float PITCH_ELEVATION_LIMIT =  1.98f; // 抬头上限 (rad)
-constexpr float PITCH_DEPRESSION_LIMIT = 2.75f; // 低头下限 (rad)
-#endif
-
 
 constexpr float PITCH_K_GRAVITY_COS = -0.8f; // 水平方向质心补偿
 constexpr float PITCH_K_GRAVITY_SIN = -0.5f; // 垂直方向质心补偿
 
-#if IDENTITY == DOG
-constexpr float DM_MOT_PITCH_KP = 68.0f;
-constexpr float DM_MOT_PITCH_KI = 1.2f;
-constexpr float DM_MOT_PITCH_KD = 2.3f;
-#elif IDENTITY == MYSELF
-constexpr float DM_MOT_PITCH_KP = 68.0f;
-constexpr float DM_MOT_PITCH_KI = 2.4f;
-constexpr float DM_MOT_PITCH_KD = 2.3f;
+
+enum aim_target
+{
+    armor,
+    rune
+};
+
+
+
+//#define DOG_1
+#define DOG_2
+//#define STEER
+
+
+
+
+
+
+#ifdef DOG_1
+
+//自瞄打符模式下---------------------------------------------
+
+
+
+
+
+
+
+//自瞄打装甲板模式下-------------------------------------------
+
+//yaw轴速度环pid参数
+#define AUTO_YAW_SPEED_PID_KP 15.0f
+#define AUTO_YAW_SPEED_PID_KI 0.0f
+#define AUTO_YAW_SPEED_PID_KD 0.0f
+
+//yaw轴位置环pid参数
+#define AUTO_YAW_POS_PID_KP 25.0f
+#define AUTO_YAW_POS_PID_KI 0.0f
+#define AUTO_YAW_POS_PID_KD 0.3f
+
+//pitch轴达妙mit控制阻抗系数
+#define AUTO_DM_MOT_PITCH_KP 15.0f
+#define AUTO_DM_MOT_PITCH_KI 0.0f
+#define AUTO_DM_MOT_PITCH_KD 0.7f
+
+//pitch轴达妙mit控制的重力补偿的pid的参数
+#define AUTO_PITCH_DM_MOT_KP 25.0f
+#define AUTO_PITCH_DM_MOT_KI 0.0f
+#define AUTO_PITCH_DM_MOT_KD 1.0f
+
+//手动模式下------------------------------------------
+//yaw轴速度环pid参数
+#define YAW_SPEED_PID_KP 15.0f
+#define YAW_SPEED_PID_KI 0.0f
+#define YAW_SPEED_PID_KD 0.0f
+
+//yaw轴位置环pid参数
+#define YAW_POS_PID_KP 25.0f
+#define YAW_POS_PID_KI 0.0f
+#define YAW_POS_PID_KD 0.3f
+
+//pitch轴达妙mit控制阻抗系数
+#define DM_MOT_PITCH_KP 15.0f
+#define DM_MOT_PITCH_KI 0.0f
+#define DM_MOT_PITCH_KD 0.7f
+
+//pitch轴达妙mit控制的重力补偿的pid的参数
+#define PITCH_DM_MOT_KP 25.0f
+#define PITCH_DM_MOT_KI 0.0f
+#define PITCH_DM_MOT_KD 1.0f
+
+
+//-----------------------------------------------------
+
+
+//拨弹盘单发情况速度环pid参数
+#define TRIGGER_SINGLE_SPEED_PID_KP 0.13f
+#define TRIGGER_SINGLE_SPEED_PID_KI 0.0f
+#define TRIGGER_SINGLE_SPEED_PID_KD 0.0f
+
+//拨弹盘单发情况位置环pid参数
+#define TRIGGER_SINGLE_POS_PID_KP 2300.0f
+#define TRIGGER_SINGLE_POS_PID_KI 0.0f
+#define TRIGGER_SINGLE_POS_PID_KD 0.0f
+
+//拨弹盘连发情况速度环pid参数
+#define TRIGGER_BURST_SPEED_PID_KP 0.13f
+#define TRIGGER_BURST_SPEED_PID_KI 0.0f
+#define TRIGGER_BURST_SPEED_PID_KD 0.0002f
+
+//pitch轴物理限幅参数
+#define PITCH_LIMIT_MAX -2.80f
+#define PITCH_LIMIT_MIN -1.61f
+
+//yaw轴初始偏移角
+#define _YAW_OFFSET 2550
+
+//摩擦轮速度环pid参数
+#define FRIC_SPEED_PID_KP 0.3f
+#define FRIC_SPEED_PID_KI 0.0f
+#define FRIC_SPEED_PID_KD 0.00002f
+
+#define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_2
+
 #endif
+
+#ifdef DOG_2
+
+//自瞄模式下-------------------------------------------
+
+//yaw轴速度环pid参数
+#define AUTO_YAW_SPEED_PID_KP 15.0f
+#define AUTO_YAW_SPEED_PID_KI 0.0f
+#define AUTO_YAW_SPEED_PID_KD 0.0f
+
+//yaw轴位置环pid参数
+#define AUTO_YAW_POS_PID_KP 25.0f
+#define AUTO_YAW_POS_PID_KI 0.0f
+#define AUTO_YAW_POS_PID_KD 0.3f
+
+//pitch轴达妙mit控制阻抗系数
+#define AUTO_DM_MOT_PITCH_KP 15.0f
+#define AUTO_DM_MOT_PITCH_KI 0.0f
+#define AUTO_DM_MOT_PITCH_KD 0.7f
+
+//pitch轴达妙mit控制的重力补偿的pid的参数
+#define AUTO_PITCH_DM_MOT_KP 25.0f
+#define AUTO_PITCH_DM_MOT_KI 0.0f
+#define AUTO_PITCH_DM_MOT_KD 1.0f
+
+//手动模式下------------------------------------------
+
+//yaw轴速度环pid参数
+#define YAW_SPEED_PID_KP 15.0f
+#define YAW_SPEED_PID_KI 0.0f
+#define YAW_SPEED_PID_KD 0.0f
+
+//yaw轴位置环pid参数
+#define YAW_POS_PID_KP 25.0f
+#define YAW_POS_PID_KI 0.0f
+#define YAW_POS_PID_KD 0.5f
+
+//yaw轴初始偏移角
+#define _YAW_OFFSET 7750
+
+//pitch轴达妙mit控制阻抗系数
+#define DM_MOT_PITCH_KP 17.0f
+#define DM_MOT_PITCH_KI 0.0f
+#define DM_MOT_PITCH_KD 0.7f
+
+//pitch轴达妙mit控制的重力补偿的pid的参数
+#define PITCH_DM_MOT_KP 60.0f
+#define PITCH_DM_MOT_KI 0.0f
+#define PITCH_DM_MOT_KD 1.0f
+
+//pitch轴物理限幅参数
+#define PITCH_LIMIT_MAX 1.70f
+#define PITCH_LIMIT_MIN 2.94f
+
+//--------------------------------------------------------
+
+//拨弹盘单发情况速度环pid参数
+#define TRIGGER_SINGLE_SPEED_PID_KP 0.13f
+#define TRIGGER_SINGLE_SPEED_PID_KI 0.0f
+#define TRIGGER_SINGLE_SPEED_PID_KD 0.0f
+
+//拨弹盘单发情况位置环pid参数
+#define TRIGGER_SINGLE_POS_PID_KP 2300.0f
+#define TRIGGER_SINGLE_POS_PID_KI 0.0f
+#define TRIGGER_SINGLE_POS_PID_KD 0.0f
+
+//拨弹盘连发情况速度环pid参数
+#define TRIGGER_BURST_SPEED_PID_KP 0.13f
+#define TRIGGER_BURST_SPEED_PID_KI 0.0f
+#define TRIGGER_BURST_SPEED_PID_KD 0.0002f
+
+//摩擦轮速度环pid参数
+#define FRIC_SPEED_PID_KP 0.3f
+#define FRIC_SPEED_PID_KI 0.0f
+#define FRIC_SPEED_PID_KD 0.00002f
+
+#define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_2
+
+#endif
+
+#ifdef STEER
+
+//自瞄模式下-------------------------------------------
+
+//yaw轴速度环pid参数
+#define AUTO_YAW_SPEED_PID_KP 15.0f
+#define AUTO_YAW_SPEED_PID_KI 0.0f
+#define AUTO_YAW_SPEED_PID_KD 0.0f
+
+//yaw轴位置环pid参数
+#define AUTO_YAW_POS_PID_KP 25.0f
+#define AUTO_YAW_POS_PID_KI 0.0f
+#define AUTO_YAW_POS_PID_KD 0.3f
+
+//pitch轴达妙mit控制阻抗系数
+#define AUTO_DM_MOT_PITCH_KP 15.0f
+#define AUTO_DM_MOT_PITCH_KI 0.0f
+#define AUTO_DM_MOT_PITCH_KD 0.7f
+
+//pitch轴达妙mit控制的重力补偿的pid的参数
+#define AUTO_PITCH_DM_MOT_KP 25.0f
+#define AUTO_PITCH_DM_MOT_KI 0.0f
+#define AUTO_PITCH_DM_MOT_KD 1.0f
+
+//手动模式下------------------------------------------
+
+//yaw轴速度环pid参数
+#define YAW_SPEED_PID_KP 15.0f
+#define YAW_SPEED_PID_KI 0.0f
+#define YAW_SPEED_PID_KD 0.0f
+
+//yaw轴位置环pid参数
+#define YAW_POS_PID_KP 25.0f
+#define YAW_POS_PID_KI 0.0f
+#define YAW_POS_PID_KD 0.3f
+
+//pitch轴达妙mit控制阻抗系数
+#define DM_MOT_PITCH_KP 15.0f
+#define DM_MOT_PITCH_KI 0.0f
+#define DM_MOT_PITCH_KD 0.7f
+
+//pitch轴达妙mit控制的重力补偿的pid的参数
+#define PITCH_DM_MOT_KP 25.0f
+#define PITCH_DM_MOT_KI 0.0f
+#define PITCH_DM_MOT_KD 1.0f
+
+//--------------------------------------------------------
+
+//拨弹盘单发情况速度环pid参数
+#define TRIGGER_SINGLE_SPEED_PID_KP 0.13f
+#define TRIGGER_SINGLE_SPEED_PID_KI 0.0f
+#define TRIGGER_SINGLE_SPEED_PID_KD 0.0f
+
+//拨弹盘单发情况位置环pid参数
+#define TRIGGER_SINGLE_POS_PID_KP 2300.0f
+#define TRIGGER_SINGLE_POS_PID_KI 0.0f
+#define TRIGGER_SINGLE_POS_PID_KD 0.0f
+
+//拨弹盘连发情况速度环pid参数
+#define TRIGGER_BURST_SPEED_PID_KP 0.13f
+#define TRIGGER_BURST_SPEED_PID_KI 0.0f
+#define TRIGGER_BURST_SPEED_PID_KD 0.0002f
+
+//pitch轴物理限幅参数
+#define PITCH_LIMIT_MAX -0.48f
+#define PITCH_LIMIT_MIN 0.82f
+
+//yaw轴初始偏移角
+#define _YAW_OFFSET 2600
+
+//摩擦轮速度环pid参数
+#define FRIC_SPEED_PID_KP 0.3f
+#define FRIC_SPEED_PID_KI 0.0f
+#define FRIC_SPEED_PID_KD 0.00002f
+
+#define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_3
+
+#endif
+
+
+
+
+
+
+
 
 }
 

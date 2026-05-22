@@ -40,7 +40,7 @@ constexpr float MODE_SW_STOP_THRESH  = -0.5f; // < -0.5 → SAFE_STOP (上)
 constexpr float MODE_SW_VISION_THRESH = 0.5f;  // > 0.5  → VISION (下)
 
 // ── 射击系统 ──────────────────────────────────────────────────────────────────
-constexpr float BURST_HOLD_TIME    = 1.5f;  // 连发长按判定时间 (秒)
+constexpr float BURST_HOLD_TIME    = 0.8f;  // 连发长按判定时间 (秒)
 constexpr float INSTANT_HOLD_TIME  = 0.001f; // 即时触发时间 (≈0)
 
 } // namespace TriggerCfg

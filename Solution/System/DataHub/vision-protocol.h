@@ -50,7 +50,7 @@ struct VisionTelemetry {
     float   currentPitch;
     float   selfVelocityMagnitude;
     float   selfVelocityAngle;
-    float initialSpeed;
+    float   initialSpeed;
     uint8_t shootDelay;
 
 

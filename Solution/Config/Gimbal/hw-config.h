@@ -34,11 +34,11 @@
 #include "pyro_can_drv.h"
 #include "pyro_dji_motor_drv.h"
 #include "usart.h"
+#include "algo-config.h"
 
 
 
 /*-------- 2. enum and define ----------------------------------------------------------------------------------------*/
-
 namespace Config::Hardware {
 
 constexpr uint32_t SYSTEM_CLOCK_HZ = 550000000;
@@ -61,22 +61,22 @@ constexpr pyro::can_hub_t::which_can TRIGGER_CAN                  = pyro::can_hu
 constexpr pyro::dji_motor_tx_frame_t::register_id_t FRIC_LEFT_ID  = pyro::dji_motor_tx_frame_t::id_1;
 constexpr pyro::dji_motor_tx_frame_t::register_id_t FRIC_RIGHT_ID = pyro::dji_motor_tx_frame_t::id_2;
 constexpr pyro::dji_motor_tx_frame_t::register_id_t YAW_ID        = pyro::dji_motor_tx_frame_t::id_5;
-constexpr pyro::dji_motor_tx_frame_t::register_id_t TRIGGER_ID    = pyro::dji_motor_tx_frame_t::id_3;
+constexpr pyro::dji_motor_tx_frame_t::register_id_t TRIGGER_ID    = TRIGGER_MOTOR_ID; // 根据不同版本的 PID 参数选择不同的电机 ID
 constexpr pyro::dji_motor_tx_frame_t::register_id_t PITCH         = pyro::dji_motor_tx_frame_t::id_5;
 
 
-constexpr uint16_t YAW_OFFSET                                     = 1526;
+constexpr uint16_t YAW_OFFSET                                     = _YAW_OFFSET; 
 
 // 弹丸初速度
 constexpr float PROJECTILE_TARGET_MUZZLE_VELOCITY                 = 23.5f;
 
 // 弹速调整系数
-constexpr float FRIC_ADJUST_K                                     = 0.88f;
+constexpr float FRIC_ADJUST_K                                     = 0.8125f;
 // 摩擦轮半径
 constexpr float FRIC_RADIUS                                       = 0.03f;
 
 // 发射速度 (发/秒)
-constexpr float SHOOT_SPEED                                       = 25.0f;
+constexpr float SHOOT_SPEED                                       = 15.0f;
 
 // 拨弹盘速度
 constexpr float TRIGGER_SPEED                                     = SHOOT_SPEED / 8 * 2 * M_PI * 36;

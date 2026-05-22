@@ -88,10 +88,17 @@ void SpeedCompensator::update(float newInitialSpeed) {
 
     // 5. 引入防震荡死区 (Deadband)
     // 只有当误差大于死区阈值时才进行补偿，过滤掉弹丸本身的物理公差扰动
-    if (std::abs(error) > _deadband) {
-        // 离散积分补偿 (I 控制)
-        // 误差为正(打慢了)，累加正值提升转速；误差为负(打快了)，累加负值降低转速
-        _radsCompensation += _ki * error;
+    if (fabs(error) > _deadband) {
+        if(fabs(error)>=0&&fabs(error)<=0.5f){
+            _radsCompensation += _ki * error;
+        }
+        else if(fabs(error)>0.5f&&fabs(error)<=1.0f){
+            _radsCompensation += _ki * 1.3f * error;//误差较大时加大补偿力度，快速拉回目标值附近
+        }
+        else{
+            _radsCompensation += _ki * 1.5f * error;//误差过大时进一步加大补偿力度，迅速抑制异常弹速对系统的影响
+        }
+        
     }
 
     // 6. 严格限幅防暴走 (Absolute Clamp)
