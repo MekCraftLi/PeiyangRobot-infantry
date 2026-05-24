@@ -36,17 +36,18 @@ class BlackboardUiMakerInputSource final : public UiMakerInputSource {
         Blackboard::instance().capState.read(capState);
 
         UiMakerInputSnapshot input{};
-        input.capVoltage     = capState.voltage;
-        input.capEnabled     = comm.msg.capSwitch != 0;
-        input.capError       = capState.isError || capState.isCapLow;
-        input.resetRequested = comm.msg.resetUI != 0;
-        input.turboEnabled   = comm.msg.turboMode != 0;
-        input.feederEnabled  = (comm.msg.fireState > 0) || (comm.msg.shootEn != 0);
-        input.spinEnabled    = (comm.msg.mode & 0x03U) == CHASSIS_SPIN;
-        input.legLengthState = RefereeHudSpec::normalizeLegLengthState(static_cast<uint8_t>(comm.msg.legLength));
-        input.aimModeState   = RefereeHudSpec::normalizeAimModeState(static_cast<uint8_t>(comm.msg.aimMode));
-        input.aimTargetState = comm.msg.shootEn != 0 ? static_cast<uint8_t>(RefereeHudAimTarget::Fire)
-                                                     : static_cast<uint8_t>(RefereeHudAimTarget::None);
+        input.capVoltage       = capState.voltage;
+        input.capEnabled       = comm.msg.capSwitch != 0;
+        input.capError         = capState.isError || capState.isCapLow;
+        input.resetRequested   = comm.msg.resetUI != 0;
+        input.stepClimbEnabled = comm.msg.stepClimb != 0;
+        input.turboEnabled     = (comm.msg.turboMode != 0) && !input.stepClimbEnabled;
+        input.feederEnabled    = (comm.msg.fireState > 0) || (comm.msg.shootEn != 0);
+        input.spinEnabled      = (comm.msg.mode & 0x03U) == CHASSIS_SPIN;
+        input.legLengthState   = RefereeHudSpec::normalizeLegLengthState(static_cast<uint8_t>(comm.msg.legLength));
+        input.aimModeState     = RefereeHudSpec::normalizeAimModeState(static_cast<uint8_t>(comm.msg.aimMode));
+        input.aimTargetState   = comm.msg.shootEn != 0 ? static_cast<uint8_t>(RefereeHudAimTarget::Fire)
+                                                       : static_cast<uint8_t>(RefereeHudAimTarget::None);
         RefereeHudSpec::fillDualLegPoseFromState(input);
         return input;
     }
@@ -72,7 +73,7 @@ class SimUiMakerInputSource final : public UiMakerInputSource {
         _switchTimer += dt;
         while (_switchTimer >= kSwitchIntervalSeconds) {
             _switchTimer -= kSwitchIntervalSeconds;
-            _switchIndex = static_cast<uint8_t>((_switchIndex + 1) % 4);
+            _switchIndex = static_cast<uint8_t>((_switchIndex + 1) % 5);
         }
         _aimTargetTimer += dt;
         while (_aimTargetTimer >= kAimTargetIntervalSeconds) {
@@ -95,9 +96,10 @@ class SimUiMakerInputSource final : public UiMakerInputSource {
         input.capEnabled     = _time > 0.8f;
         input.capError       = input.capVoltage < RefereeHudSpec::kVoltageStage1;
         input.resetRequested = false;
-        input.turboEnabled   = _switchIndex >= 1;
-        input.feederEnabled  = _switchIndex >= 2;
-        input.spinEnabled    = _switchIndex >= 3;
+        input.turboEnabled     = _switchIndex == 1;
+        input.stepClimbEnabled = _switchIndex == 2;
+        input.feederEnabled    = _switchIndex >= 3;
+        input.spinEnabled      = _switchIndex >= 4;
         input.legLengthState = _legLengthState;
         input.aimModeState   = _aimModeState;
         input.aimTargetState = _aimTargetState;

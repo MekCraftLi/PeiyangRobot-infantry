@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RM 2024 Switch Icons</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101319;
+      --panel: #171c24;
+      --stage: #0b1016;
+      --line: #333b47;
+      --text: #e8edf2;
+      --muted: #9aa7b5;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+      --pink: #ff5fa2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .stage {
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid var(--line);
+      background: var(--stage);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+    }
+
+    aside {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 14px;
+      overflow: auto;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid #495263;
+      border-radius: 6px;
+      background: #202733;
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+      text-align: left;
+      padding: 8px 10px;
+    }
+
+    button.active {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    button:not(.active) {
+      border-color: var(--pink);
+      color: var(--pink);
+    }
+
+    dl {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      gap: 8px 10px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    dt {
+      color: var(--text);
+    }
+
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="stage" aria-label="RM 2024 switch icon canvas">
+      <canvas id="hud" width="1920" height="1080"></canvas>
+    </section>
+    <aside>
+      <h1>RM 2024 icons</h1>
+      <p>Canvas uses a 1920 x 1080 business coordinate system with the origin at bottom-left.</p>
+      <div class="controls" aria-label="switch states">
+        <button type="button" class="active" data-key="gyro">GYRO</button>
+        <button type="button" class="active" data-key="ramp">RAMP</button>
+        <button type="button" class="active" data-key="fric">FRIC</button>
+        <button type="button" class="active" data-key="cap">CAP</button>
+      </div>
+      <dl>
+        <dt>GYRO</dt>
+        <dd>3504a9b4, bsp_ui_handler.c, gyroLogo / u06.</dd>
+        <dt>RAMP</dt>
+        <dd>3504a9b4, bsp_ui_handler.c, rushLogo / u05.</dd>
+        <dt>FRIC</dt>
+        <dd>3504a9b4, bsp_ui_handler.c, fireLogo / u07.</dd>
+        <dt>CAP</dt>
+        <dd>3504a9b4, bsp_ui_handler.c, capLogo / u08.</dd>
+      </dl>
+    </aside>
+  </main>
+
+  <script>
+    const W = 1920;
+    const H = 1080;
+    const canvas = document.getElementById("hud");
+    const ctx = canvas.getContext("2d");
+
+    const C = {
+      bg: "#0b1016",
+      white: "#e8edf2",
+      cyan: "#39d7ff",
+      green: "#49e66f",
+      pink: "#ff5fa2",
+      orange: "#ff9d3a",
+      yellow: "#ffd34a",
+      purple: "#b56cff",
+    };
+
+    const state = {
+      gyro: true,
+      ramp: true,
+      fric: true,
+      cap: true,
+    };
+
+    function rad(deg) {
+      return deg * Math.PI / 180;
+    }
+
+    function spanDeg(start, end) {
+      let span = end - start;
+      while (span <= 0) span += 360;
+      return span;
+    }
+
+    function ellipsePoint(cx, cy, rx, ry, deg) {
+      return [
+        cx + rx * Math.sin(rad(deg)),
+        cy + ry * Math.cos(rad(deg)),
+      ];
+    }
+
+    function path(points, color, width, close = false) {
+      if (points.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i][0], points[i][1]);
+      }
+      if (close) ctx.closePath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(1, width);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+    }
+
+    function rmLine(x1, y1, x2, y2, color, width) {
+      path([[x1, y1], [x2, y2]], color, width);
+    }
+
+    function rmArc(cx, cy, rx, ry, start, end, color, width) {
+      const span = spanDeg(start, end);
+      const steps = Math.max(12, Math.ceil(span / 4));
+      const points = [];
+      for (let i = 0; i <= steps; i++) {
+        points.push(ellipsePoint(cx, cy, rx, ry, start + span * i / steps));
+      }
+      path(points, color, width);
+    }
+
+    function rmEllipse(cx, cy, rx, ry, color, width) {
+      const points = [];
+      for (let i = 0; i <= 96; i++) {
+        points.push(ellipsePoint(cx, cy, rx, ry, i * 360 / 96));
+      }
+      path(points, color, width, true);
+    }
+
+    function srcPoint(icon, x, y) {
+      return [
+        icon.x + (x - icon.cx) * icon.s,
+        icon.y + (y - icon.cy) * icon.s,
+      ];
+    }
+
+    function srcLine(icon, x1, y1, x2, y2, color, width) {
+      const p1 = srcPoint(icon, x1, y1);
+      const p2 = srcPoint(icon, x2, y2);
+      rmLine(p1[0], p1[1], p2[0], p2[1], color, width * icon.s);
+    }
+
+    function srcArc(icon, cx, cy, rx, ry, start, end, color, width) {
+      const p = srcPoint(icon, cx, cy);
+      rmArc(p[0], p[1], rx * icon.s, ry * icon.s, start, end, color, width * icon.s);
+    }
+
+    function srcEllipse(icon, cx, cy, rx, ry, color, width) {
+      const p = srcPoint(icon, cx, cy);
+      rmEllipse(p[0], p[1], rx * icon.s, ry * icon.s, color, width * icon.s);
+    }
+
+    function srcCircle(icon, cx, cy, r, color, width) {
+      srcEllipse(icon, cx, cy, r, r, color, width);
+    }
+
+    function srcRect(icon, x1, y1, x2, y2, color, width) {
+      const p1 = srcPoint(icon, x1, y1);
+      const p2 = srcPoint(icon, x2, y2);
+      const left = Math.min(p1[0], p2[0]);
+      const right = Math.max(p1[0], p2[0]);
+      const bottom = Math.min(p1[1], p2[1]);
+      const top = Math.max(p1[1], p2[1]);
+      path([[left, bottom], [right, bottom], [right, top], [left, top]], color, width * icon.s, true);
+    }
+
+    function drawSwitchArc(icon, cx, cy, active) {
+      srcArc(icon, cx, cy, 80, 50, 160, 200, C.white, 15);
+      srcLine(icon, cx - 20, cy - 45, cx + 20, cy - 45, active ? C.green : C.pink, 10);
+    }
+
+    function drawFricIcon(icon, active) {
+      const cx = icon.cx;
+      const cy = icon.cy;
+      srcLine(icon, cx, cy + 10, cx - 10, cy - 20, C.yellow, 15);
+      srcLine(icon, cx - 10, cy - 20, cx + 10, cy - 20, C.yellow, 15);
+      srcLine(icon, cx + 10, cy - 20, cx, cy + 10, C.yellow, 15);
+      srcArc(icon, cx + 4, cy + 10, 7, 15, 270, 335, C.pink, 5);
+      srcArc(icon, cx - 4, cy + 10, 7, 15, 25, 90, C.pink, 5);
+      srcLine(icon, cx, cy + 15, cx, cy - 5, C.pink, 10);
+      srcArc(icon, cx - 6, cy - 20, 7, 15, 270, 335, C.pink, 5);
+      srcArc(icon, cx - 14, cy - 20, 7, 15, 25, 90, C.pink, 5);
+      srcLine(icon, cx - 10, cy - 15, cx - 10, cy - 35, C.pink, 10);
+      srcArc(icon, cx + 14, cy - 20, 7, 15, 270, 335, C.pink, 5);
+      srcArc(icon, cx + 6, cy - 20, 7, 15, 25, 90, C.pink, 5);
+      srcLine(icon, cx + 10, cy - 15, cx + 10, cy - 35, C.pink, 10);
+      drawSwitchArc(icon, cx, cy, active);
+    }
+
+    function drawRampIcon(icon, active) {
+      const cx = icon.cx;
+      const cy = icon.cy;
+      srcLine(icon, cx - 32, cy + 12, cx - 12, cy - 2, C.green, 10);
+      srcLine(icon, cx - 32, cy - 12, cx - 12, cy + 2, C.green, 10);
+      srcLine(icon, cx, cy, cx - 30, cy + 20, C.orange, 10);
+      srcLine(icon, cx, cy, cx - 30, cy - 20, C.orange, 10);
+      srcLine(icon, cx - 18, cy + 20, cx + 12, cy - 3, C.pink, 10);
+      srcLine(icon, cx - 18, cy - 20, cx + 12, cy + 3, C.pink, 10);
+      drawSwitchArc(icon, cx - 10, cy, active);
+    }
+
+    function drawCapIcon(icon, active) {
+      const cx = icon.cx;
+      const cy = icon.cy;
+      srcLine(icon, cx - 20, cy, cx + 20, cy, C.green, 40);
+      srcLine(icon, cx - 25, cy + 15, cx + 25, cy + 15, C.white, 7);
+      srcLine(icon, cx - 25, cy - 15, cx + 25, cy - 15, C.white, 7);
+      srcRect(icon, cx - 10, cy + 25, cx - 15, cy + 20, C.white, 2);
+      srcRect(icon, cx + 10, cy + 25, cx + 15, cy + 20, C.white, 2);
+      srcLine(icon, cx, cy + 10, cx - 10, cy, C.yellow, 2);
+      srcLine(icon, cx - 10, cy, cx + 5, cy - 5, C.yellow, 2);
+      srcLine(icon, cx + 5, cy - 5, cx, cy - 10, C.yellow, 2);
+      srcLine(icon, cx, cy + 10, cx - 5, cy + 5, C.yellow, 2);
+      srcLine(icon, cx - 5, cy + 5, cx + 10, cy, C.yellow, 2);
+      srcLine(icon, cx + 10, cy, cx, cy - 10, C.yellow, 2);
+      drawSwitchArc(icon, cx, cy + 10, active);
+    }
+
+    function drawGyroIcon(icon, active) {
+      const c = icon.cx;
+      const y = icon.cy;
+      srcCircle(icon, c, y, 15, C.purple, 20);
+      srcArc(icon, c + 8, y, 18, 18, 300, 120, C.white, 3);
+      srcArc(icon, c - 4, y + 7, 18, 18, 180, 360, C.white, 3);
+      srcArc(icon, c - 4, y - 7, 18, 18, 60, 240, C.white, 3);
+      drawSwitchArc(icon, c, y, active);
+    }
+
+    function render(t) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.save();
+      ctx.translate(0, H);
+      ctx.scale(1, -1);
+
+      drawGyroIcon({ x: 500, y: 535, cx: 850, cy: 150, s: 2.45 }, state.gyro, t);
+      drawRampIcon({ x: 760, y: 535, cx: 750, cy: 150, s: 2.45 }, state.ramp);
+      drawFricIcon({ x: 1020, y: 535, cx: 1070, cy: 150, s: 2.45 }, state.fric);
+      drawCapIcon({ x: 1280, y: 535, cx: 1180, cy: 140, s: 2.45 }, state.cap);
+
+      ctx.restore();
+      requestAnimationFrame(render);
+    }
+
+    document.querySelectorAll("button[data-key]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const key = button.dataset.key;
+        state[key] = !state[key];
+        button.classList.toggle("active", state[key]);
+      });
+    });
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

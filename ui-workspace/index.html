@@ -297,6 +297,9 @@
           <label>Turbo
             <input id="turboSwitch" type="checkbox" />
           </label>
+          <label>Step
+            <input id="stepClimbSwitch" type="checkbox" />
+          </label>
           <label>Feeder
             <input id="feederSwitch" type="checkbox" checked />
           </label>
@@ -338,6 +341,7 @@
     const aimState = document.getElementById("aimState");
     const capSwitch = document.getElementById("capSwitch");
     const turboSwitch = document.getElementById("turboSwitch");
+    const stepClimbSwitch = document.getElementById("stepClimbSwitch");
     const feederSwitch = document.getElementById("feederSwitch");
     const spinSwitch = document.getElementById("spinSwitch");
 
@@ -394,6 +398,7 @@
     const targetStateCycle = ["none", "locked", "fire"];
     const switchControls = [capSwitch, turboSwitch, feederSwitch, spinSwitch];
     const switchIds = ["SWC", "SWT", "SWF", "SWS"];
+    let turboGlyphStepMode = false;
     const targetTrackIds = new Set(["AAF0", "AAF1", "AAF3", "AAF5", "AAF6", "AAF8"]);
     const linkCapacityPerSecond = (queueBatchSize * 1000) / queuePeriodMs;
     const uiQueue = {
@@ -423,7 +428,9 @@
     };
     let commands = [];
     let captureOnly = false;
-    let preset = new URLSearchParams(location.search).get("preset") ?? "match";
+    const searchParams = new URLSearchParams(location.search);
+    let preset = searchParams.get("preset") ?? "match";
+    const forceStepClimbPreview = searchParams.get("step") === "1";
     let lastFrameTime = 0;
     let autoTime = 0;
 
@@ -451,7 +458,7 @@
 
     const switchModules = [
       { id: "SWC", x: 612, y: 98, r: -12, scale: 0.78, on: () => capSwitch.checked, icon: drawCapSwitchIcon },
-      { id: "SWT", x: 760, y: 134, r: -7, scale: 0.9, on: () => turboSwitch.checked, icon: drawTurboSwitchIcon },
+      { id: "SWT", x: 760, y: 134, r: -7, scale: 0.9, on: () => turboSwitch.checked || stepClimbSwitch.checked, icon: drawTurboSwitchIcon },
       { id: "SWF", x: 1160, y: 134, r: 7, scale: 0.9, on: () => feederSwitch.checked, icon: drawFeederSwitchIcon },
       { id: "SWS", x: 1308, y: 98, r: 12, scale: 0.78, on: () => spinSwitch.checked, icon: drawSpinSwitchIcon },
     ];
@@ -745,22 +752,6 @@
     }
 
     function drawHudBalanceFrame() {
-      drawLine("F00", 520, 58, 650, 84, color.cyan, 3, 1);
-      drawLine("F01", 690, 92, 848, 128, color.cyan, 3, 1);
-      drawLine("F02", 588, 124, 666, 142, color.white, 2, 1);
-      drawLine("F03", 720, 154, 852, 184, color.white, 2, 1);
-      drawLine("F04", 520, 58, 576, 112, color.white, 1, 0);
-      drawLine("F05", 656, 86, 684, 146, color.white, 1, 0);
-      drawLine("F06", 790, 116, 810, 174, color.white, 1, 0);
-
-      drawLine("F07", 1400, 58, 1270, 84, color.cyan, 3, 1);
-      drawLine("F08", 1230, 92, 1072, 128, color.cyan, 3, 1);
-      drawLine("F09", 1332, 124, 1254, 142, color.white, 2, 1);
-      drawLine("F10", 1200, 154, 1068, 184, color.white, 2, 1);
-      drawLine("F11", 1400, 58, 1344, 112, color.white, 1, 0);
-      drawLine("F12", 1264, 86, 1236, 146, color.white, 1, 0);
-      drawLine("F13", 1130, 116, 1110, 174, color.white, 1, 0);
-
       drawLine("F14", 850, 92, 878, 176, color.cyan, 3, 1);
       drawLine("F15", 878, 176, 918, 220, color.cyan, 3, 1);
       drawLine("F16", 918, 220, 950, 220, color.cyan, 3, 1);
@@ -802,6 +793,55 @@
       drawArc(`${module.id}${suffix}`, center.x, center.y, radius * scale, startDeg + module.r, endDeg + module.r, stroke, width * scale, layer, scope);
     }
 
+    function switchIconPoint(module, x, y, iconScale) {
+      return switchPoint(module, x * iconScale, y * iconScale);
+    }
+
+    function switchIconLine(module, suffix, x1, y1, x2, y2, stroke, width, iconScale = 0.55) {
+      const scale = module.scale ?? 1;
+      const start = switchIconPoint(module, x1, y1, iconScale);
+      const end = switchIconPoint(module, x2, y2, iconScale);
+      drawLine(`${module.id}${suffix}`, start.x, start.y, end.x, end.y, stroke, width * iconScale * scale, 4, "DYNAMIC");
+    }
+
+    function switchIconArc(module, suffix, x, y, rx, ry, startDeg, endDeg, stroke, width, iconScale = 0.55) {
+      const scale = module.scale ?? 1;
+      const center = switchIconPoint(module, x, y, iconScale);
+      drawEllipseArc(
+        `${module.id}${suffix}`,
+        center.x,
+        center.y,
+        rx * iconScale * scale,
+        ry * iconScale * scale,
+        startDeg + module.r,
+        endDeg + module.r,
+        stroke,
+        width * iconScale * scale,
+        4,
+        "DYNAMIC",
+      );
+    }
+
+    function switchIconCircle(module, suffix, x, y, radius, stroke, width, iconScale = 0.55) {
+      const scale = module.scale ?? 1;
+      const center = switchIconPoint(module, x, y, iconScale);
+      drawCircle(`${module.id}${suffix}`, center.x, center.y, radius * iconScale * scale, stroke, width * iconScale * scale, 4, "DYNAMIC");
+    }
+
+    function switchIconRect(module, suffix, x1, y1, x2, y2, stroke, width, iconScale = 0.55) {
+      const scale = module.scale ?? 1;
+      const a = switchIconPoint(module, x1, y1, iconScale);
+      const b = switchIconPoint(module, x2, y2, iconScale);
+      const left = Math.min(a.x, b.x);
+      const right = Math.max(a.x, b.x);
+      const bottom = Math.min(a.y, b.y);
+      const top = Math.max(a.y, b.y);
+      drawLine(`${module.id}${suffix}A`, left, bottom, right, bottom, stroke, width * iconScale * scale, 4, "DYNAMIC");
+      drawLine(`${module.id}${suffix}B`, right, bottom, right, top, stroke, width * iconScale * scale, 4, "DYNAMIC");
+      drawLine(`${module.id}${suffix}C`, right, top, left, top, stroke, width * iconScale * scale, 4, "DYNAMIC");
+      drawLine(`${module.id}${suffix}D`, left, top, left, bottom, stroke, width * iconScale * scale, 4, "DYNAMIC");
+    }
+
     function drawSwitchDeck() {
       switchModules.forEach((module) => {
         const on = module.on();
@@ -814,46 +854,60 @@
         switchLine(module, "B3", 42, 22, 58, -22, rail, on ? 3 : 2, 2);
         switchLine(module, "B4", -58, -22, -24, -22, color.white, 1, 2);
         switchLine(module, "B5", 24, -22, 58, -22, color.white, 1, 2);
-        switchCircle(module, "C0", 0, 0, on ? 24 : 20, active, on ? 4 : 2, 3, "DYNAMIC");
-        switchCircle(module, "C1", 0, 0, 5, fill, 2, 4, "DYNAMIC");
         module.icon(module, on, active, fill);
       });
     }
 
     function drawCapSwitchIcon(module, on, active, fill) {
-      switchLine(module, "I0", -10, 12, -10, -8, fill, 3, 4, "DYNAMIC");
-      switchLine(module, "I1", 10, 12, 10, -8, fill, 3, 4, "DYNAMIC");
-      switchLine(module, "I2", -18, 0, -10, 0, active, 2, 4, "DYNAMIC");
-      switchLine(module, "I3", 10, 0, 18, 0, active, 2, 4, "DYNAMIC");
-      switchLine(module, "I4", -2, 15, -8, 3, active, 2, 4, "DYNAMIC");
-      switchLine(module, "I5", -8, 3, 4, 3, active, 2, 4, "DYNAMIC");
-      switchLine(module, "I6", 4, 3, -2, -13, active, 2, 4, "DYNAMIC");
+      const s = 0.75;
+      switchIconLine(module, "I0", -20, 0, 20, 0, color.green, 40, s);
+      switchIconLine(module, "I1", -25, 15, 25, 15, color.white, 7, s);
+      switchIconLine(module, "I2", -25, -15, 25, -15, color.white, 7, s);
+      switchIconRect(module, "I3", -10, 25, -15, 20, color.white, 2, s);
+      switchIconRect(module, "I4", 10, 25, 15, 20, color.white, 2, s);
+      switchIconLine(module, "I5", 0, 10, -10, 0, color.main, 2, s);
+      switchIconLine(module, "I6", -10, 0, 5, -5, color.main, 2, s);
+      switchIconLine(module, "I7", 5, -5, 0, -10, color.main, 2, s);
+      switchIconLine(module, "I8", 0, 10, -5, 5, color.main, 2, s);
+      switchIconLine(module, "I9", -5, 5, 10, 0, color.main, 2, s);
+      switchIconLine(module, "IA", 10, 0, 0, -10, color.main, 2, s);
     }
 
     function drawTurboSwitchIcon(module, on, active, fill) {
-      switchLine(module, "I0", -21, -12, -5, 0, fill, 3, 4, "DYNAMIC");
-      switchLine(module, "I1", -5, 0, -21, 12, fill, 3, 4, "DYNAMIC");
-      switchLine(module, "I2", -3, -12, 13, 0, active, 4, 4, "DYNAMIC");
-      switchLine(module, "I3", 13, 0, -3, 12, active, 4, 4, "DYNAMIC");
-      switchLine(module, "I4", 15, -12, 27, 0, active, 3, 4, "DYNAMIC");
-      switchLine(module, "I5", 27, 0, 15, 12, active, 3, 4, "DYNAMIC");
+      const s = 0.84;
+      if (stepClimbSwitch.checked && !turboSwitch.checked) turboGlyphStepMode = true;
+      if (turboSwitch.checked && !stepClimbSwitch.checked) turboGlyphStepMode = false;
+      const iconModule = turboGlyphStepMode ? { ...module, r: module.r + 90 } : module;
+      switchIconLine(iconModule, "I0", -32, 12, -12, -2, color.green, 10, s);
+      switchIconLine(iconModule, "I1", -32, -12, -12, 2, color.green, 10, s);
+      switchIconLine(iconModule, "I2", 0, 0, -30, 20, color.orange, 10, s);
+      switchIconLine(iconModule, "I3", 0, 0, -30, -20, color.orange, 10, s);
+      switchIconLine(iconModule, "I4", -18, 20, 12, -3, color.pink, 10, s);
+      switchIconLine(iconModule, "I5", -18, -20, 12, 3, color.pink, 10, s);
     }
 
     function drawFeederSwitchIcon(module, on, active, fill) {
-      switchCircle(module, "I0", -13, 0, 10, fill, 3, 4, "DYNAMIC");
-      switchCircle(module, "I1", 13, 0, 10, fill, 3, 4, "DYNAMIC");
-      switchLine(module, "I2", -3, 0, 3, 0, active, 4, 4, "DYNAMIC");
-      switchLine(module, "I3", 27, 0, 40, 0, active, 4, 4, "DYNAMIC");
-      switchLine(module, "I4", 34, 6, 40, 0, active, 3, 4, "DYNAMIC");
-      switchLine(module, "I5", 34, -6, 40, 0, active, 3, 4, "DYNAMIC");
+      const s = 0.75;
+      switchIconLine(module, "I0", 0, 12, -10, -18, color.main, 15, s);
+      switchIconLine(module, "I1", -10, -18, 10, -18, color.main, 15, s);
+      switchIconLine(module, "I2", 10, -18, 0, 12, color.main, 15, s);
+      switchIconArc(module, "I3", 4, 8, 7, 15, 270, 335, color.pink, 5, s);
+      switchIconArc(module, "I4", -4, 8, 7, 15, 25, 90, color.pink, 5, s);
+      switchIconLine(module, "I5", 0, 13, 0, -7, color.pink, 10, s);
+      switchIconArc(module, "I6", -6, -22, 7, 15, 270, 335, color.pink, 5, s);
+      switchIconArc(module, "I7", -14, -22, 7, 15, 25, 90, color.pink, 5, s);
+      switchIconLine(module, "I8", -10, -17, -10, -37, color.pink, 10, s);
+      switchIconArc(module, "I9", 14, -22, 7, 15, 270, 335, color.pink, 5, s);
+      switchIconArc(module, "IA", 6, -22, 7, 15, 25, 90, color.pink, 5, s);
+      switchIconLine(module, "IB", 10, -17, 10, -37, color.pink, 10, s);
     }
 
     function drawSpinSwitchIcon(module, on, active, fill) {
-      switchArc(module, "I0", 0, 0, 18, 35, 300, active, 4, 4, "DYNAMIC");
-      switchLine(module, "I1", 15, 13, 25, 13, active, 3, 4, "DYNAMIC");
-      switchLine(module, "I2", 25, 13, 20, 3, active, 3, 4, "DYNAMIC");
-      switchLine(module, "I3", -12, -4, 12, -4, fill, 2, 4, "DYNAMIC");
-      switchLine(module, "I4", -8, 8, 8, 8, fill, 2, 4, "DYNAMIC");
+      const s = 0.93;
+      switchIconCircle(module, "I0", 0, 0, 15, color.purple, 20, s);
+      switchIconArc(module, "I1", 8, 0, 18, 18, 300, 120, color.white, 3, s);
+      switchIconArc(module, "I2", -4, 7, 18, 18, 180, 360, color.white, 3, s);
+      switchIconArc(module, "I3", -4, -7, 18, 18, 60, 240, color.white, 3, s);
     }
 
     function centralLegLocal(x, y) {
@@ -1153,6 +1207,19 @@
       return enqueueCommands(`SW${index}`, (cmd) => cmd.name.startsWith(prefix), timestamp);
     }
 
+    function advanceTurboStepMode() {
+      if (!turboSwitch.checked && !stepClimbSwitch.checked) {
+        turboSwitch.checked = true;
+        return;
+      }
+      if (turboSwitch.checked) {
+        turboSwitch.checked = false;
+        stepClimbSwitch.checked = true;
+        return;
+      }
+      stepClimbSwitch.checked = false;
+    }
+
     function enqueueTargetTrack(timestamp) {
       return enqueueCommands("TARGET", (cmd) => targetTrackIds.has(cmd.name), timestamp);
     }
@@ -1194,7 +1261,11 @@
 
       while (timestamp >= uiQueue.nextSwitchAt) {
         const nextSwitch = uiQueue.switchCursor % switchControls.length;
-        switchControls[nextSwitch].checked = !switchControls[nextSwitch].checked;
+        if (nextSwitch === 1) {
+          advanceTurboStepMode();
+        } else {
+          switchControls[nextSwitch].checked = !switchControls[nextSwitch].checked;
+        }
         uiQueue.pendingSwitchUpdates.push(nextSwitch);
         uiQueue.switchCursor = (uiQueue.switchCursor + 1) % switchControls.length;
         uiQueue.nextSwitchAt += slowUpdatePeriodMs;
@@ -1355,17 +1426,22 @@
       preset = name;
       const next =
         {
-          base: { voltage: 17.5, aim: 0, aimState: "none", switches: [true, false, true, false] },
-          match: { voltage: 22.5, aim: 2, aimState: "locked", switches: [true, false, true, false] },
-          combat: { voltage: 25.8, aim: 3, aimState: "fire", switches: [true, true, true, true] },
-        }[name] ?? { voltage: 22.5, aim: 2, aimState: "locked", switches: [true, false, true, false] };
+          base: { voltage: 17.5, aim: 0, aimState: "none", switches: [true, false, false, true, false] },
+          match: { voltage: 22.5, aim: 2, aimState: "locked", switches: [true, false, false, true, false] },
+          combat: { voltage: 25.8, aim: 3, aimState: "fire", switches: [true, true, false, true, true] },
+        }[name] ?? { voltage: 22.5, aim: 2, aimState: "locked", switches: [true, false, false, true, false] };
       voltageSlider.value = String(next.voltage);
       aimMode.value = String(next.aim);
       aimState.value = next.aimState;
       capSwitch.checked = Boolean(next.switches[0]);
       turboSwitch.checked = Boolean(next.switches[1]);
-      feederSwitch.checked = Boolean(next.switches[2]);
-      spinSwitch.checked = Boolean(next.switches[3]);
+      stepClimbSwitch.checked = Boolean(next.switches[2]);
+      feederSwitch.checked = Boolean(next.switches[3]);
+      spinSwitch.checked = Boolean(next.switches[4]);
+      if (forceStepClimbPreview) {
+        turboSwitch.checked = false;
+        stepClimbSwitch.checked = true;
+      }
       document.querySelectorAll("[data-preset]").forEach((button) => {
         button.classList.toggle("active", button.dataset.preset === preset);
       });
@@ -1376,7 +1452,13 @@
     document.querySelectorAll("[data-preset]").forEach((button) => {
       button.addEventListener("click", () => applyPreset(button.dataset.preset));
     });
-    [gridMode, maskToggle, voltageSlider, aimMode, aimState, capSwitch, turboSwitch, feederSwitch, spinSwitch].forEach((control) => {
+    turboSwitch.addEventListener("change", () => {
+      if (turboSwitch.checked) stepClimbSwitch.checked = false;
+    });
+    stepClimbSwitch.addEventListener("change", () => {
+      if (stepClimbSwitch.checked) turboSwitch.checked = false;
+    });
+    [gridMode, maskToggle, voltageSlider, aimMode, aimState, capSwitch, turboSwitch, stepClimbSwitch, feederSwitch, spinSwitch].forEach((control) => {
       control.addEventListener("input", draw);
       control.addEventListener("change", draw);
     });

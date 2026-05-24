@@ -37,6 +37,7 @@ This workspace is for referee UI drawing and visual testing.
 - `team-logo-arcs.html`: interactive team-logo arc approximation for `队徽.webp`.
 - `school-emblem.html`: `rm` school-emblem preview with cyan outer arcs and white internal detail.
 - `auto-aim-icons.html`: four auto-aim mode icon preview.
+- `rm-2024-switch-icons.html`: reconstructed RM 2024 switch icon preview for gyro, ramp, friction wheel, and capacitor switch, using the original `rm` UI primitive geometry from commit `3504a9b4`.
 - `movement-speed.html`: HUD chart preview for current movement speed, velocity vector, components, and short trend.
 - `holographic-helmet.html`: line-only holographic helmet HUD silhouette preview.
 - `bottom-holographic-dashboard.html`: bottom HUD composition with open feature lines for the two-arm perspective frame, four switch widgets, and a central leg-state instrument. It avoids closed boxes where short brackets and edge marks are enough. The drawing uses solid referee UI colors only, without alpha transparency.
