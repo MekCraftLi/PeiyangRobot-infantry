@@ -80,19 +80,9 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     if (std::abs(errorRad) < ALIGN_TOLERANCE) {
         instance()._alignStableMs += ctx.dt * 1000.0f;
         if (instance()._alignStableMs >= ALIGN_STABLE_MS) {
-            ctx.telem.targetYawRad = ctx.imu.yaw;
-            //只有接收到底盘发到的底盘准备标志位才可以开始切换状态
-            ChassisToGimbalComm cmd;
-            Blackboard::instance().c2gComm.read(cmd);
-            #ifdef STEER
-             request_switch(&instance()._stateManual);
-            #endif
-            #if defined(DOG_1)||defined(DOG_2)
-            if (cmd.msg.chassisready) 
-            {
+            ctx.telem.targetYawRad = ctx.imu.yaw;       
                 request_switch(&instance()._stateManual);
-            }
-            #endif
+            
         }
     } else {
         instance()._alignStableMs = 0.0f;
