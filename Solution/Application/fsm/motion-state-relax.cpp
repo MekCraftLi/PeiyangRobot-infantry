@@ -27,6 +27,7 @@ void MovtionCtrlApp::StateRelax::enter(GimbalMotionCtx& ctx) {
     ctx.output.yawVoltage             = 0.0f;
     ctx.telem.targetYawRad            = ctx.imu.yaw;
     ctx.telem.targetPitchRad          = ctx.imu.pitch;
+    
     instance().yawPosPid.clear();
     instance().yawSpdPid.clear();
     instance().pitchPosPid.clear();
@@ -34,6 +35,11 @@ void MovtionCtrlApp::StateRelax::enter(GimbalMotionCtx& ctx) {
 }
 
 void MovtionCtrlApp::StateRelax::execute(GimbalMotionCtx& ctx) {
+    //应某位舵轮底盘调试者的要求
+    #ifdef STEER
+    ctx.telem.targetYawRad            = ctx.imu.yaw;
+    ctx.telem.targetPitchRad          = ctx.imu.pitch;
+    #endif
     if (ctx.cmd.mode != GIMBAL_RELAX)
         request_switch(&instance()._stateAlign);
 }

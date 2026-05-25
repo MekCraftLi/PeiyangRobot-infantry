@@ -219,6 +219,9 @@ union GimbalToChassisComm {
         uint32_t capSwitch    : 1; // [C] 超级电容开关
         uint32_t fireState    : 4; // 发射机构 FSM 状态 (FireState)
         uint32_t aimMode      : 2; // [B] 自瞄模式 (0~3)
+        int16_t yawVel100    : 16;//偏航速度
+        
+
     } msg;
 
     uint8_t buffer[8];
@@ -257,6 +260,8 @@ union GimbalToChassisComm {
 // ==========================================
 // [新增] 底盘向云台发送的通信联合体
 // ==========================================
+
+#if defined(STEER)
 union ChassisToGimbalComm {
     __attribute__((packed)) struct {
         // 将 float (4字节) 压缩为 uint16_t (2字节) 传初速度，乘以 100 发送，云台除以 100
@@ -269,6 +274,29 @@ union ChassisToGimbalComm {
     } msg;
     uint8_t buffer[8];
 };
+#endif
+
+
+#if defined(DOG_1)||defined(DOG_2)
+
+
+union ChassisToGimbalComm {
+    __attribute__((packed)) struct {
+        // 将 float (4字节) 压缩为 uint16_t (2字节) 传初速度，乘以 100 发送，云台除以 100
+        uint32_t initialSpeedX100      : 15; // 弹丸初速度 * 100 (2 Bytes)
+        uint32_t shooter17mmBarrelHeat : 16; // 17mm 枪口当前热量 (2 Bytes)
+        uint32_t heatLimit             : 9; // 热量上限 (如 150, 240, 360)
+        uint32_t coolingRate           : 7; // 冷却速率 (如 40, 60, 80)
+        uint8_t robotId;                    // 机器人 ID (1 Byte)
+        int8_t chassisYawSpeed;
+        uint8_t chassisready           :1;
+    } msg;
+    uint8_t buffer[8];
+
+};
+#endif
+
+
 // ==========================================
 // 4. 遥测/中间区数据 (控制过程可视化)
 // ==========================================

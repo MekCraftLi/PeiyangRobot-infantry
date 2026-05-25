@@ -34,6 +34,7 @@
 #include "Config/Gimbal/hw-config.h"
 #include "System/DataHub/blackboard.h"
 #include "pyro_dwt_drv.h"
+#include "System/DataHub/data-def.h"
 
 /* ------- variables -------------------------------------------------------------------------------------------------*/
 
@@ -62,6 +63,8 @@ volatile struct SpeedDebugOzone {
     float fric_left_real;      ///< 左摩擦轮实际反馈转速
     float comp_integration;    ///< 补偿增量
     uint8_t physical_shot;     ///< 物理发弹脉冲
+    bool firecommn;
+    ShootEvent shootcommandtelem;
 
     
 
@@ -101,10 +104,12 @@ void FireCtrlApp::run() {
 
     // ── 1. 读取黑板输入 ──
     ChassisToGimbalComm c2gData{};
+    VisionCommand viscmd{};
     Blackboard::instance().shootCmd.read(_ctx.cmd);
     Blackboard::instance().boosterState.read(_ctx.fdb);
     Blackboard::instance().c2gComm.read(c2gData);
-
+    Blackboard::instance().visionCmd.read(viscmd);
+    
     uint32_t nowMs = xTaskGetTickCount();
 
     // ── 2a. 同步裁判系统 → 热量控制器 ──
@@ -181,6 +186,8 @@ void FireCtrlApp::run() {
     g_speed_debug.final_fric_target   = _ctx.speedCompensator.getCompensatedRadPerSec(_ctx.targetFricSpeed);
     g_speed_debug.comp_integration    = g_speed_debug.final_fric_target - _ctx.targetFricSpeed;
     g_speed_debug.fric_left_real      = _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_LEFT_ID].vel;
+    g_speed_debug.firecommn           = viscmd.fireCommand;
+    g_speed_debug.shootcommandtelem   = _ctx.cmd.event;
 
     // ── 6b. 写入黑板输出 ──
     Blackboard::instance().boosterOut.write(finalOut);
@@ -230,6 +237,10 @@ void FireCtrlApp::calculateCurrents(BoosterOutput& out) {
         -finalFricTargetSpeed,
         bullet_R_speed);
 
+    // if(_ctx.state == FireState::Passive){
+    //     out.fricLeftCurrent  = 0.0f;
+    //     out.fricRightCurrent = 0.0f;
+    // }
 
 
     // ── 拨弹盘 ──

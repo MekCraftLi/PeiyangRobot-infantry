@@ -23,6 +23,7 @@
 
 #include "../movtion-ctrl-app.h"
 #include "System/Service/motor-actuator.h"
+#include "System/DataHub/blackboard.h"
 
 static constexpr int32_t ALIGN_TARGET_ECD = _YAW_OFFSET; 
 static constexpr int32_t ECD_PER_REV      = 8192;
@@ -64,7 +65,7 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     float errorRad = (float)ecdShortestError(ALIGN_TARGET_ECD, curEcd)
                      / (float)ECD_PER_REV * 2.0f * M_PI;
 
-    // 编码器速度 50Hz 一阶低通滤波: alpha = 2π*fc*dt / (2π*fc*dt + 1)
+    // 编码器速度 10Hz 一阶低通滤波: alpha = 2π*fc*dt / (2π*fc*dt + 1)
     constexpr float TWO_PI_FC = 2.0f * M_PI * 10.0f;  // 314.16 rad/s
     float alpha = TWO_PI_FC * ctx.dt / (TWO_PI_FC * ctx.dt + 1.0f);
     instance()._alignVelFilt = alpha * ctx.state.yaw.vel + (1.0f - alpha) * instance()._alignVelFilt;
@@ -80,7 +81,18 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
         instance()._alignStableMs += ctx.dt * 1000.0f;
         if (instance()._alignStableMs >= ALIGN_STABLE_MS) {
             ctx.telem.targetYawRad = ctx.imu.yaw;
-            request_switch(&instance()._stateManual);
+            //只有接收到底盘发到的底盘准备标志位才可以开始切换状态
+            ChassisToGimbalComm cmd;
+            Blackboard::instance().c2gComm.read(cmd);
+            #ifdef STEER
+             request_switch(&instance()._stateManual);
+            #endif
+            #if defined(DOG_1)||defined(DOG_2)
+            if (cmd.msg.chassisready) 
+            {
+                request_switch(&instance()._stateManual);
+            }
+            #endif
         }
     } else {
         instance()._alignStableMs = 0.0f;

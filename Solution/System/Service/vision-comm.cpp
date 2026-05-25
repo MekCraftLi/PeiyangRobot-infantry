@@ -187,6 +187,7 @@ void VisionCommSrvc::sendTxFrame() {
     telem.autoAimMode  = 1;
     telem.enemyColor = comm.msg.robotId > 100;
     telem.initialSpeed = comm.msg.initialSpeedX100 / 100;
+    telem.shootDelay   = 66;
 
 
 

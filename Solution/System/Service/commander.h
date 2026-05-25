@@ -42,7 +42,7 @@
 
 #include "System/Input/action.h"
 #include "System/Input/trigger-config.h"
-
+#include "Config/Gimbal/algo-config.h"
 #include "Board-Support-Pack/DR16/dr16.h"
 #include "System/Input/ControlImpl/control-impl-axis.h"
 #include "System/Input/ControlImpl/control-impl-switch.h"

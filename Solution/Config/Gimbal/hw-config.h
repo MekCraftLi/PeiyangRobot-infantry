@@ -71,7 +71,7 @@ constexpr uint16_t YAW_OFFSET                                     = _YAW_OFFSET;
 constexpr float PROJECTILE_TARGET_MUZZLE_VELOCITY                 = 23.5f;
 
 // 弹速调整系数
-constexpr float FRIC_ADJUST_K                                     = 0.8125f;
+constexpr float FRIC_ADJUST_K                                     = BULLET_SPEED_COMP_KP;
 // 摩擦轮半径
 constexpr float FRIC_RADIUS                                       = 0.03f;
 

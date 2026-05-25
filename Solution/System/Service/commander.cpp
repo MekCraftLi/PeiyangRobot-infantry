@@ -132,6 +132,9 @@ void CommanderSrvc::resolveMovement(GimbalCmd& gCmd, GimbalToChassisComm& comm) 
     comm.msg.vy   = -moveYInput * Config::Algorithm::Chassis::MAX_VY;
     gCmd.yawVel   = -yawInput * Config::Algorithm::Gimbal::MAX_YAW_SPEED;
     gCmd.pitchVel = -pitchInput * Config::Algorithm::Gimbal::MAX_PITCH_SPEED;
+    #if (defined(DOG_1)||defined(DOG_2))
+    comm.msg.yawVel100= gCmd.yawVel * 100;
+    #endif
 }
 
 /* -------- 主循环 ----------------------------------------------------------------------------------------------------
@@ -252,12 +255,21 @@ void CommanderSrvc::run() {
 
     switch (currentSource) {
         case ControlSource::SAFE_STOP: {
-            comm.msg.mode        = (uint8_t)CHASSIS_RELAX;
-            sCmd.event           = ShootEvent::EMERGENCY_STOP;
-            sCmd.state.burstShot = 0;
-            gCmd.mode            = GIMBAL_RELAX;
-            gCmd.yawVel          = 0;
-            gCmd.pitchVel        = 0;
+            comm.msg.mode         = (uint8_t)CHASSIS_RELAX;
+            sCmd.event            = ShootEvent::EMERGENCY_STOP;
+            sCmd.state.burstShot  = 0;
+            gCmd.mode             = GIMBAL_RELAX;
+            gCmd.yawVel           = 0;
+            gCmd.pitchVel         = 0;
+            comm.msg.turboMode    = 0;  
+            comm.msg.stepClimb    = 0;
+            comm.msg.legLength    = 0;
+            comm.msg.selfRescue   = 0;
+            comm.msg.manualRescue = 0;
+            comm.msg.gimbalReverse= 0;
+            comm.msg.jump         = 0;
+            
+
         } break;
 
         case ControlSource::REMOTE: {
@@ -363,8 +375,18 @@ void CommanderSrvc::run() {
     comm.msg.jump          = actionJump.isTriggered() ? 1 : 0;
     comm.msg.fireState     = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
     comm.msg.aimMode       = triggers.aimModeCycle.getIndex();
+    
     #ifdef STEER
+    #if REMOTE_DEVICE == REMOTE_DR16
+    
+    if(_dr16Data.s2 ==2)
+    {
+        comm.msg.spining       = 1;
+    }
+    #endif
+    #if REMOTE_DEVICE == REMOTE_VIDEO_LINK
     comm.msg.spining       = (triggers.spinKeyToggle.isToggledOn() ? 1 : 0)|| (triggers.spinToggle.isToggledOn() ? 1 : 0);
+    #endif
     #endif
     //#if (defined(DOG_1)||defined(DOG_2))
     

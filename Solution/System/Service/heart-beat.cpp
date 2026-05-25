@@ -42,6 +42,7 @@
 #include "../DataHub/blackboard.h"
 #include "commander.h"
 #include "motor-actuator.h"
+#include "tim.h"
 
 /* III. standard lib */
 
@@ -105,6 +106,9 @@ HeartBeatApp::HeartBeatApp()
 void HeartBeatApp::init() {
     /* driver object initialize */
     pyro::dwt_drv_t::init(550);
+    HAL_TIM_Base_Start(&htim12);
+    HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_2);
+    __HAL_TIM_SetCompare(&htim12, TIM_CHANNEL_2, 0);
 }
 
 struct {

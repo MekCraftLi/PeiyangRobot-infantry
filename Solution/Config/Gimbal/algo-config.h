@@ -88,7 +88,7 @@ enum aim_target
 
 
 //#define DOG_1
-#define DOG_2
+#define DOG_2   
 //#define STEER
 
 
@@ -135,9 +135,9 @@ enum aim_target
 #define YAW_SPEED_PID_KD 0.0f
 
 //yaw轴位置环pid参数
-#define YAW_POS_PID_KP 25.0f
+#define YAW_POS_PID_KP 27.0f
 #define YAW_POS_PID_KI 0.0f
-#define YAW_POS_PID_KD 0.3f
+#define YAW_POS_PID_KD 0.0f
 
 //pitch轴达妙mit控制阻抗系数
 #define DM_MOT_PITCH_KP 15.0f
@@ -180,6 +180,9 @@ enum aim_target
 #define FRIC_SPEED_PID_KI 0.0f
 #define FRIC_SPEED_PID_KD 0.00002f
 
+//弹速修正系数
+#define BULLET_SPEED_COMP_KP 0.8125f
+
 #define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_2
 
 #endif
@@ -194,7 +197,7 @@ enum aim_target
 #define AUTO_YAW_SPEED_PID_KD 0.0f
 
 //yaw轴位置环pid参数
-#define AUTO_YAW_POS_PID_KP 25.0f
+#define AUTO_YAW_POS_PID_KP 27.0f
 #define AUTO_YAW_POS_PID_KI 0.0f
 #define AUTO_YAW_POS_PID_KD 0.3f
 
@@ -216,12 +219,12 @@ enum aim_target
 #define YAW_SPEED_PID_KD 0.0f
 
 //yaw轴位置环pid参数
-#define YAW_POS_PID_KP 25.0f
+#define YAW_POS_PID_KP 27.0f
 #define YAW_POS_PID_KI 0.0f
-#define YAW_POS_PID_KD 0.5f
+#define YAW_POS_PID_KD 0.0f
 
 //yaw轴初始偏移角
-#define _YAW_OFFSET 7750
+#define _YAW_OFFSET 2300
 
 //pitch轴达妙mit控制阻抗系数
 #define DM_MOT_PITCH_KP 17.0f
@@ -259,6 +262,9 @@ enum aim_target
 #define FRIC_SPEED_PID_KI 0.0f
 #define FRIC_SPEED_PID_KD 0.00002f
 
+//弹速修正系数
+#define BULLET_SPEED_COMP_KP 0.79f
+
 #define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_2
 
 #endif
@@ -273,34 +279,34 @@ enum aim_target
 #define AUTO_YAW_SPEED_PID_KD 0.0f
 
 //yaw轴位置环pid参数
-#define AUTO_YAW_POS_PID_KP 25.0f
+#define AUTO_YAW_POS_PID_KP 27.0f
 #define AUTO_YAW_POS_PID_KI 0.0f
 #define AUTO_YAW_POS_PID_KD 0.3f
 
 //pitch轴达妙mit控制阻抗系数
-#define AUTO_DM_MOT_PITCH_KP 15.0f
+#define AUTO_DM_MOT_PITCH_KP 17.0f
 #define AUTO_DM_MOT_PITCH_KI 0.0f
 #define AUTO_DM_MOT_PITCH_KD 0.7f
 
 //pitch轴达妙mit控制的重力补偿的pid的参数
-#define AUTO_PITCH_DM_MOT_KP 25.0f
+#define AUTO_PITCH_DM_MOT_KP 20.0f
 #define AUTO_PITCH_DM_MOT_KI 0.0f
-#define AUTO_PITCH_DM_MOT_KD 1.0f
+#define AUTO_PITCH_DM_MOT_KD 0.0f
 
 //手动模式下------------------------------------------
 
 //yaw轴速度环pid参数
-#define YAW_SPEED_PID_KP 15.0f
+#define YAW_SPEED_PID_KP 20.0f
 #define YAW_SPEED_PID_KI 0.0f
 #define YAW_SPEED_PID_KD 0.0f
 
 //yaw轴位置环pid参数
 #define YAW_POS_PID_KP 25.0f
 #define YAW_POS_PID_KI 0.0f
-#define YAW_POS_PID_KD 0.3f
+#define YAW_POS_PID_KD 0.02f
 
 //pitch轴达妙mit控制阻抗系数
-#define DM_MOT_PITCH_KP 15.0f
+#define DM_MOT_PITCH_KP 30.0f
 #define DM_MOT_PITCH_KI 0.0f
 #define DM_MOT_PITCH_KD 0.7f
 
@@ -338,7 +344,12 @@ enum aim_target
 #define FRIC_SPEED_PID_KI 0.0f
 #define FRIC_SPEED_PID_KD 0.00002f
 
+//弹速修正系数
+#define BULLET_SPEED_COMP_KP 0.78f
+
 #define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_3
+
+//#define REMOTE_DEVICE=REMOTE_DR16
 
 #endif
 
