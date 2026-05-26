@@ -43,7 +43,7 @@ void MovtionCtrlApp::StateManual::execute(GimbalMotionCtx& ctx) {
         request_switch(&instance()._stateAuto);
         return;
     }
-    
+    #if defined(DOG_1) || defined(DOG_2)
     ChassisToGimbalComm c2gData{};
     Blackboard::instance().c2gComm.read(c2gData);
     if(!c2gData.msg.chassisready)
@@ -69,6 +69,7 @@ void MovtionCtrlApp::StateManual::execute(GimbalMotionCtx& ctx) {
         instance().updatePitch(ctx);
         return;
     }
+    #endif
     
     instance().updatePitch(ctx);
     instance().updateYaw(ctx);

@@ -60,30 +60,50 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     return;
     #endif
 
+    #if defined(DOG_1) || defined(DOG_2)
+
+    //使能pitch
+    ctx.output.pitchEn    = true;
+    ctx.telem.targetPitchRad = PITCH_LIMIT_MIN+0.2f; 
+    instance().updatePitch(ctx);
+
+
+    //对准过程要让yaw稍微抬升一下并保持那个角度
     // 编码器差值 → 弧度 (与 IMU 无关)
     int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();
     float errorRad = (float)ecdShortestError(ALIGN_TARGET_ECD, curEcd)
                      / (float)ECD_PER_REV * 2.0f * M_PI;
 
-    // // 编码器速度 10Hz 一阶低通滤波: alpha = 2π*fc*dt / (2π*fc*dt + 1)
-    // constexpr float TWO_PI_FC = 2.0f * M_PI * 10.0f;  // 314.16 rad/s
-    // float alpha = TWO_PI_FC * ctx.dt / (TWO_PI_FC * ctx.dt + 1.0f);
-    // instance()._alignVelFilt = alpha * ctx.state.yaw.vel + (1.0f - alpha) * instance()._alignVelFilt;
-
-    // 位置环: 编码器误差 → 速度指令
-    // 速度环: 编码器速度经 50Hz LPF 后作为反馈
-    ctx.output.pitchEn    = true;
-    //对准过程要让yaw稍微抬升一下并保持那个角度
-    ctx.telem.targetPitchRad = PITCH_LIMIT_MIN+0.2f; 
-    instance().updatePitch(ctx);
     if(ctx.state.pitch.pos<PITCH_LIMIT_MIN+0.3f)
     {
-        float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -errorRad);
-        ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
-    
-    }
         
-    
+        //检测yaw轴是否发生堵转，如果发生堵转，选择另外一个方向转到目标位置
+        static uint32_t yawblockStartTick = 0;
+        if (std::abs(errorRad) > (float)M_PI / 16.0f && std::abs(ctx.imu.gyro[2]) < 10.0f) 
+        {
+            if (yawblockStartTick == 0) 
+            {
+                yawblockStartTick = xTaskGetTickCount();
+            } 
+            else if (xTaskGetTickCount() - yawblockStartTick >= pdMS_TO_TICKS(1000)) 
+            {
+                //选择另外一个方向转到目标位置
+                instance()._alignPosPid.clear();
+                instance()._alignSpdPid.clear();
+                float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -errorRad-2.0f * M_PI);
+                ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
+                
+                return;
+            }
+        } 
+        else 
+        {
+            yawblockStartTick = 0;
+            
+            float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, 2.0f * -errorRad);
+            ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
+        }
+    }
 
     // 误差 < ±5° → 累计稳定时间
     if (std::abs(errorRad) < ALIGN_TOLERANCE) {
@@ -96,4 +116,5 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     } else {
         instance()._alignStableMs = 0.0f;
     }
+    #endif
 }

@@ -287,9 +287,10 @@ union ChassisToGimbalComm {
         uint32_t shooter17mmBarrelHeat : 16; // 17mm 枪口当前热量 (2 Bytes)
         uint32_t heatLimit             : 9; // 热量上限 (如 150, 240, 360)
         uint32_t coolingRate           : 7; // 冷却速率 (如 40, 60, 80)
-        uint8_t robotId;                    // 机器人 ID (1 Byte)
-        int8_t chassisYawSpeed;
-        uint8_t chassisready           :1;
+        uint8_t chassisready           : 1;
+        uint8_t robotId                : 8;   // 机器人 ID (1 Byte)
+        int8_t chassisYawSpeed         : 8;   // 底盘当前偏航速度 (单位: 0.1 deg/s)
+        
     } msg;
     uint8_t buffer[8];
 
