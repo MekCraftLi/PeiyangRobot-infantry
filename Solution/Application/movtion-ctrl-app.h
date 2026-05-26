@@ -186,8 +186,8 @@ public:
     // ── Align 状态 ──
     float _alignStableMs = 0.0f;
     float _alignVelFilt  = 0.0f;  // 编码器速度 50Hz 低通滤波输出
-    pyro::pid_t _alignPosPid = pyro::pid_t(6.0f, 0.2f, 0.0f, 100.0f, 500.0f);
-    pyro::pid_t _alignSpdPid = pyro::pid_t(4.0f, 0.007f, 0.0f, 5.0f, 20.0f);
+    pyro::pid_t _alignPosPid = pyro::pid_t(15.0f, 0.0f, 0.0f, 100.0f, 500.0f);
+    pyro::pid_t _alignSpdPid = pyro::pid_t(20.0f, 0.00f, 0.0f, 5.0f, 20.0f);
 
 #endif
 

@@ -405,8 +405,12 @@ void MovtionCtrlApp::updatePitch(GimbalMotionCtx& ctx) {
     
     float totalFf             = gravityFf + pitchIntegralTorque;//总扭矩合成
 
-    if (abs(ctx.cmd.pitchVel) > 0.1f)//如果俯仰速度过大，限幅
-        ctx.cmd.pitchVel = (ctx.cmd.pitchVel / ctx.cmd.pitchVel) * 0.1f;//这里好像有误
+    if (ctx.cmd.pitchVel > 0.1f)//如果俯仰速度过大，限幅
+    {
+        ctx.cmd.pitchVel =0.1f;
+    }
+    else if(ctx.cmd.pitchVel < -0.1f)
+        ctx.cmd.pitchVel = -0.1f;
 
     ctx.output.targetPitchPos         = targetMotorRaw;
     ctx.output.targetPitchSpeed       = ctx.cmd.pitchVel;
@@ -431,13 +435,13 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
     //条件 abs(ctx.cmd.targetYaw) < M_PI 确保目标角度有效（不是无效值）
     if (ctx.cmd.mode == GIMBAL_AUTO && abs(ctx.cmd.targetYaw) < M_PI) {
 
-        yawPosPid.set_gains(AUTO_YAW_POS_PID_KP, AUTO_YAW_POS_PID_KI, AUTO_YAW_POS_PID_KD);
-        yawSpdPid.set_gains(AUTO_YAW_SPEED_PID_KP, AUTO_YAW_SPEED_PID_KI, AUTO_YAW_SPEED_PID_KD);
+        // yawPosPid.set_gains(AUTO_YAW_POS_PID_KP, AUTO_YAW_POS_PID_KI, AUTO_YAW_POS_PID_KD);
+        // yawSpdPid.set_gains(AUTO_YAW_SPEED_PID_KP, AUTO_YAW_SPEED_PID_KI, AUTO_YAW_SPEED_PID_KD);
         ctx.telem.targetYawRad = ctx.cmd.targetYaw;
        // ffYawTorque            = Config::Algorithm::Gimbal::YAW_INERTIA_K * ctx.cmd.targetYawSpeed;
     } else {
-        yawPosPid.set_gains(YAW_POS_PID_KP, YAW_POS_PID_KI, YAW_POS_PID_KD);
-        yawSpdPid.set_gains(YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD);
+        // yawPosPid.set_gains(YAW_POS_PID_KP, YAW_POS_PID_KI, YAW_POS_PID_KD);
+        // yawSpdPid.set_gains(YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD);
         ctx.telem.targetYawRad = wrapAngle(ctx.telem.targetYawRad + ctx.cmd.yawVel * ctx.dt);//这里的逻辑可以应用在其它地方
         //ffYawTorque            = 0.0f;
     }
@@ -467,17 +471,15 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
         //获取编码器角度
         int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();
         //角度归一化
-        float diff = (_YAW_OFFSET - curEcd);
+        float diff = (_YAW_OFFSET - curEcd) % 8192;
         while (diff > 4096) diff -= 8192;
         while (diff < -4096) diff += 8192;
         //转化弧度制
         diff = (float)diff / 8192.0f * 2.0f * M_PI;
+        ctx.telem.targetYawRad= ctx.imu.yaw;
         //计算
-        float yawPosOut       = yawPosPid.calculate(0.0f, -diff);
-        float tgtYawSpd       = yawPosOut;
-        ctx.telem.targetYawRotate = tgtYawSpd;
-        float yawSpdOut       = yawSpdPid.calculate(tgtYawSpd, ctx.imu.gyro[2]);
-        ctx.output.yawVoltage = yawSpdOut + ffYawTorque;
+        float yawSpdCmd     = yawPosPid.calculate(0.0f, -diff);
+        ctx.output.yawVoltage = yawSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
     }
     else
     {

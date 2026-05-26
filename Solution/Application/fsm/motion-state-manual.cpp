@@ -23,6 +23,9 @@
 #include "System/Service/motor-actuator.h"
 #include "System/DataHub/blackboard.h"
 
+
+
+
 void MovtionCtrlApp::StateManual::enter(GimbalMotionCtx& ctx) {
     ctx.motionState = static_cast<uint8_t>(MotionState::Manual);
         
@@ -40,15 +43,17 @@ void MovtionCtrlApp::StateManual::execute(GimbalMotionCtx& ctx) {
         request_switch(&instance()._stateAuto);
         return;
     }
+    
     ChassisToGimbalComm c2gData{};
-    if(!c2gData.msg.chassisready)       
+    Blackboard::instance().c2gComm.read(c2gData);
+    if(!c2gData.msg.chassisready)
     {
         if (ctx.cmd.mode == GIMBAL_RELAX) 
         {
             request_switch(&instance()._stateRelax);
             return;
         }
-        Blackboard::instance().c2gComm.read(c2gData);
+        
         int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();
         //角度归一化
         float diff = (_YAW_OFFSET - curEcd) % 8192;

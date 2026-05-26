@@ -27,7 +27,7 @@
 
 static constexpr int32_t ALIGN_TARGET_ECD = _YAW_OFFSET; 
 static constexpr int32_t ECD_PER_REV      = 8192;
-static constexpr float   ALIGN_TOLERANCE  = 15.0f * M_PI / 180.0f;
+static constexpr float   ALIGN_TOLERANCE  = 5.0f * M_PI / 180.0f;
 static constexpr float   ALIGN_STABLE_MS  = 800.0f;
 
 // 编码器最短路径 (mod 8192)
@@ -44,9 +44,9 @@ void MovtionCtrlApp::StateAlign::enter(GimbalMotionCtx& ctx) {
     instance()._alignVelFilt  = 0.0f;
     instance()._alignPosPid.clear();
     instance()._alignSpdPid.clear();
-    ctx.output.pitchEn    = false;
+    ctx.output.pitchEn    = true;
     ctx.output.yawVoltage = 0.0f;
-    MotActSrvc::instance().pitch.disable();
+    MotActSrvc::instance().pitch.enable();
 }
 
 void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
@@ -65,23 +65,32 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     float errorRad = (float)ecdShortestError(ALIGN_TARGET_ECD, curEcd)
                      / (float)ECD_PER_REV * 2.0f * M_PI;
 
-    // 编码器速度 10Hz 一阶低通滤波: alpha = 2π*fc*dt / (2π*fc*dt + 1)
-    constexpr float TWO_PI_FC = 2.0f * M_PI * 10.0f;  // 314.16 rad/s
-    float alpha = TWO_PI_FC * ctx.dt / (TWO_PI_FC * ctx.dt + 1.0f);
-    instance()._alignVelFilt = alpha * ctx.state.yaw.vel + (1.0f - alpha) * instance()._alignVelFilt;
+    // // 编码器速度 10Hz 一阶低通滤波: alpha = 2π*fc*dt / (2π*fc*dt + 1)
+    // constexpr float TWO_PI_FC = 2.0f * M_PI * 10.0f;  // 314.16 rad/s
+    // float alpha = TWO_PI_FC * ctx.dt / (TWO_PI_FC * ctx.dt + 1.0f);
+    // instance()._alignVelFilt = alpha * ctx.state.yaw.vel + (1.0f - alpha) * instance()._alignVelFilt;
 
     // 位置环: 编码器误差 → 速度指令
     // 速度环: 编码器速度经 50Hz LPF 后作为反馈
-    float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -errorRad);
-    ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, instance()._alignVelFilt);
-    ctx.output.pitchEn    = false;
+    ctx.output.pitchEn    = true;
+    //对准过程要让yaw稍微抬升一下并保持那个角度
+    ctx.telem.targetPitchRad = PITCH_LIMIT_MIN+0.2f; 
+    instance().updatePitch(ctx);
+    if(ctx.state.pitch.pos<PITCH_LIMIT_MIN+0.3f)
+    {
+        float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -errorRad);
+        ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
+    
+    }
+        
+    
 
     // 误差 < ±5° → 累计稳定时间
     if (std::abs(errorRad) < ALIGN_TOLERANCE) {
         instance()._alignStableMs += ctx.dt * 1000.0f;
         if (instance()._alignStableMs >= ALIGN_STABLE_MS) {
             ctx.telem.targetYawRad = ctx.imu.yaw;       
-                request_switch(&instance()._stateManual);
+            request_switch(&instance()._stateManual);
             
         }
     } else {
