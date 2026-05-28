@@ -278,10 +278,8 @@
           </label>
           <label>Aim
             <select id="aimMode">
-              <option value="0">Vehicle</option>
-              <option value="1">Energy A</option>
-              <option value="2">Energy B</option>
-              <option value="3">Outpost</option>
+              <option value="0">Energy Off</option>
+              <option value="1">Energy On</option>
             </select>
           </label>
           <label>Aim State
@@ -399,7 +397,8 @@
     const switchControls = [capSwitch, turboSwitch, feederSwitch, spinSwitch];
     const switchIds = ["SWC", "SWT", "SWF", "SWS"];
     let turboGlyphStepMode = false;
-    const targetTrackIds = new Set(["AAF0", "AAF1", "AAF3", "AAF5", "AAF6", "AAF8"]);
+    const aimModeCount = 2;
+    const targetTrackIds = new Set(["AAF4", "AAF5"]);
     const linkCapacityPerSecond = (queueBatchSize * 1000) / queuePeriodMs;
     const uiQueue = {
       pending: [],
@@ -1028,51 +1027,26 @@
       return active ? color.main : color.white;
     }
 
-    function drawVehicleAim(mode, active) {
-      const main = aimMain(active);
-      const detail = color.white;
-      aimArc(mode, "V0", 0, 0, 25, 25, 125, main, 3);
-      aimArc(mode, "V1", 0, 0, 25, 205, 305, main, 3);
-      aimLine(mode, "V2", 0, 16, 16, 0, detail, 3);
-      aimLine(mode, "V3", 16, 0, 0, -16, detail, 3);
-      aimLine(mode, "V4", 0, -16, -16, 0, detail, 3);
-      aimLine(mode, "V5", -16, 0, 0, 16, detail, 3);
-      aimLine(mode, "V6", -24, 0, 24, 0, main, 2);
-      aimCircle(mode, "VC", 0, 0, 4, main, 2);
-    }
-
-    function drawAimFan(mode, active, phaseDeg) {
-      const blade = aimMain(active);
+    function drawAimFan(mode, active) {
+      const blade = active ? color.main : color.white;
+      const bladeWidth = active ? 5 : 3;
       for (let i = 0; i < 5; i++) {
-        const angle = phaseDeg + i * 72;
-        aimArc(mode, `F${i}`, 0, 0, 19, angle - 17, angle + 17, blade, 5);
+        const angle = -54 + i * 72;
+        aimArc(mode, `F${i}`, 0, 0, 22, angle - 16, angle + 16, blade, bladeWidth);
       }
-      aimCircle(mode, "FC", 0, 0, 5, color.white, 2);
     }
 
-    function drawEnergyStaticAim(mode, active) {
-      drawAimFan(mode, active, -90);
-      aimLine(mode, "B0", -11, -29, 11, -29, aimMain(active), 3);
-    }
-
-    function drawEnergySweepAim(mode, active) {
-      drawAimFan(mode, active, -54);
-      aimArc(mode, "R0", 0, 0, 30, 18, 120, aimMain(active), 3);
-      aimLine(mode, "A0", 27, 16, 34, 23, aimMain(active), 3);
-    }
-
-    function drawOutpostAim(mode, active) {
-      const main = aimMain(active);
-      const detail = color.white;
-      const mainWidth = active ? 6 : 3;
-      const coreWidth = active ? 4 : 2;
-      aimArc(mode, "P0", 0, 8, 17, 42, 138, main, mainWidth);
-      aimLine(mode, "P1", -10, 14, 10, 14, detail, 3);
-      aimLine(mode, "P2", 0, 18, 0, -18, detail, 3);
-      aimLine(mode, "P3", -15, -20, 0, 13, detail, 3);
-      aimLine(mode, "P4", 15, -20, 0, 13, detail, 3);
-      aimLine(mode, "P5", -19, -22, 19, -22, main, mainWidth);
-      aimCircle(mode, "PC", 0, 2, 5, main, coreWidth);
+    function drawEnergyModeAim(mode, active) {
+      const state = active ? color.main : color.white;
+      const sweepWidth = active ? 3 : 1;
+      aimArc(mode, "G0", 0, 0, 34, 208, 332, color.white, 2);
+      aimArc(mode, "G1", 0, 0, 34, 28, 152, color.white, 2);
+      drawAimFan(mode, active);
+      aimArc(mode, "R0", 0, 0, 31, 18, 120, state, sweepWidth);
+      aimLine(mode, "A0", 27, 16, 35, 23, state, active ? 3 : 1);
+      aimLine(mode, "A1", 29, 15, 31, 26, state, active ? 3 : 1);
+      aimCircle(mode, "HC", 0, 0, 7, color.white, 2);
+      aimCircle(mode, "HX", 0, 0, 3, color.white, 2);
     }
 
     function aimTrackColor() {
@@ -1082,29 +1056,19 @@
     }
 
     function drawAutoAimStatus() {
-      const selected = Number(aimMode.value);
+      const active = Number(aimMode.value) === 1;
       const trackColor = aimTrackColor();
-      const modes = [
-        { id: "AA0", x: 674, y: 575, size: 0.78, rot: 0, anchorY: 0, tickX0: 746, tickX1: 704, draw: drawVehicleAim },
-        { id: "AA1", x: 674, y: 465, size: 0.76, rot: 0, anchorY: -5, tickX0: 746, tickX1: 704, draw: drawEnergyStaticAim },
-        { id: "AA2", x: 1246, y: 465, size: 0.76, rot: 0, anchorX: 2, anchorY: 0, tickX0: 1174, tickX1: 1216, draw: drawEnergySweepAim },
-        { id: "AA3", x: 1246, y: 575, size: 0.78, rot: 0, anchorY: 1, tickX0: 1174, tickX1: 1216, draw: drawOutpostAim },
-      ];
-      drawLine("AAF0", 746, 420, 746, 620, trackColor, 2, 2);
-      drawLine("AAF1", 746, 620, 710, 644, trackColor, 2, 2);
-      drawLine("AAF2", 710, 644, 642, 644, color.white, 1, 2);
-      drawLine("AAF3", 746, 420, 710, 396, trackColor, 2, 2);
-      drawLine("AAF4", 710, 396, 642, 396, color.white, 1, 2);
-      drawLine("AAF5", 1174, 420, 1174, 620, trackColor, 2, 2);
-      drawLine("AAF6", 1174, 620, 1210, 644, trackColor, 2, 2);
-      drawLine("AAF7", 1210, 644, 1278, 644, color.white, 1, 2);
-      drawLine("AAF8", 1174, 420, 1210, 396, trackColor, 2, 2);
-      drawLine("AAF9", 1210, 396, 1278, 396, color.white, 1, 2);
-      modes.forEach((mode, index) => {
-        const tickColor = index === selected ? color.main : color.white;
-        drawLine(`AAT${index}`, mode.tickX0, mode.y, mode.tickX1, mode.y, tickColor, index === selected ? 3 : 1, 2, "DYNAMIC");
-      });
-      modes.forEach((mode, index) => mode.draw(mode, index === selected));
+      const mode = { id: "AA0", x: 960, y: 690, size: 0.72, rot: 0 };
+      drawLine("AAF0", 880, 660, 912, 690, color.white, 1, 2);
+      drawLine("AAF1", 880, 720, 912, 690, color.white, 1, 2);
+      drawLine("AAF2", 1040, 660, 1008, 690, color.white, 1, 2);
+      drawLine("AAF3", 1040, 720, 1008, 690, color.white, 1, 2);
+      drawLine("AAF4", 912, 690, 936, 690, trackColor, 2, 2, "DYNAMIC");
+      drawLine("AAF5", 1008, 690, 984, 690, trackColor, 2, 2, "DYNAMIC");
+      drawLine("AAF6", 930, 646, 990, 646, color.white, 1, 2);
+      drawLine("AAF7", 930, 734, 990, 734, color.white, 1, 2);
+      drawLine("AAT0", 942, 654, 978, 654, active ? color.main : color.white, active ? 3 : 1, 2, "DYNAMIC");
+      drawEnergyModeAim(mode, active);
     }
 
     function drawBottomHud() {
@@ -1196,9 +1160,12 @@
       return cmd.name === "CL0" || cmd.name === "CR0" || cmd.name === "CV0" || /^[LR]G[0-4]$/.test(cmd.name);
     }
 
-    function enqueueAimMode(index, timestamp) {
-      const prefix = `AA${index}`;
-      return enqueueCommands(`AIM${index}`, (cmd) => cmd.name.startsWith(prefix) || cmd.name === `AAT${index}`, timestamp);
+    function isAimModeCommand(cmd) {
+      return cmd.name.startsWith("AA0") || cmd.name === "AAT0";
+    }
+
+    function enqueueAimMode(timestamp) {
+      return enqueueCommands("AIM", isAimModeCommand, timestamp);
     }
 
     function enqueueSwitchModule(index, timestamp) {
@@ -1234,7 +1201,7 @@
       uiQueue.nextAimAt = timestamp + slowUpdatePeriodMs;
       uiQueue.nextSwitchAt = timestamp + slowUpdatePeriodMs;
       uiQueue.nextTargetAt = timestamp + targetStatePeriodMs;
-      uiQueue.aimCursor = Number(aimMode.value) || 0;
+      uiQueue.aimCursor = Number(aimMode.value) === 1 ? 1 : 0;
       uiQueue.switchCursor = 0;
       uiQueue.targetCursor = targetStateCycle.indexOf(aimState.value);
       if (uiQueue.targetCursor < 0) uiQueue.targetCursor = 0;
@@ -1251,10 +1218,10 @@
     function updateSlowSignals(timestamp) {
       if (!uiQueue.initialized) return;
       while (timestamp >= uiQueue.nextAimAt) {
-        const nextAim = uiQueue.aimCursor % 4;
+        const nextAim = uiQueue.aimCursor % aimModeCount;
         aimMode.value = String(nextAim);
         uiQueue.pendingAimUpdates.push(nextAim);
-        uiQueue.aimCursor = (uiQueue.aimCursor + 1) % 4;
+        uiQueue.aimCursor = (uiQueue.aimCursor + 1) % aimModeCount;
         uiQueue.nextAimAt += slowUpdatePeriodMs;
       }
 
@@ -1286,7 +1253,7 @@
         uiQueue.nextRealTimeAt += realTimePeriodMs;
       }
 
-      uiQueue.pendingAimUpdates.forEach((index) => enqueueAimMode(index, timestamp));
+      if (uiQueue.pendingAimUpdates.length > 0) enqueueAimMode(timestamp);
       uiQueue.pendingSwitchUpdates.forEach((index) => enqueueSwitchModule(index, timestamp));
       if (uiQueue.pendingTargetUpdate) enqueueTargetTrack(timestamp);
       uiQueue.pendingAimUpdates = [];
@@ -1342,11 +1309,7 @@
 
     function expectedQueueInputRate() {
       const realTimeRate = (countCommands(isRealTimeCommand) * 1000) / realTimePeriodMs;
-      const aimRate =
-        [0, 1, 2, 3].reduce((sum, index) => {
-          const prefix = `AA${index}`;
-          return sum + countCommands((cmd) => cmd.name.startsWith(prefix) || cmd.name === `AAT${index}`);
-        }, 0) / 4;
+      const aimRate = countCommands(isAimModeCommand) / (slowUpdatePeriodMs / 1000);
       const switchRate =
         switchIds.reduce((sum, prefix) => sum + countCommands((cmd) => cmd.name.startsWith(prefix)), 0) / switchIds.length;
       const targetRate = countCommands((cmd) => targetTrackIds.has(cmd.name)) / (targetStatePeriodMs / 1000);
@@ -1426,9 +1389,9 @@
       const next =
         {
           base: { voltage: 17.5, aim: 0, aimState: "none", switches: [true, false, false, true, false] },
-          match: { voltage: 22.5, aim: 2, aimState: "locked", switches: [true, false, false, true, false] },
-          combat: { voltage: 25.8, aim: 3, aimState: "fire", switches: [true, true, false, true, true] },
-        }[name] ?? { voltage: 22.5, aim: 2, aimState: "locked", switches: [true, false, false, true, false] };
+          match: { voltage: 22.5, aim: 1, aimState: "locked", switches: [true, false, false, true, false] },
+          combat: { voltage: 25.8, aim: 1, aimState: "fire", switches: [true, true, false, true, true] },
+        }[name] ?? { voltage: 22.5, aim: 1, aimState: "locked", switches: [true, false, false, true, false] };
       voltageSlider.value = String(next.voltage);
       aimMode.value = String(next.aim);
       aimState.value = next.aimState;

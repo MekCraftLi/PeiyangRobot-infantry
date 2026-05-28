@@ -179,7 +179,7 @@ struct TriggerConfig {
                          HoldCondition::GreaterOrEqual};
     // 按键 Cycle (多值循环)
     TriggerEdge aimModeRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
-    TriggerCycle aimModeCycle{aimModeRise, 4};       // [B] 车辆/前哨站/大能量/小能量
+    TriggerCycle aimModeCycle{aimModeRise, 2};       // [B] 能量机关自瞄开关
     TriggerEdge legLengthRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerCycle legLengthCycle{legLengthRise, 3};    // [Z] 三种腿长
     TriggerEdge reverseEdge{0.0f, EdgeType::Rising};  // [X] 调头脉冲

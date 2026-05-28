@@ -10,8 +10,8 @@ This workspace is for referee UI drawing and visual testing.
 - UI components are kept in independent HTML files so each widget can be designed and visually checked in isolation.
 - `队徽.webp` can be previewed as a referee-UI arc outline in `team-logo-arcs.html`; the current outline uses 19 Arc primitives, below the 20-graphic budget, fitted to the original white mask to avoid filling the blue background.
 - `school-emblem.html` ports the `rm` camp-indicator drawing as a school emblem. The former `UI_Color_Main` shapes are cyan, the internal details remain white, and the emblem is centered above the capacitor arc.
-- `auto-aim-icons.html` contains four small static geometry icons for visual auto-aim modes: vehicle, five-blade energy mechanism mode A, five-blade energy mechanism mode B, and outpost. The vehicle mode is an abstract lock icon instead of a literal car. The current layout preserves the original left-side `x` positions, only moves the group vertically below the capacitor arc, and uses one unified abstract HUD border made from two short lower corner brackets, with 34 referee primitives total: 30 icon primitives plus 4 frame lines.
-- The hardware `UiMakerApp` ports this auto-aim group on UI group `4`: the frame is static, icons are added once, and only the previous/current icons update when `aimMode` changes. Command mapping is `0=vehicle`, `1=outpost`, `2=energy A`, `3=energy B`, while the display order stays vehicle, energy A, energy B, outpost.
+- The integrated auto-aim status uses one compact energy-mechanism icon above the screen center. `aimMode` is a two-state value: `0=off`, `1=on`. Activation changes the five armor modules, sweep arc, arrow, and top status line; the outer reference arcs, center hub, and static frame stay white.
+- The hardware `UiMakerApp` ports this auto-aim group on UI group `4`: static frame lines are sent once, dynamic icon/status primitives are added after reset and then updated when `aimMode` or target status changes.
 - The wheel-leg leg-length widget is a low-bandwidth side-view dual-leg icon.
 - The body is static and should be readable: draw a faceted chassis outline, center reference, fixed hip/body mount, and other fixed structure details as needed.
 - Each moving leg uses a small dynamic primitive set and no character command: upper link as one thick line, lower link as one thick line, wheel, knee joint, ankle/end joint. Left and right legs use different colors.
@@ -36,7 +36,7 @@ This workspace is for referee UI drawing and visual testing.
 - `capacitor-voltage.html`: interactive 1920 x 1080 capacitor-voltage UI canvas.
 - `team-logo-arcs.html`: interactive team-logo arc approximation for `队徽.webp`.
 - `school-emblem.html`: `rm` school-emblem preview with cyan outer arcs and white internal detail.
-- `auto-aim-icons.html`: four auto-aim mode icon preview.
+- `auto-aim-icons.html`: legacy auto-aim mode icon exploration.
 - `rm-2024-switch-icons.html`: reconstructed RM 2024 switch icon preview for gyro, ramp, friction wheel, and capacitor switch, using the original `rm` UI primitive geometry from commit `3504a9b4`.
 - `movement-speed.html`: HUD chart preview for current movement speed, velocity vector, components, and short trend.
 - `holographic-helmet.html`: line-only holographic helmet HUD silhouette preview.

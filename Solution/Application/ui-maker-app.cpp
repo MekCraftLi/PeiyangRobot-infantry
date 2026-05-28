@@ -88,7 +88,7 @@ class SimUiMakerInputSource final : public UiMakerInputSource {
         _aimModeTimer += dt;
         while (_aimModeTimer >= kAimModeIntervalSeconds) {
             _aimModeTimer -= kAimModeIntervalSeconds;
-            _aimModeState = static_cast<uint8_t>((_aimModeState + 1) % 4);
+            _aimModeState = static_cast<uint8_t>((_aimModeState + 1) % 2);
         }
         _switchTimer += dt;
         while (_switchTimer >= kSwitchIntervalSeconds) {
