@@ -887,19 +887,18 @@
     }
 
     function drawFeederSwitchIcon(module, on, active, fill) {
-      const s = 0.75;
-      switchIconLine(module, "I0", 0, 12, -10, -18, color.main, 15, s);
-      switchIconLine(module, "I1", -10, -18, 10, -18, color.main, 15, s);
-      switchIconLine(module, "I2", 10, -18, 0, 12, color.main, 15, s);
-      switchIconArc(module, "I3", 4, 8, 7, 15, 270, 335, color.pink, 5, s);
-      switchIconArc(module, "I4", -4, 8, 7, 15, 25, 90, color.pink, 5, s);
-      switchIconLine(module, "I5", 0, 13, 0, -7, color.pink, 10, s);
-      switchIconArc(module, "I6", -6, -22, 7, 15, 270, 335, color.pink, 5, s);
-      switchIconArc(module, "I7", -14, -22, 7, 15, 25, 90, color.pink, 5, s);
-      switchIconLine(module, "I8", -10, -17, -10, -37, color.pink, 10, s);
-      switchIconArc(module, "I9", 14, -22, 7, 15, 270, 335, color.pink, 5, s);
-      switchIconArc(module, "IA", 6, -22, 7, 15, 25, 90, color.pink, 5, s);
-      switchIconLine(module, "IB", 10, -17, 10, -37, color.pink, 10, s);
+      const s = 1.0;
+      switchIconCircle(module, "I0", -18, 0, 17, color.main, 4, s);
+      switchIconCircle(module, "I1", 18, 0, 17, color.main, 4, s);
+      switchIconCircle(module, "I2", -18, 0, 7, color.white, 2, s);
+      switchIconCircle(module, "I3", 18, 0, 7, color.white, 2, s);
+      switchIconLine(module, "I4", -3, 16, 3, 16, color.white, 3, s);
+      switchIconLine(module, "I5", -3, -16, 3, -16, color.white, 3, s);
+      switchIconCircle(module, "I6", 0, 0, 5, color.pink, 3, s);
+      switchIconArc(module, "I7", -18, 0, 22, 22, 225, 315, color.white, 3, s);
+      switchIconArc(module, "I8", 18, 0, 22, 22, 45, 135, color.white, 3, s);
+      switchIconLine(module, "I9", -36, 0, -27, 6, color.main, 3, s);
+      switchIconLine(module, "IA", 36, 0, 27, -6, color.main, 3, s);
     }
 
     function drawSpinSwitchIcon(module, on, active, fill) {

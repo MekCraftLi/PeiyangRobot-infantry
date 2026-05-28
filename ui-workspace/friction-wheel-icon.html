@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Friction Wheel Icon</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --panel: #191c22;
+      --panel-2: #12151a;
+      --line: #303642;
+      --text: #e8edf2;
+      --muted: #95a2b0;
+      --cyan: #39d7ff;
+      --green: #49e66f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.42 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .left {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .toolbar,
+    .side {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      min-height: 56px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    .title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .title strong {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    button,
+    select {
+      min-height: 36px;
+      border: 1px solid #414856;
+      background: #20242c;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 11px;
+      font: inherit;
+    }
+
+    button {
+      min-width: 74px;
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover {
+      border-color: #687486;
+    }
+
+    button.active {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px var(--cyan);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #07080a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: min(100%, calc((100vh - 104px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #060709;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .group {
+      border: 1px solid #2b313b;
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .group h2 {
+      margin: 0 0 10px;
+      color: #cdd6df;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    label,
+    .status {
+      display: grid;
+      grid-template-columns: 94px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .fields {
+      display: grid;
+      gap: 8px;
+    }
+
+    .status strong {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .command-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .command {
+      display: grid;
+      grid-template-columns: 42px 54px 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid #2c333e;
+      border-radius: 6px;
+      background: #171a20;
+      color: #cbd5df;
+      font-size: 12px;
+    }
+
+    .command code {
+      color: #dce6ef;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="left">
+      <div class="toolbar">
+        <div class="title">
+          <strong>Friction Wheel Icon</strong>
+          <span>SWF module / referee primitives only</span>
+        </div>
+        <div class="controls">
+          <button type="button" data-state="off">Off</button>
+          <button type="button" data-state="on" class="active">On</button>
+          <select id="viewMode" aria-label="View mode">
+            <option value="module">SWF module</option>
+            <option value="large">Large</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="stage">
+        <canvas id="preview" width="1920" height="1080" aria-label="Friction wheel icon preview"></canvas>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="group">
+        <h2>Status</h2>
+        <div class="fields">
+          <div class="status">Primitive <strong id="primitiveStatus">-</strong></div>
+          <div class="status">Shape Set <strong>Line / Arc / Circle</strong></div>
+          <div class="status">Colors <strong>Main / White / Pink</strong></div>
+          <div class="status">Module <strong>SWF @ 1160,134</strong></div>
+        </div>
+      </section>
+
+      <section class="group command-list" id="commandList" aria-label="Primitive commands"></section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const commandList = document.getElementById("commandList");
+    const primitiveStatus = document.getElementById("primitiveStatus");
+    const viewMode = document.getElementById("viewMode");
+    const params = new URLSearchParams(location.search);
+    const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const param = (name) => params.get(name) ?? hashParams.get(name);
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const UiColor = Object.freeze({
+      Main: 0,
+      Yellow: 1,
+      Green: 2,
+      Orange: 3,
+      Purple: 4,
+      Pink: 5,
+      Cyan: 6,
+      Black: 7,
+      White: 8,
+      Del: 9,
+    });
+    const palette = {
+      [UiColor.Main]: "#ffd24a",
+      [UiColor.Yellow]: "#ffd84d",
+      [UiColor.Green]: "#49e66f",
+      [UiColor.Orange]: "#ff9d3a",
+      [UiColor.Purple]: "#b76cff",
+      [UiColor.Pink]: "#ff5fa2",
+      [UiColor.Cyan]: "#39d7ff",
+      [UiColor.Black]: "#020202",
+      [UiColor.White]: "#e8edf2",
+      [UiColor.Del]: "#060709",
+    };
+    const colorName = Object.fromEntries(Object.entries(UiColor).map(([name, value]) => [value, name]));
+
+    const iconPrimitives = [
+      { id: 10, type: "Circle", color: UiColor.Main, width: 4, x: -18, y: 0, r: 17 },
+      { id: 11, type: "Circle", color: UiColor.Main, width: 4, x: 18, y: 0, r: 17 },
+      { id: 12, type: "Circle", color: UiColor.White, width: 2, x: -18, y: 0, r: 7 },
+      { id: 13, type: "Circle", color: UiColor.White, width: 2, x: 18, y: 0, r: 7 },
+      { id: 14, type: "Line", color: UiColor.White, width: 3, x1: -3, y1: 16, x2: 3, y2: 16 },
+      { id: 15, type: "Line", color: UiColor.White, width: 3, x1: -3, y1: -16, x2: 3, y2: -16 },
+      { id: 16, type: "Circle", color: UiColor.Pink, width: 3, x: 0, y: 0, r: 5 },
+      { id: 17, type: "Arc", color: UiColor.White, width: 3, x: -18, y: 0, rx: 22, ry: 22, start: 225, end: 315 },
+      { id: 18, type: "Arc", color: UiColor.White, width: 3, x: 18, y: 0, rx: 22, ry: 22, start: 45, end: 135 },
+      { id: 19, type: "Line", color: UiColor.Main, width: 3, x1: -36, y1: 0, x2: -27, y2: 6 },
+      { id: 20, type: "Line", color: UiColor.Main, width: 3, x1: 36, y1: 0, x2: 27, y2: -6 },
+    ];
+
+    const switchModule = { id: "SWF", x: 1160, y: 134, r: 7, scale: 0.9 };
+    let active = param("state") !== "off";
+    let commands = [];
+
+    function by(y) {
+      return H - y;
+    }
+
+    function transform(module, x, y) {
+      const rad = (module.r * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const sx = x * module.scale;
+      const sy = y * module.scale;
+      return {
+        x: module.x + sx * cos - sy * sin,
+        y: module.y + sx * sin + sy * cos,
+      };
+    }
+
+    function paintLine(x1, y1, x2, y2, stroke, width) {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(x1, by(y1));
+      ctx.lineTo(x2, by(y2));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function paintCircle(x, y, r, stroke, width) {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.arc(x, by(y), r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function paintArc(x, y, rx, ry, startDeg, endDeg, stroke, width) {
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      const start = (-endDeg * Math.PI) / 180;
+      const end = (-startDeg * Math.PI) / 180;
+      ctx.ellipse(x, by(y), rx, ry, 0, start, end);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawPrimitive(module, primitive) {
+      const drawColor = primitive.color === UiColor.Main && !active ? UiColor.White : primitive.color;
+      const stroke = palette[drawColor];
+      const width = Math.max(1, Math.round(primitive.width * module.scale));
+      if (primitive.type === "Line") {
+        const start = transform(module, primitive.x1, primitive.y1);
+        const end = transform(module, primitive.x2, primitive.y2);
+        paintLine(start.x, start.y, end.x, end.y, stroke, width);
+        commands.push({ ...primitive, color: drawColor, width, args: { x1: start.x, y1: start.y, x2: end.x, y2: end.y } });
+        return;
+      }
+      const center = transform(module, primitive.x, primitive.y);
+      if (primitive.type === "Circle") {
+        const radius = Math.round(primitive.r * module.scale);
+        paintCircle(center.x, center.y, radius, stroke, width);
+        commands.push({ ...primitive, color: drawColor, width, args: { x: center.x, y: center.y, r: radius } });
+        return;
+      }
+      const rx = Math.round(primitive.rx * module.scale);
+      const ry = Math.round(primitive.ry * module.scale);
+      paintArc(center.x, center.y, rx, ry, primitive.start + module.r, primitive.end + module.r, stroke, width);
+      commands.push({ ...primitive, color: drawColor, width, args: { x: center.x, y: center.y, rx, ry, start: primitive.start + module.r, end: primitive.end + module.r } });
+    }
+
+    function drawSwitchFrame(module) {
+      const rail = active ? UiColor.Main : UiColor.White;
+      const lines = [
+        [-58, -22, -42, 22],
+        [-42, 22, -12, 22],
+        [12, 22, 42, 22],
+        [42, 22, 58, -22],
+        [-58, -22, -24, -22],
+        [24, -22, 58, -22],
+      ];
+      lines.forEach((line, index) => {
+        const start = transform(module, line[0], line[1]);
+        const end = transform(module, line[2], line[3]);
+        const color = index < 4 ? rail : UiColor.White;
+        const width = index < 4 ? (active ? 3 : 2) : 1;
+        paintLine(start.x, start.y, end.x, end.y, palette[color], width);
+      });
+    }
+
+    function drawGrid() {
+      ctx.save();
+      ctx.strokeStyle = "#15171c";
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= W; x += 120) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= H; y += 120) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawCommandList() {
+      commandList.innerHTML = "";
+      const title = document.createElement("h2");
+      title.textContent = "Primitives";
+      commandList.appendChild(title);
+      commands.forEach((cmd) => {
+        const row = document.createElement("div");
+        row.className = "command";
+        row.innerHTML = `<code>${cmd.id}</code><span>${cmd.type}</span><span>${colorName[cmd.color]} / w${cmd.width}</span>`;
+        commandList.appendChild(row);
+      });
+    }
+
+    function currentModule() {
+      if (viewMode.value === "large") {
+        return { id: "SWF", x: 960, y: 540, r: 0, scale: 4.0 };
+      }
+      return switchModule;
+    }
+
+    function draw() {
+      commands = [];
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#060709";
+      ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      const module = currentModule();
+      if (viewMode.value === "module") {
+        drawSwitchFrame(module);
+      }
+      iconPrimitives.forEach((primitive) => drawPrimitive(module, primitive));
+      primitiveStatus.textContent = `${commands.length} GRAPH`;
+      drawCommandList();
+    }
+
+    if (param("view") === "large") {
+      viewMode.value = "large";
+    }
+    document.querySelectorAll("[data-state]").forEach((button) => {
+      button.classList.toggle("active", (button.dataset.state === "on") === active);
+      button.addEventListener("click", () => {
+        active = button.dataset.state === "on";
+        document.querySelectorAll("[data-state]").forEach((item) => {
+          item.classList.toggle("active", item === button);
+        });
+        draw();
+      });
+    });
+    viewMode.addEventListener("change", draw);
+
+    draw();
+  </script>
+</body>
+</html>

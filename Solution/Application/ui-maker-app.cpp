@@ -9,6 +9,7 @@
 
 #include "System/DataHub/blackboard.h"
 #include "System/DataHub/data-def.h"
+#include "System/DataHub/referee-data-hub.h"
 
 #include <cmath>
 
@@ -27,6 +28,26 @@ static StackType_t appStack[APPLICATION_STACK_SIZE];
 
 namespace {
 
+float wheelLegDistanceRatioFromState(uint8_t state) {
+    switch (state % 3U) {
+        case 0:
+            return RefereeHudSpec::kWheelLegDistanceMinRatio;
+        case 1:
+            return RefereeHudSpec::kWheelLegDistanceMidRatio;
+        default:
+            return RefereeHudSpec::kWheelLegDistanceMaxRatio;
+    }
+}
+
+void fillWheelLegPoseFromState(UiMakerInputSnapshot& input, uint8_t state) {
+    const float distanceRatio = wheelLegDistanceRatioFromState(state);
+    const float thighAngleDeg = RefereeHudSpec::wheelLegAngleForDistanceRatio(distanceRatio);
+    input.leftLegHipWheelDistance = distanceRatio;
+    input.rightLegHipWheelDistance = distanceRatio;
+    input.leftLegThighAngleDeg = thighAngleDeg;
+    input.rightLegThighAngleDeg = thighAngleDeg;
+}
+
 class BlackboardUiMakerInputSource final : public UiMakerInputSource {
   public:
     UiMakerInputSnapshot sample(float) override {
@@ -44,11 +65,10 @@ class BlackboardUiMakerInputSource final : public UiMakerInputSource {
         input.turboEnabled     = (comm.msg.turboMode != 0) && !input.stepClimbEnabled;
         input.feederEnabled    = (comm.msg.fireState > 0) || (comm.msg.shootEn != 0);
         input.spinEnabled      = (comm.msg.mode & 0x03U) == CHASSIS_SPIN;
-        input.legLengthState   = RefereeHudSpec::normalizeLegLengthState(static_cast<uint8_t>(comm.msg.legLength));
         input.aimModeState     = RefereeHudSpec::normalizeAimModeState(static_cast<uint8_t>(comm.msg.aimMode));
         input.aimTargetState   = comm.msg.shootEn != 0 ? static_cast<uint8_t>(RefereeHudAimTarget::Fire)
                                                        : static_cast<uint8_t>(RefereeHudAimTarget::None);
-        RefereeHudSpec::fillDualLegPoseFromState(input);
+        fillWheelLegPoseFromState(input, static_cast<uint8_t>(comm.msg.legLength));
         return input;
     }
 };
@@ -100,7 +120,6 @@ class SimUiMakerInputSource final : public UiMakerInputSource {
         input.stepClimbEnabled = _switchIndex == 2;
         input.feederEnabled    = _switchIndex >= 3;
         input.spinEnabled      = _switchIndex >= 4;
-        input.legLengthState = _legLengthState;
         input.aimModeState   = _aimModeState;
         input.aimTargetState = _aimTargetState;
         input.leftLegHipWheelDistance =
@@ -149,6 +168,7 @@ void UiMakerApp::init() {
     }
 
     RefereeHudRendererApp::instance().waitInit();
+    syncRendererSenderId();
     resetGraphics();
     _input = _inputSource->sample(0.0f);
     _hudUi.draw(_uiRender, _input);
@@ -161,7 +181,8 @@ void UiMakerApp::run() {
 
     _input = _inputSource->sample(RefereeHudUi::kPeriodSeconds);
 
-    if (_input.resetRequested && !_lastResetRequested) {
+    const bool senderIdChanged = syncRendererSenderId();
+    if (senderIdChanged || (_input.resetRequested && !_lastResetRequested)) {
         resetGraphics();
     }
     _lastResetRequested = _input.resetRequested;
@@ -172,6 +193,20 @@ void UiMakerApp::run() {
 void UiMakerApp::setInputSource(UiMakerInputSource& inputSource) {
     _inputSource = &inputSource;
     resetGraphics();
+}
+
+bool UiMakerApp::syncRendererSenderId() {
+    RMRobotStatus robotStatus {};
+    RefereeDataHub::instance().robotStatus.read(robotStatus);
+
+    const uint16_t senderId = robotStatus.robotId;
+    if (senderId == 0 || senderId == _lastRendererSenderId) {
+        return false;
+    }
+
+    _uiRender.setSenderId(senderId);
+    _lastRendererSenderId = senderId;
+    return true;
 }
 
 void UiMakerApp::resetGraphics() { _hudUi.reset(_uiRender); }

@@ -25,7 +25,9 @@ class UiMakerApp final : public PeriodicApp, public Singleton<UiMakerApp> {
     UiMakerInputSource* _inputSource = nullptr;
     UiMakerInputSnapshot _input {};
     bool _lastResetRequested = false;
+    uint16_t _lastRendererSenderId = 0;
 
+    bool syncRendererSenderId();
     void resetGraphics();
 };
 
