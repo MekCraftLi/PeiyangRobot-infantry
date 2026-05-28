@@ -136,8 +136,7 @@ void RealTimeCommApp::run() {
 
 
     output.msg.shootEn = static_cast<uint8_t>(FireCtrlApp::instance().getFireState()) > 0;
-    //
-    //
+
     //output.msg.mode=CHASSIS_RELAX;
 
     HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, output.buffer);

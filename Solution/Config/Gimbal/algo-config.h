@@ -87,8 +87,8 @@ enum aim_target
 
 
 
-//#define DOG_1
-#define DOG_2   
+//#define STEER
+#define DOG_1
 //#define STEER
 
 
@@ -172,6 +172,8 @@ enum aim_target
 #define PITCH_LIMIT_MAX -2.80f
 #define PITCH_LIMIT_MIN -1.61f
 
+#define PITCH_ALIGN_TARGET_RAD -0.7f
+
 //yaw轴初始偏移角
 #define _YAW_OFFSET 2550
 
@@ -183,7 +185,18 @@ enum aim_target
 //弹速修正系数
 #define BULLET_SPEED_COMP_KP 0.8125f
 
-#define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_2
+#define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_3
+
+
+
+
+// 正常模式下使用的零偏补偿值 (这些值应通过开启 IMU_CALIBRATION_MODE 测量后填入)
+constexpr float GYRO_BIAS_X = -0.000265247712f;
+constexpr float GYRO_BIAS_Y = 0.00205873931f;
+constexpr float GYRO_BIAS_Z = -0.00308620022f;
+
+
+
 
 #endif
 
@@ -214,36 +227,38 @@ enum aim_target
 //手动模式下------------------------------------------
 
 //yaw轴速度环pid参数
-#define YAW_SPEED_PID_KP 15.0f
+#define YAW_SPEED_PID_KP 30.0f
 #define YAW_SPEED_PID_KI 0.0f
 #define YAW_SPEED_PID_KD 0.0f
 
 //yaw轴位置环pid参数
-#define YAW_POS_PID_KP 27.0f
+#define YAW_POS_PID_KP 28.0f
 #define YAW_POS_PID_KI 0.0f
-#define YAW_POS_PID_KD 0.0f
+#define YAW_POS_PID_KD 0.3f
 
 //yaw轴初始偏移角
 #define _YAW_OFFSET 2300
 
 //pitch轴达妙mit控制阻抗系数
-#define DM_MOT_PITCH_KP 17.0f
+#define DM_MOT_PITCH_KP 20.0f
 #define DM_MOT_PITCH_KI 0.0f
 #define DM_MOT_PITCH_KD 0.7f
 
 //pitch轴达妙mit控制的重力补偿的pid的参数
-#define PITCH_DM_MOT_KP 60.0f
+#define PITCH_DM_MOT_KP 28.0f
 #define PITCH_DM_MOT_KI 0.0f
-#define PITCH_DM_MOT_KD 1.0f
+#define PITCH_DM_MOT_KD 0.5f
 
 //pitch轴物理限幅参数
 #define PITCH_LIMIT_MAX 1.70f
 #define PITCH_LIMIT_MIN 2.94f
 
+#define PITCH_ALIGN_TARGET_RAD -0.4f
+
 //--------------------------------------------------------
 
 //拨弹盘单发情况速度环pid参数
-#define TRIGGER_SINGLE_SPEED_PID_KP 0.13f
+#define TRIGGER_SINGLE_SPEED_PID_KP 0.16f
 #define TRIGGER_SINGLE_SPEED_PID_KI 0.0f
 #define TRIGGER_SINGLE_SPEED_PID_KD 0.0f
 
@@ -253,7 +268,7 @@ enum aim_target
 #define TRIGGER_SINGLE_POS_PID_KD 0.0f
 
 //拨弹盘连发情况速度环pid参数
-#define TRIGGER_BURST_SPEED_PID_KP 0.13f
+#define TRIGGER_BURST_SPEED_PID_KP 0.16f
 #define TRIGGER_BURST_SPEED_PID_KI 0.0f
 #define TRIGGER_BURST_SPEED_PID_KD 0.0002f
 
@@ -263,9 +278,15 @@ enum aim_target
 #define FRIC_SPEED_PID_KD 0.00002f
 
 //弹速修正系数
-#define BULLET_SPEED_COMP_KP 0.79f
+#define BULLET_SPEED_COMP_KP 0.77f
 
 #define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_2
+
+
+
+
+
+
 
 #endif
 
@@ -349,7 +370,9 @@ enum aim_target
 
 #define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_3
 
-//#define REMOTE_DEVICE=REMOTE_DR16
+
+
+
 
 #endif
 
@@ -382,6 +405,7 @@ namespace Imu {
 // 设置为 1 开启 60s 静置校准模式，设置为 0 正常运行
 // --- IMU 校准与恒温控制配置 ---
 #define IMU_CALIBRATION_MODE 0
+
 constexpr float TARGET_TEMPERATURE = 40.0f;
 constexpr float TEMP_DEADBAND = 0.15f;
 
@@ -398,7 +422,31 @@ constexpr float PWM_RAMP_STEP_RATIO    = 0.002f;
 constexpr float TEMP_MIN_SAFE          = -10.0f;
 constexpr float TEMP_MAX_SAFE          = 55.0f; // 目标温度提高了，安全阈值相应放宽
 
+#ifdef DOG_2
+// 正常模式下使用的零偏补偿值 (这些值应通过开启 IMU_CALIBRATION_MODE 测量后填入)
+constexpr float GYRO_BIAS_X = -0.00630061096f;
+constexpr float GYRO_BIAS_Y = -0.000766833022F;
+constexpr float GYRO_BIAS_Z = 0.000817186432f;
 
+constexpr float ACCEL_BIAS_X = 0.0f;
+constexpr float ACCEL_BIAS_Y = 0.0f;
+constexpr float ACCEL_BIAS_Z = 0.0f;
+
+#endif
+
+#ifdef DOG_1
+// 正常模式下使用的零偏补偿值 (这些值应通过开启 IMU_CALIBRATION_MODE 测量后填入)
+constexpr float GYRO_BIAS_X = -0.00370389153f;
+constexpr float GYRO_BIAS_Y = -0.0047872453f;
+constexpr float GYRO_BIAS_Z = 0.00183101289f;
+
+constexpr float ACCEL_BIAS_X = 0.0f;
+constexpr float ACCEL_BIAS_Y = 0.0f;
+constexpr float ACCEL_BIAS_Z = 0.0f;
+
+#endif
+
+#ifdef STEER
 // 正常模式下使用的零偏补偿值 (这些值应通过开启 IMU_CALIBRATION_MODE 测量后填入)
 constexpr float GYRO_BIAS_X = -0.000265247712f;
 constexpr float GYRO_BIAS_Y = 0.00205873931f;
@@ -407,6 +455,8 @@ constexpr float GYRO_BIAS_Z = -0.00308620022f;
 constexpr float ACCEL_BIAS_X = 0.0f;
 constexpr float ACCEL_BIAS_Y = 0.0f;
 constexpr float ACCEL_BIAS_Z = 0.0f;
+
+#endif
 
 }
 }

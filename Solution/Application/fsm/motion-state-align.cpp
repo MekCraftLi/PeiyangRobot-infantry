@@ -57,14 +57,13 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
 
     #ifdef STEER
     request_switch(&instance()._stateManual);
-    return;
     #endif
 
     #if defined(DOG_1) || defined(DOG_2)
 
     //使能pitch
     ctx.output.pitchEn    = true;
-    ctx.telem.targetPitchRad = PITCH_LIMIT_MIN+0.2f; 
+    ctx.telem.targetPitchRad = PITCH_ALIGN_TARGET_RAD;
     instance().updatePitch(ctx);
 
 
@@ -74,35 +73,48 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     float errorRad = (float)ecdShortestError(ALIGN_TARGET_ECD, curEcd)
                      / (float)ECD_PER_REV * 2.0f * M_PI;
 
-    if(ctx.state.pitch.pos<PITCH_LIMIT_MIN+0.3f)
+    if(ctx.state.pitch.pos<PITCH_LIMIT_MIN-0.4f)
     {
         
         //检测yaw轴是否发生堵转，如果发生堵转，选择另外一个方向转到目标位置
         static uint32_t yawblockStartTick = 0;
-        if (std::abs(errorRad) > (float)M_PI / 16.0f && std::abs(ctx.imu.gyro[2]) < 10.0f) 
+        bool is_back = false;
+        // if (std::abs(errorRad) > (float)M_PI / 16.0f && std::abs(ctx.imu.gyro[2]) < 2.0f) 
+        // {
+        //     if (yawblockStartTick == 0) 
+        //     {
+        //         yawblockStartTick = xTaskGetTickCount();
+        //     } 
+        //     else if (xTaskGetTickCount() - yawblockStartTick >= pdMS_TO_TICKS(1000)) 
+        //     {
+        //         //选择另外一个方向转到目标位置
+        //         is_back = true;
+        //     }
+        // }
+        // else 
+        // {
+        //     yawblockStartTick = 0;
+        // }
+
+
+
+        if(is_back)
         {
-            if (yawblockStartTick == 0) 
+            if(fabs(-errorRad-2.0f * M_PI)<=0.66*M_PI)
             {
-                yawblockStartTick = xTaskGetTickCount();
-            } 
-            else if (xTaskGetTickCount() - yawblockStartTick >= pdMS_TO_TICKS(1000)) 
-            {
-                //选择另外一个方向转到目标位置
-                instance()._alignPosPid.clear();
-                instance()._alignSpdPid.clear();
-                float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -errorRad-2.0f * M_PI);
-                ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
-                
-                return;
+                is_back = false;
             }
-        } 
-        else 
-        {
-            yawblockStartTick = 0;
-            
-            float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, 2.0f * -errorRad);
+            float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -errorRad-2.0f * M_PI);
             ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
         }
+        else 
+        {
+            float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f,  -errorRad);
+            ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
+            is_back = false;
+        }
+        
+        
     }
 
     // 误差 < ±5° → 累计稳定时间

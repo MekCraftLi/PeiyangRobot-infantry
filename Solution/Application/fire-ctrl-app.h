@@ -231,7 +231,7 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
     pyro::pid_t _fricLeftSpdPid  = pyro::pid_t(FRIC_SPEED_PID_KP, FRIC_SPEED_PID_KI, FRIC_SPEED_PID_KD, 0.0f, 20.0f);
     pyro::pid_t _fricRightSpdPid = pyro::pid_t(FRIC_SPEED_PID_KP, FRIC_SPEED_PID_KI, FRIC_SPEED_PID_KD, 0.0f, 20.0f);
     pyro::pid_t _triggerPosPid   = pyro::pid_t(TRIGGER_SINGLE_POS_PID_KP, TRIGGER_SINGLE_POS_PID_KI, TRIGGER_SINGLE_POS_PID_KD, 100.0f, 1000.0f);
-    pyro::pid_t _triggerSpdPid   = pyro::pid_t(TRIGGER_SINGLE_SPEED_PID_KP, TRIGGER_SINGLE_SPEED_PID_KI, TRIGGER_SINGLE_SPEED_PID_KD, 5.0f, 20.0f);
+    pyro::pid_t _triggerSpdPid   = pyro::pid_t(TRIGGER_SINGLE_SPEED_PID_KP, TRIGGER_SINGLE_SPEED_PID_KI, TRIGGER_SINGLE_SPEED_PID_KD, 5.0f, 10.0f);
 
     ShootEvent _lastEvent = ShootEvent::NONE;
 };

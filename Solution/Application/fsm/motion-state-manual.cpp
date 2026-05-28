@@ -28,8 +28,6 @@
 
 void MovtionCtrlApp::StateManual::enter(GimbalMotionCtx& ctx) {
     ctx.motionState = static_cast<uint8_t>(MotionState::Manual);
-        
-    
     ctx.output.pitchEn = true;
     MotActSrvc::instance().pitch.enable();
 }
@@ -53,7 +51,7 @@ void MovtionCtrlApp::StateManual::execute(GimbalMotionCtx& ctx) {
             request_switch(&instance()._stateRelax);
             return;
         }
-        
+        ctx.telem.targetPitchRad = PITCH_ALIGN_TARGET_RAD+0.2f;
         int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();
         //角度归一化
         float diff = (_YAW_OFFSET - curEcd) % 8192;
@@ -66,7 +64,10 @@ void MovtionCtrlApp::StateManual::execute(GimbalMotionCtx& ctx) {
         float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -diff);
         ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
         //等待底盘准备就绪
+
+        ctx.telem.targetPitchRad = PITCH_LIMIT_MIN-0.3f; 
         instance().updatePitch(ctx);
+        
         return;
     }
     #endif

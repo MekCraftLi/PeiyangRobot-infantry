@@ -188,7 +188,7 @@ public:
     float _alignVelFilt  = 0.0f;  // 编码器速度 50Hz 低通滤波输出
     pyro::pid_t _alignPosPid = pyro::pid_t(15.0f, 0.0f, 0.0f, 100.0f, 500.0f);
     pyro::pid_t _alignSpdPid = pyro::pid_t(20.0f, 0.00f, 0.0f, 5.0f, 20.0f);
-
+    pyro::pid_t _alignPitchPosPid = pyro::pid_t(PITCH_DM_MOT_KP, PITCH_DM_MOT_KI, PITCH_DM_MOT_KD, 12.0f, 1.0f);
 #endif
 
 

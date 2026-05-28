@@ -27,6 +27,7 @@ void MovtionCtrlApp::StateRelax::enter(GimbalMotionCtx& ctx) {
     ctx.output.yawVoltage             = 0.0f;
     ctx.telem.targetYawRad            = ctx.imu.yaw;
     ctx.telem.targetPitchRad          = ctx.imu.pitch;
+
     
     instance().yawPosPid.clear();
     instance().yawSpdPid.clear();

@@ -260,16 +260,7 @@ void CommanderSrvc::run() {
             sCmd.state.burstShot  = 0;
             gCmd.mode             = GIMBAL_RELAX;
             gCmd.yawVel           = 0;
-            gCmd.pitchVel         = 0;
-            comm.msg.turboMode    = 0;  
-            comm.msg.stepClimb    = 0;
-            comm.msg.legLength    = 0;
-            comm.msg.selfRescue   = 0;
-            comm.msg.manualRescue = 0;
-            comm.msg.gimbalReverse= 0;
-            comm.msg.jump         = 0;
-            
-
+            gCmd.pitchVel         = 0; 
         } break;
 
         case ControlSource::REMOTE: {
@@ -365,16 +356,41 @@ void CommanderSrvc::run() {
     comm.msg.fn1Switch     = 0;
 
     // 功能标志位
-    comm.msg.capSwitch     = actionCapSwitch.isTriggered() ? 1 : 0;
-    comm.msg.turboMode     = actionTurboMode.isTriggered() ? 1 : 0;
-    comm.msg.stepClimb     = actionStepClimb.isTriggered() ? 1 : 0;
-    comm.msg.legLength     = triggers.legLengthCycle.getIndex(); // 0/1/2
-    comm.msg.selfRescue    = actionSelfRescue.isTriggered() ? 1 : 0;
-    comm.msg.manualRescue  = actionManualRescue.isTriggered() ? 1 : 0;
-    comm.msg.gimbalReverse = actionGimbalReverse.isTriggered() ? 1 : 0;
-    comm.msg.jump          = actionJump.isTriggered() ? 1 : 0;
-    comm.msg.fireState     = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
-    comm.msg.aimMode       = triggers.aimModeCycle.getIndex();
+    if(currentSource != ControlSource::SAFE_STOP)
+    {
+        comm.msg.capSwitch     = actionCapSwitch.isTriggered() ? 1 : 0;
+        comm.msg.turboMode     = actionTurboMode.isTriggered() ? 1 : 0;
+        comm.msg.stepClimb     = actionStepClimb.isTriggered() ? 1 : 0;
+        comm.msg.legLength     = triggers.legLengthCycle.getIndex(); // 0/1/2
+        comm.msg.selfRescue    = actionSelfRescue.isTriggered() ? 1 : 0;
+        comm.msg.manualRescue  = actionManualRescue.isTriggered() ? 1 : 0;
+        comm.msg.gimbalReverse = actionGimbalReverse.isTriggered() ? 1 : 0;
+        comm.msg.jump          = actionJump.isTriggered() ? 1 : 0;
+        comm.msg.fireState     = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
+        comm.msg.aimMode       = triggers.aimModeCycle.getIndex();
+    }
+    else 
+    {
+        comm.msg.capSwitch     = 0;
+        comm.msg.turboMode     = 0;
+        comm.msg.stepClimb     = 0;
+        comm.msg.legLength     = 0;
+        comm.msg.selfRescue    = 0;
+        comm.msg.manualRescue  = 0;
+        comm.msg.gimbalReverse = 0;
+        comm.msg.jump          = 0;
+        actionCapSwitch.resetTrigger();
+        actionTurboMode.resetTrigger();
+        actionStepClimb.resetTrigger();
+        triggers.legLengthCycle.reset();
+        actionSelfRescue.resetTrigger();
+        actionManualRescue.resetTrigger();
+        actionGimbalReverse.resetTrigger();
+        actionJump.resetTrigger();
+    }
+
+
+    
     
     #ifdef STEER
     #if REMOTE_DEVICE == REMOTE_DR16
@@ -388,7 +404,7 @@ void CommanderSrvc::run() {
     comm.msg.spining       = (triggers.spinKeyToggle.isToggledOn() ? 1 : 0)|| (triggers.spinToggle.isToggledOn() ? 1 : 0);
     #endif
     #endif
-    //#if (defined(DOG_1)||defined(DOG_2))
+
     
 #else
     // ========================================

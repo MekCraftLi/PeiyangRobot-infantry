@@ -70,6 +70,11 @@ public:
 
     bool isTriggered() const { return m_state == TriggerState::Triggered; }
     float getValue() const { return m_value; }
+    void resetTrigger() 
+    { 
+        m_binding.trigger->reset();
+        m_state = TriggerState::None;
+    }
 
 private:
     ActionBinding m_binding;
