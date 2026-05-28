@@ -18,13 +18,13 @@ This workspace is for referee UI drawing and visual testing.
 - Left-leg geometry and the left side of the body/instrument border use fixed `Cyan`; right-leg geometry and the right side of the body/instrument border use fixed `Orange`. Do not use `Main` for leg identity because it changes with red/blue camp and can be confused with `Cyan` on blue side.
 - Do not force this local widget to fit a `1/2/5/7` packet. Firmware should send the static body once, update the moving leg on state changes, and let the overall UI scheduler/renderer batch the global queue.
 - The current wheel-leg widget is placed on the right side of the screen and scaled to `0.6` of the previous prototype size.
-- A leg pose is controlled by two variables: thigh angle against the body and hip-to-wheel distance. The HTML simulator drives both variables periodically; the left and right legs use a 180-degree phase offset.
+- A leg pose is controlled by two variables: hip-to-wheel line angle against the body and hip-to-wheel distance. The HTML simulator drives both variables periodically; the left and right legs use a 180-degree phase offset.
 - The displayed two-link leg uses a fixed thigh/shin ratio of `210:250`; the UI keeps the compact legacy size by drawing this as `105:125` before applying the widget scale.
 - The right-side widget is horizontally mirrored from the previous left-folding version: body facing, knee fold, and tick marks flip together.
 - The three wheel-height states have short static tick marks beside the wheel positions. These are reference ticks only, not a slider control.
 - Dimensions still follow the legacy `Solution/tools/referee-ui-preview.html` small-icon style, but after scaling use line widths around `2..4`, joint radius around `4`, and wheel radius around `12`.
-- In side view, the support wheel stays directly below the body center/hip mount. Leg length changes by moving the wheel vertically; the knee only folds slightly forward/backward.
-- Body and hip/body mount stay fixed. Per-state knee/wheel poses are fixed and all moving link endpoints are derived from those points, avoiding visual drift between links and joints.
+- In side view, the support wheel is positioned from the hip-to-wheel line angle and distance; the knee is solved from the fixed upper/lower link lengths.
+- Body and hip/body mount stay fixed. Wheel positions come from angle/distance input, and knee points are solved from those positions so links and joints do not drift apart.
 - Do not add a state rail/slider inside the canvas; leg length should be readable from the posture itself.
 - Prefer static geometry/icons over text. If text is ever required, keep it ASCII and send it in a separate character frame.
 - The capacitor-voltage widget restores the original `rm` capacitor arc dimensions while keeping the reduced arc/tick/value-only primitive set. It only draws the arc track, ticks on the arc, dynamic symmetric arcs, and the numeric float value. The visible voltage value is formatted as three significant digits.

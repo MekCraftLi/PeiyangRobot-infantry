@@ -256,7 +256,7 @@
       <div class="toolbar">
         <div class="title">
           <strong>Dual Wheel-Leg UI Workspace</strong>
-          <span>thigh angle + hip-wheel distance / 180 deg phase</span>
+          <span>hip-wheel line angle + hip-wheel distance / 180 deg phase</span>
         </div>
         <div class="controls" role="group" aria-label="Leg simulation">
           <button data-auto="true" class="active">Auto</button>
@@ -408,33 +408,36 @@
       const angleWave = Math.sin(simPhase + phaseOffset + Math.PI / 3);
       const hipWheelDistance = distanceMidRatio + distanceAmplitudeRatio * wave;
       return {
-        thighAngleDeg: 30 + 14 * angleWave,
+        hipWheelAngleDeg: 90 + 10 * angleWave,
         hipWheelDistance,
       };
     }
 
     function legGeometry(pose, origin, leg) {
       const hip = { x: origin.hipX + leg.hipOffsetX, y: origin.hipY };
-      const angleRad = (pose.thighAngleDeg * Math.PI) / 180;
-      const knee = {
-        x: hip.x + Math.abs(Math.cos(angleRad)) * upperLinkLength * origin.side,
-        y: hip.y - Math.sin(angleRad) * upperLinkLength,
+      const angleRad = (pose.hipWheelAngleDeg * Math.PI) / 180;
+      const minDistance = Math.abs(lowerLinkLength - upperLinkLength) + 1;
+      const maxDistance = upperLinkLength + lowerLinkLength - 1;
+      const d = Math.max(minDistance, Math.min(pose.hipWheelDistance * upperLinkLength, maxDistance));
+      const wheel = {
+        x: hip.x + Math.cos(angleRad) * d * origin.side,
+        y: hip.y - Math.sin(angleRad) * d,
       };
-      const d = Math.max(1, Math.min(pose.hipWheelDistance * upperLinkLength, upperLinkLength + lowerLinkLength - 1));
-      const hipToKneeX = knee.x - hip.x;
-      const hipToKneeY = knee.y - hip.y;
-      const centerDistance = Math.hypot(hipToKneeX, hipToKneeY) || upperLinkLength;
-      const dirX = hipToKneeX / centerDistance;
-      const dirY = hipToKneeY / centerDistance;
-      const along = (d * d + centerDistance * centerDistance - lowerLinkLength * lowerLinkLength) / (2 * centerDistance);
-      const height = Math.sqrt(Math.max(0, d * d - along * along));
+      const hipToWheelX = wheel.x - hip.x;
+      const hipToWheelY = wheel.y - hip.y;
+      const centerDistance = Math.hypot(hipToWheelX, hipToWheelY) || d;
+      const dirX = hipToWheelX / centerDistance;
+      const dirY = hipToWheelY / centerDistance;
+      const along =
+        (upperLinkLength * upperLinkLength + centerDistance * centerDistance - lowerLinkLength * lowerLinkLength) /
+        (2 * centerDistance);
+      const height = Math.sqrt(Math.max(0, upperLinkLength * upperLinkLength - along * along));
       const base = { x: hip.x + dirX * along, y: hip.y + dirY * along };
-      const wheelA = { x: base.x - dirY * height, y: base.y + dirX * height };
-      const wheelB = { x: base.x + dirY * height, y: base.y - dirX * height };
+      const knee = { x: base.x - dirY * height * origin.side, y: base.y + dirX * height * origin.side };
       return {
         hip,
         knee,
-        wheel: wheelA.y < wheelB.y ? wheelA : wheelB,
+        wheel,
       };
     }
 
@@ -729,8 +732,8 @@
       placementStatus.textContent = `${placement.candidate.id} ${placement.safe ? "SAFE" : "CHECK"}`;
       placementStatus.style.color = placement.safe ? "var(--green)" : "var(--red)";
       budgetStatus.textContent = `STATIC INIT / ${dynamicCommands.length} DYN`;
-      leftLegStatus.textContent = `${leftPose.thighAngleDeg.toFixed(0)}deg / ${leftPose.hipWheelDistance.toFixed(2)}L`;
-      rightLegStatus.textContent = `${rightPose.thighAngleDeg.toFixed(0)}deg / ${rightPose.hipWheelDistance.toFixed(2)}L`;
+      leftLegStatus.textContent = `${leftPose.hipWheelAngleDeg.toFixed(0)}deg / ${leftPose.hipWheelDistance.toFixed(2)}L`;
+      rightLegStatus.textContent = `${rightPose.hipWheelAngleDeg.toFixed(0)}deg / ${rightPose.hipWheelDistance.toFixed(2)}L`;
     }
 
     function renderCommandList() {

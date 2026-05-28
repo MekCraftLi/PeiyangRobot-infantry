@@ -41,11 +41,11 @@ float wheelLegDistanceRatioFromState(uint8_t state) {
 
 void fillWheelLegPoseFromState(UiMakerInputSnapshot& input, uint8_t state) {
     const float distanceRatio = wheelLegDistanceRatioFromState(state);
-    const float thighAngleDeg = RefereeHudSpec::wheelLegAngleForDistanceRatio(distanceRatio);
+    const float hipWheelAngleDeg = RefereeHudSpec::wheelLegHipWheelAngleForDistanceRatio(distanceRatio);
     input.leftLegHipWheelDistance = distanceRatio;
     input.rightLegHipWheelDistance = distanceRatio;
-    input.leftLegThighAngleDeg = thighAngleDeg;
-    input.rightLegThighAngleDeg = thighAngleDeg;
+    input.leftLegHipWheelAngleDeg = hipWheelAngleDeg;
+    input.rightLegHipWheelAngleDeg = hipWheelAngleDeg;
 }
 
 class BlackboardUiMakerInputSource final : public UiMakerInputSource {
@@ -124,10 +124,10 @@ class SimUiMakerInputSource final : public UiMakerInputSource {
         input.aimTargetState = _aimTargetState;
         input.leftLegHipWheelDistance =
             RefereeHudSpec::kWheelLegDistanceMidRatio + legDistanceRatioAmp * leftLegWave;
-        input.leftLegThighAngleDeg = 30.0f + 14.0f * leftAngleWave;
+        input.leftLegHipWheelAngleDeg = 90.0f + 10.0f * leftAngleWave;
         input.rightLegHipWheelDistance =
             RefereeHudSpec::kWheelLegDistanceMidRatio + legDistanceRatioAmp * rightLegWave;
-        input.rightLegThighAngleDeg = 30.0f + 14.0f * rightAngleWave;
+        input.rightLegHipWheelAngleDeg = 90.0f + 10.0f * rightAngleWave;
         return input;
     }
 

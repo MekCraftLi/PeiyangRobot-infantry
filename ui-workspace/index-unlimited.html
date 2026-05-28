@@ -908,28 +908,27 @@
         const wave = Math.sin(legWidget.phase + leg.phase);
         const angleWave = Math.sin(legWidget.phase + leg.phase + Math.PI / 3);
         const hipWheelDistanceRatio = distanceMidRatio + distanceAmpRatio * wave;
-        const thighAngleDeg = 30 + 14 * angleWave;
-        const thighAngleRad = (thighAngleDeg * Math.PI) / 180;
+        const hipWheelAngleDeg = 90 + 10 * angleWave;
+        const hipWheelAngleRad = (hipWheelAngleDeg * Math.PI) / 180;
         const hip = centralLegLocal(leg.hipOffset, 0);
         const distance = hipWheelDistanceRatio * upperLink;
-        const clampedDistance = Math.max(1, Math.min(distance, upperLink + lowerLink - 1));
-        const knee = {
-          x: hip.x + Math.abs(Math.cos(thighAngleRad)) * upperLink,
-          y: hip.y - Math.sin(thighAngleRad) * upperLink,
+        const minDistance = Math.abs(lowerLink - upperLink) + 1;
+        const clampedDistance = Math.max(minDistance, Math.min(distance, upperLink + lowerLink - 1));
+        const wheel = {
+          x: hip.x + Math.cos(hipWheelAngleRad) * clampedDistance,
+          y: hip.y - Math.sin(hipWheelAngleRad) * clampedDistance,
         };
-        const hipToKneeX = knee.x - hip.x;
-        const hipToKneeY = knee.y - hip.y;
-        const centerDistance = Math.hypot(hipToKneeX, hipToKneeY) || upperLink;
-        const dirX = hipToKneeX / centerDistance;
-        const dirY = hipToKneeY / centerDistance;
+        const hipToWheelX = wheel.x - hip.x;
+        const hipToWheelY = wheel.y - hip.y;
+        const centerDistance = Math.hypot(hipToWheelX, hipToWheelY) || clampedDistance;
+        const dirX = hipToWheelX / centerDistance;
+        const dirY = hipToWheelY / centerDistance;
         const along =
-          (clampedDistance * clampedDistance + centerDistance * centerDistance - lowerLink * lowerLink) /
+          (upperLink * upperLink + centerDistance * centerDistance - lowerLink * lowerLink) /
           (2 * centerDistance);
-        const height = Math.sqrt(Math.max(0, clampedDistance * clampedDistance - along * along));
+        const height = Math.sqrt(Math.max(0, upperLink * upperLink - along * along));
         const base = { x: hip.x + dirX * along, y: hip.y + dirY * along };
-        const wheelA = { x: base.x - dirY * height, y: base.y + dirX * height };
-        const wheelB = { x: base.x + dirY * height, y: base.y - dirX * height };
-        const wheel = wheelA.y < wheelB.y ? wheelA : wheelB;
+        const knee = { x: base.x - dirY * height, y: base.y + dirX * height };
         drawLine(`${leg.id}0`, hip.x, hip.y, knee.x, knee.y, leg.color, 5, 3, "DYNAMIC");
         drawLine(`${leg.id}1`, knee.x, knee.y, wheel.x, wheel.y, leg.color, 5, 3, "DYNAMIC");
         drawCircle(`${leg.id}2`, wheel.x, wheel.y, 9, leg.color, 3, 4, "DYNAMIC");
