@@ -93,10 +93,10 @@ void SpeedCompensator::update(float newInitialSpeed) {
             _radsCompensation += _ki * error;
         }
         else if(fabs(error)>0.5f&&fabs(error)<=1.0f){
-            _radsCompensation += _ki * 1.3f * error;//误差较大时加大补偿力度，快速拉回目标值附近
+            _radsCompensation += _ki * 1.0f * error;//误差较大时加大补偿力度，快速拉回目标值附近
         }
         else{
-            _radsCompensation += _ki * 1.5f * error;//误差过大时进一步加大补偿力度，迅速抑制异常弹速对系统的影响
+            _radsCompensation += _ki * 1.0f * error;//误差过大时进一步加大补偿力度，迅速抑制异常弹速对系统的影响
         }
         
     }

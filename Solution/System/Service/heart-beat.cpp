@@ -36,6 +36,7 @@
 
 #include "heart-beat.h"
 
+#include "System/DataHub/data-def.h"
 #include "pyro_dwt_drv.h"
 
 /* II. other application */
@@ -157,6 +158,12 @@ void HeartBeatApp::run() {
     runTime.visionComm = CommanderSrvc::instance().getRunTime();
     runTime.fireCtrl = CommanderSrvc::instance().getRunTime();
     runTime.moveCtrl = CommanderSrvc::instance().getRunTime();
+
+    GimbalOutput g0{};
+    Blackboard::instance().gimbalOut.read(g0);
+    if (g0.pitchEn) {
+        MotActSrvc::instance().pitch.enable();
+    }
 
 
 }

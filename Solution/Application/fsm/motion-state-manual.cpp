@@ -20,6 +20,7 @@
  */
 
 #include "../movtion-ctrl-app.h"
+#include "System/DataHub/data-def.h"
 #include "System/Service/motor-actuator.h"
 #include "System/DataHub/blackboard.h"
 
@@ -51,25 +52,63 @@ void MovtionCtrlApp::StateManual::execute(GimbalMotionCtx& ctx) {
             request_switch(&instance()._stateRelax);
             return;
         }
-        ctx.telem.targetPitchRad = PITCH_ALIGN_TARGET_RAD+0.2f;
-        int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();
-        //角度归一化
-        float diff = (_YAW_OFFSET - curEcd) % 8192;
-        while (diff > 4096) diff -= 8192;
-        while (diff < -4096) diff += 8192;
-        //转化弧度制
-        diff = (float)diff / 8192.0f * 2.0f * M_PI;
-        ctx.telem.targetYawRad= ctx.imu.yaw;
-        //计算
-        float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -diff);
-        ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
-        //等待底盘准备就绪
+        GimbalToChassisComm g2ccomm{};
+        Blackboard::instance().g2cOutput.read(g2ccomm);
+        if(g2ccomm.msg.selfRescue==1||g2ccomm.msg.manualRescue==1)
+        {
+            int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();
+            //角度归一化
+            float diff = (_YAW_OFFSET - curEcd) % 8192;
+            while (diff > 4096) diff -= 8192;
+            while (diff < -4096) diff += 8192;
+            //转化弧度制
+            diff = -(float)diff / 8192.0f * 2.0f * M_PI;
 
-        ctx.telem.targetPitchRad = PITCH_LIMIT_MIN-0.3f; 
-        instance().updatePitch(ctx);
-        
+            float ref=0.0f;
+            if(diff>=M_PI/2.0)
+            {
+                ref=M_PI;
+            }
+            else if(diff<=-M_PI/2.0)
+            {
+                ref=-M_PI;
+            }
+
+            ctx.telem.targetYawRad= ctx.imu.yaw;
+            //计算
+            float yawSpdCmd     = instance()._alignPosPid.calculate(ref, diff);
+            ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
+            //等待底盘准备就绪
+
+            ctx.telem.targetPitchRad = PITCH_LIMIT_MIN+0.2f; 
+            instance().updatePitch(ctx);
+
+            return;
+        }
+        else
+        {
+            int32_t curEcd = MotActSrvc::instance().yaw.get_current_ecd();
+            //角度归一化
+            float diff = (_YAW_OFFSET - curEcd) % 8192;
+            while (diff > 4096) diff -= 8192;
+            while (diff < -4096) diff += 8192;
+            //转化弧度制
+            diff = (float)diff / 8192.0f * 2.0f * M_PI;
+            ctx.telem.targetYawRad= ctx.imu.yaw;
+            //计算
+            float yawSpdCmd     = instance()._alignPosPid.calculate(0.0f, -diff);
+            ctx.output.yawVoltage = instance()._alignSpdPid.calculate(yawSpdCmd, ctx.imu.gyro[2]);
+            //等待底盘准备就绪
+
+            ctx.telem.targetPitchRad = PITCH_LIMIT_MIN+0.2f; 
+            instance().updatePitch(ctx);
+        }
         return;
     }
+
+
+
+
     #endif
     
     instance().updatePitch(ctx);

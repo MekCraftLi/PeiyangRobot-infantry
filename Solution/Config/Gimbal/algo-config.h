@@ -88,8 +88,8 @@ enum aim_target
 
 
 //#define STEER
-#define DOG_1
-//#define STEER
+#define DOG_2
+
 
 
 
@@ -130,24 +130,24 @@ enum aim_target
 
 //手动模式下------------------------------------------
 //yaw轴速度环pid参数
-#define YAW_SPEED_PID_KP 15.0f
+#define YAW_SPEED_PID_KP 28.0f
 #define YAW_SPEED_PID_KI 0.0f
 #define YAW_SPEED_PID_KD 0.0f
 
 //yaw轴位置环pid参数
 #define YAW_POS_PID_KP 27.0f
 #define YAW_POS_PID_KI 0.0f
-#define YAW_POS_PID_KD 0.0f
+#define YAW_POS_PID_KD 0.3f
 
 //pitch轴达妙mit控制阻抗系数
-#define DM_MOT_PITCH_KP 15.0f
+#define DM_MOT_PITCH_KP 20.0f
 #define DM_MOT_PITCH_KI 0.0f
 #define DM_MOT_PITCH_KD 0.7f
 
 //pitch轴达妙mit控制的重力补偿的pid的参数
-#define PITCH_DM_MOT_KP 25.0f
+#define PITCH_DM_MOT_KP 28.0f
 #define PITCH_DM_MOT_KI 0.0f
-#define PITCH_DM_MOT_KD 1.0f
+#define PITCH_DM_MOT_KD 0.5f
 
 
 //-----------------------------------------------------
@@ -220,14 +220,14 @@ constexpr float GYRO_BIAS_Z = -0.00308620022f;
 #define AUTO_DM_MOT_PITCH_KD 0.7f
 
 //pitch轴达妙mit控制的重力补偿的pid的参数
-#define AUTO_PITCH_DM_MOT_KP 25.0f
+#define AUTO_PITCH_DM_MOT_KP 28.0f
 #define AUTO_PITCH_DM_MOT_KI 0.0f
-#define AUTO_PITCH_DM_MOT_KD 1.0f
+#define AUTO_PITCH_DM_MOT_KD 0.5f
 
 //手动模式下------------------------------------------
 
 //yaw轴速度环pid参数
-#define YAW_SPEED_PID_KP 30.0f
+#define YAW_SPEED_PID_KP 28.0f
 #define YAW_SPEED_PID_KI 0.0f
 #define YAW_SPEED_PID_KD 0.0f
 
@@ -339,9 +339,9 @@ constexpr float GYRO_BIAS_Z = -0.00308620022f;
 //--------------------------------------------------------
 
 //拨弹盘单发情况速度环pid参数
-#define TRIGGER_SINGLE_SPEED_PID_KP 0.13f
+#define TRIGGER_SINGLE_SPEED_PID_KP 0.18f
 #define TRIGGER_SINGLE_SPEED_PID_KI 0.0f
-#define TRIGGER_SINGLE_SPEED_PID_KD 0.0f
+#define TRIGGER_SINGLE_SPEED_PID_KD 0.00001f
 
 //拨弹盘单发情况位置环pid参数
 #define TRIGGER_SINGLE_POS_PID_KP 2300.0f
@@ -351,7 +351,7 @@ constexpr float GYRO_BIAS_Z = -0.00308620022f;
 //拨弹盘连发情况速度环pid参数
 #define TRIGGER_BURST_SPEED_PID_KP 0.13f
 #define TRIGGER_BURST_SPEED_PID_KI 0.0f
-#define TRIGGER_BURST_SPEED_PID_KD 0.0002f
+#define TRIGGER_BURST_SPEED_PID_KD 0.0000f
 
 //pitch轴物理限幅参数
 #define PITCH_LIMIT_MAX -0.48f
@@ -366,7 +366,7 @@ constexpr float GYRO_BIAS_Z = -0.00308620022f;
 #define FRIC_SPEED_PID_KD 0.00002f
 
 //弹速修正系数
-#define BULLET_SPEED_COMP_KP 0.78f
+#define BULLET_SPEED_COMP_KP 0.83f
 
 #define TRIGGER_MOTOR_ID pyro::dji_motor_tx_frame_t::id_3
 

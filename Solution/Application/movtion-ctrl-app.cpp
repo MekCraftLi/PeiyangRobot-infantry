@@ -509,4 +509,6 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
 MovtionCtrlApp::MotionState MovtionCtrlApp::getMotionState() {
     return static_cast<MotionState>(motionCtx.motionState);
 }
+
+
 #endif

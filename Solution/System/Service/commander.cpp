@@ -205,6 +205,7 @@ void CommanderSrvc::run() {
     debug.aimMode       = actionAimMode.isTriggered();
     debug.legLength     = actionLegLength.isTriggered();
     debug.reverseEdge   = actionReverseEdge.isTriggered();
+    debug.resetui       = actionResetui.isTriggered();
 #else
     debug.gpRelax     = actionRelax.isTriggered();
     debug.gpHandbrake = actionHandbrakeDepth.isTriggered();
@@ -288,7 +289,8 @@ void CommanderSrvc::run() {
                 sCmd.state.burstShot = 0;
             }
 
-            if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
+            //if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
+            if (actionShootSingle.isTriggered() ){// actionMouseSingle.isTriggered()) {
                 sCmd.event = ShootEvent::SINGLE_FIRE;
             }
 
@@ -368,6 +370,7 @@ void CommanderSrvc::run() {
         comm.msg.jump          = actionJump.isTriggered() ? 1 : 0;
         comm.msg.fireState     = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
         comm.msg.aimMode       = triggers.aimModeCycle.getIndex();
+        comm.msg.resetUI       = actionResetui.isTriggered() ? 1 : 0;
     }
     else 
     {
@@ -375,18 +378,17 @@ void CommanderSrvc::run() {
         comm.msg.turboMode     = 0;
         comm.msg.stepClimb     = 0;
         comm.msg.legLength     = 0;
-        comm.msg.selfRescue    = 0;
-        comm.msg.manualRescue  = 0;
         comm.msg.gimbalReverse = 0;
         comm.msg.jump          = 0;
         actionCapSwitch.resetTrigger();
         actionTurboMode.resetTrigger();
         actionStepClimb.resetTrigger();
         triggers.legLengthCycle.reset();
-        actionSelfRescue.resetTrigger();
-        actionManualRescue.resetTrigger();
         actionGimbalReverse.resetTrigger();
         actionJump.resetTrigger();
+        comm.msg.resetUI       = actionResetui.isTriggered() ? 1 : 0;
+        comm.msg.selfRescue    = actionSelfRescue.isTriggered() ? 1 : 0;
+        comm.msg.manualRescue  = actionManualRescue.isTriggered() ? 1 : 0;
     }
 
 
@@ -401,7 +403,7 @@ void CommanderSrvc::run() {
     }
     #endif
     #if REMOTE_DEVICE == REMOTE_VIDEO_LINK
-    comm.msg.spining       = (triggers.spinKeyToggle.isToggledOn() ? 1 : 0)|| (triggers.spinToggle.isToggledOn() ? 1 : 0);
+    comm.msg.spining       = (actionKeySpin.isTriggered() ? 1 : 0) || (triggers.spinToggle.isToggledOn() ? 1 : 0);
     #endif
     #endif
 

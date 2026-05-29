@@ -221,8 +221,13 @@ void FireCtrlApp::updateTransientEvent() {
  
 void FireCtrlApp::calculateCurrents(BoosterOutput& out) {
     // ── 摩擦轮: 弹速闭环补偿 ──
+    #ifdef STEER
+    float finalFricTargetSpeed = _ctx.targetFricSpeed;
+    #endif
+
+    #if defined(DOG_1)||defined(DOG_2)
     float finalFricTargetSpeed = _ctx.speedCompensator.getCompensatedRadPerSec(_ctx.targetFricSpeed);
-    //float finalFricTargetSpeed = _ctx.targetFricSpeed;
+    #endif
     
     float bullet_L_speed = _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_LEFT_ID].vel;
     float bullet_R_speed = _ctx.fdb.fric[(uint8_t)Config::Hardware::MotorTopo::FRIC_RIGHT_ID].vel;

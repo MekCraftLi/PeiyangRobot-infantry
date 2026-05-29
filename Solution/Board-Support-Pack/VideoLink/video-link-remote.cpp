@@ -267,8 +267,11 @@ void VideoLinkRemote::bindActions(InputAction* actions, TriggerConfig& triggers)
     actions[FN1_SWITCH].bind(getFn1(), &triggers.fn1Toggle);
     // 运动/电容
     actions[SPIN_MODE].bind(getPause(), &triggers.spinToggle);
-    actions[KEY_SPIN].bind(getKeyShift(), &triggers.spinKeyToggle);
-    actions[CAP_SWITCH].bind(getKeyC(), &triggers.continuousTrigger);
+
+    //actions[KEY_SPIN].bind(getKeyShift(), &triggers.spinKeyToggle);
+    actions[KEY_SPIN].bind(getKeyShift(), &triggers.shiftHold);
+    //actions[CAP_SWITCH].bind(getKeyC(), &triggers.continuousTrigger);
+    actions[CAP_SWITCH].bind(getKeyC(), &triggers.continuousToggle);
     // 功能 Toggle (按下开启, 再按关闭)
     actions[TURBO_MODE].bind(getKeyR(), &triggers.turboToggle);
     actions[STEP_CLIMB].bind(getKeyE(), &triggers.stepClimbToggle);
@@ -279,4 +282,8 @@ void VideoLinkRemote::bindActions(InputAction* actions, TriggerConfig& triggers)
     actions[JUMP].bind(getKeyV(), &triggers.jumpEdge);
     actions[AIM_MODE].bind(getKeyB(), &triggers.aimModeCycle);
     actions[LEG_LENGTH].bind(getKeyZ(), &triggers.legLengthCycle);
+
+
+
+    actions[RESETUI].bind(getKeyF(),&triggers.resetui);
 }

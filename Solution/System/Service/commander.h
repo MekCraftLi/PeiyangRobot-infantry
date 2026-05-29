@@ -90,6 +90,8 @@ struct ActionDebug {
     bool aimMode;
     bool legLength;
     bool reverseEdge;
+    bool resetui;
+
 
     // Gamepad
     bool gpRelax;
@@ -131,7 +133,10 @@ enum StdActionSlot : uint8_t {
     AIM_MODE,      // 自瞄模式切换 [B]
     LEG_LENGTH,    // 腿长切换 [Z] (三档循环)
     REVERSE_EDGE,  // 调头脉冲 [X] (上升沿)
+    RESETUI,       // 重置 UI [F]
     STD_ACTION_COUNT
+
+    
 };
 
 /*-------- 触发器配置 (供 Remote::bindActions 使用) -----------------------------------------*/
@@ -145,7 +150,7 @@ struct TriggerConfig {
     TriggerEdge fricToggleKeyQ{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerHold burstFire{TriggerCfg::MODE_SW_VISION_THRESH, TriggerCfg::BURST_HOLD_TIME, false,
                           HoldCondition::GreaterOrEqual};
-    TriggerHold mouseBurstFire{TriggerCfg::BTN_THRESHOLD, TriggerCfg::BURST_HOLD_TIME, false,
+    TriggerHold mouseBurstFire{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
                           HoldCondition::GreaterOrEqual};
     TriggerEdge singleReleaseSw{TriggerCfg::MODE_SW_VISION_THRESH, EdgeType::Rising};
     TriggerEdge singleReleaseMouse{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
@@ -156,11 +161,17 @@ struct TriggerConfig {
     // 运动/切换
     TriggerHold instantTrigger{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, true,
                                HoldCondition::GreaterOrEqual};
-    TriggerHold shiftHold{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, true,
+
+
+//修改
+    TriggerHold shiftHold{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
                           HoldCondition::GreaterOrEqual};
+
+
     // Toggle 装饰器
     TriggerToggle spinToggle{instantTrigger, false};
-    TriggerToggle spinKeyToggle{shiftHold, false};
+    //TriggerToggle spinKeyToggle{shiftHold, false};
+    
     TriggerEdge fn1Rise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerToggle fn1Toggle{fn1Rise, false};
     // vt03遥控器单点触发 (电容)
@@ -168,6 +179,9 @@ struct TriggerConfig {
     //键盘C键长按触发（电容）
     TriggerHold continuousTrigger{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
                                   HoldCondition::GreaterOrEqual};
+    //电容toggle装饰器
+    TriggerToggle continuousToggle{continuousTrigger, false};
+
     // 按键 Toggle (各自独立上升沿基座)
     TriggerEdge turboRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerToggle turboToggle{turboRise, false};
@@ -186,6 +200,12 @@ struct TriggerConfig {
     TriggerEdge legLengthRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerCycle legLengthCycle{legLengthRise, 3};    // [Z] 三种腿长
     TriggerEdge reverseEdge{0.0f, EdgeType::Rising};  // [X] 调头脉冲
+
+
+
+    TriggerHold resetui{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
+                               HoldCondition::GreaterOrEqual};
+
 };
 
 /*-------- class
@@ -240,6 +260,11 @@ class CommanderSrvc final : public PeriodicApp, public Singleton<CommanderSrvc> 
     InputAction& actionAimMode      = _actions[AIM_MODE];
     InputAction& actionLegLength    = _actions[LEG_LENGTH];
     InputAction& actionReverseEdge  = _actions[REVERSE_EDGE];
+
+    InputAction& actionResetui      = _actions[RESETUI];
+    
+
+
 
 #ifdef GIMBAL
     // Vision fireCommand edge detector: 0 -> 1 triggers single-shot event when isSingleShot=1.
