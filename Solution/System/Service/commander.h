@@ -150,7 +150,7 @@ struct TriggerConfig {
     TriggerEdge fricToggleKeyQ{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerHold burstFire{TriggerCfg::MODE_SW_VISION_THRESH, TriggerCfg::BURST_HOLD_TIME, false,
                           HoldCondition::GreaterOrEqual};
-    TriggerHold mouseBurstFire{TriggerCfg::BTN_THRESHOLD, TriggerCfg::INSTANT_HOLD_TIME, false,
+    TriggerHold mouseBurstFire{TriggerCfg::BTN_THRESHOLD, TriggerCfg::SHORT_HOLD_TIME, false,
                           HoldCondition::GreaterOrEqual};
     TriggerEdge singleReleaseSw{TriggerCfg::MODE_SW_VISION_THRESH, EdgeType::Rising};
     TriggerEdge singleReleaseMouse{TriggerCfg::BTN_THRESHOLD, EdgeType::Falling};
@@ -196,7 +196,7 @@ struct TriggerConfig {
     TriggerEdge jumpEdge{0.5f, EdgeType::Rising};
     // 按键 Cycle (多值循环)
     TriggerEdge aimModeRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
-    TriggerCycle aimModeCycle{aimModeRise, 4};       // [B] 车辆/前哨站/大能量/小能量
+    TriggerToggle aimModeToggle{aimModeRise, false};       // [B] 车辆/前哨站/大能量/小能量
     TriggerEdge legLengthRise{TriggerCfg::BTN_THRESHOLD, EdgeType::Rising};
     TriggerCycle legLengthCycle{legLengthRise, 3};    // [Z] 三种腿长
     TriggerEdge reverseEdge{0.0f, EdgeType::Rising};  // [X] 调头脉冲

@@ -280,7 +280,7 @@ void VideoLinkRemote::bindActions(InputAction* actions, TriggerConfig& triggers)
     actions[GIMBAL_REVERSE].bind(getKeyX(), &triggers.gimbalReverseToggle);
     actions[REVERSE_EDGE].bind(getKeyX(), &triggers.reverseEdge);
     actions[JUMP].bind(getKeyV(), &triggers.jumpEdge);
-    actions[AIM_MODE].bind(getKeyB(), &triggers.aimModeCycle);
+    actions[AIM_MODE].bind(getKeyB(), &triggers.aimModeToggle);
     actions[LEG_LENGTH].bind(getKeyZ(), &triggers.legLengthCycle);
 
 

@@ -69,6 +69,9 @@ class MotActSrvc final : public PeriodicApp, public Singleton<MotActSrvc> {
 
     void run() override;
 
+    void set_pitchstate(bool state);
+    void set_pitchstate();
+
     /************ setter & getter ***********/
 
 
@@ -88,6 +91,8 @@ class MotActSrvc final : public PeriodicApp, public Singleton<MotActSrvc> {
         reinterpret_cast<pyro::dji_m2006_motor_drv_t(&)>(_triggerMem);
 
   private:
+
+    bool pitch_state;
     /* message interface */
 
     // 1. message queue

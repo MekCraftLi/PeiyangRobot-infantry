@@ -26,7 +26,7 @@
 void MovtionCtrlApp::StateAuto::enter(GimbalMotionCtx& ctx) {
     ctx.motionState = static_cast<uint8_t>(MotionState::Auto);
     ctx.output.pitchEn = true;
-    MotActSrvc::instance().pitch.enable();
+    MotActSrvc::instance().set_pitchstate(ctx.output.pitchEn);
 }
 
 void MovtionCtrlApp::StateAuto::execute(GimbalMotionCtx& ctx) {

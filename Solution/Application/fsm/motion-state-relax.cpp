@@ -32,7 +32,7 @@ void MovtionCtrlApp::StateRelax::enter(GimbalMotionCtx& ctx) {
     instance().yawPosPid.clear();
     instance().yawSpdPid.clear();
     instance().pitchPosPid.clear();
-    MotActSrvc::instance().pitch.disable();
+    MotActSrvc::instance().set_pitchstate(ctx.output.pitchEn);
 }
 
 void MovtionCtrlApp::StateRelax::execute(GimbalMotionCtx& ctx) {

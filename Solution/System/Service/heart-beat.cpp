@@ -110,6 +110,8 @@ void HeartBeatApp::init() {
     HAL_TIM_Base_Start(&htim12);
     HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_2);
     __HAL_TIM_SetCompare(&htim12, TIM_CHANNEL_2, 0);
+
+    MotActSrvc::instance().waitInit();
 }
 
 struct {
@@ -159,11 +161,7 @@ void HeartBeatApp::run() {
     runTime.fireCtrl = CommanderSrvc::instance().getRunTime();
     runTime.moveCtrl = CommanderSrvc::instance().getRunTime();
 
-    GimbalOutput g0{};
-    Blackboard::instance().gimbalOut.read(g0);
-    if (g0.pitchEn) {
-        MotActSrvc::instance().pitch.enable();
-    }
-
+    
+    MotActSrvc::instance().set_pitchstate();
 
 }

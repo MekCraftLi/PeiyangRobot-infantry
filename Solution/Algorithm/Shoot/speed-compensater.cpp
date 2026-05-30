@@ -65,7 +65,7 @@ void SpeedCompensator::update(float newInitialSpeed) {
     _lastInitialSpeed = newInitialSpeed;
 
     // 2. 过滤无效数据或异常子弹 (如卡弹、碎弹或测速模块乱码)
-    if (newInitialSpeed < 15.0f || newInitialSpeed > 30.0f) {
+    if (newInitialSpeed < 22.0f || newInitialSpeed > 30.0f) {
         return;
     }
 

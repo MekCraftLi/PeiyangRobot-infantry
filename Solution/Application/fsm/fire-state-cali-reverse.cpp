@@ -113,7 +113,7 @@ void FireCtrlApp::StateCaliReverse::execute(FireCtrlCtx& ctx) {
     if (std::abs(ctx.fdb.trigger.vel - ctx.targetTriggerSpeed) > std::abs(ctx.targetTriggerSpeed) * 0.5f) {
         if (ctx.blockStartTick == 0) {
             ctx.blockStartTick = xTaskGetTickCount();
-        } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(700)) {
+        } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(200)) {
             decideTargetStateAfterCali(ctx);
             request_switch(&instance()._stateCaliForward);
         }

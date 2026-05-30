@@ -306,4 +306,31 @@ void MotActSrvc::run() {
 }
 
 
+void MotActSrvc::set_pitchstate()
+{
+    if (pitch_state)
+    {
+        MotActSrvc::instance().pitch.enable();
+    }
+    else
+    {
+        MotActSrvc::instance().pitch.disable();
+    }
+
+}
+
+void MotActSrvc::set_pitchstate(bool state)
+{
+    pitch_state=state;
+    if (pitch_state)
+    {
+        MotActSrvc::instance().pitch.enable();
+    }
+    else
+    {
+        MotActSrvc::instance().pitch.disable();
+    }
+
+}
+
 #endif

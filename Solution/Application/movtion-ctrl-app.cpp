@@ -373,6 +373,7 @@ void MovtionCtrlApp::updatePitch(GimbalMotionCtx& ctx) {
     // //暂时不清楚为什么要用yaw的 ai:偏航轴的运动范围更大，更容易出现超范围的情况
     if (ctx.cmd.mode == GIMBAL_AUTO && abs(ctx.cmd.targetYaw) < M_PI)
     { 
+    
         ctx.telem.targetPitchRad = ctx.cmd.targetPitch;
     }
         
@@ -435,13 +436,13 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
     //条件 abs(ctx.cmd.targetYaw) < M_PI 确保目标角度有效（不是无效值）
     if (ctx.cmd.mode == GIMBAL_AUTO && abs(ctx.cmd.targetYaw) < M_PI) {
 
-        // yawPosPid.set_gains(AUTO_YAW_POS_PID_KP, AUTO_YAW_POS_PID_KI, AUTO_YAW_POS_PID_KD);
-        // yawSpdPid.set_gains(AUTO_YAW_SPEED_PID_KP, AUTO_YAW_SPEED_PID_KI, AUTO_YAW_SPEED_PID_KD);
+        yawPosPid.set_gains(AUTO_YAW_POS_PID_KP, AUTO_YAW_POS_PID_KI, AUTO_YAW_POS_PID_KD);
+        yawSpdPid.set_gains(AUTO_YAW_SPEED_PID_KP, AUTO_YAW_SPEED_PID_KI, AUTO_YAW_SPEED_PID_KD);
         ctx.telem.targetYawRad = ctx.cmd.targetYaw;
        // ffYawTorque            = Config::Algorithm::Gimbal::YAW_INERTIA_K * ctx.cmd.targetYawSpeed;
     } else {
-        // yawPosPid.set_gains(YAW_POS_PID_KP, YAW_POS_PID_KI, YAW_POS_PID_KD);
-        // yawSpdPid.set_gains(YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD);
+        yawPosPid.set_gains(YAW_POS_PID_KP, YAW_POS_PID_KI, YAW_POS_PID_KD);
+        yawSpdPid.set_gains(YAW_SPEED_PID_KP, YAW_SPEED_PID_KI, YAW_SPEED_PID_KD);
         ctx.telem.targetYawRad = wrapAngle(ctx.telem.targetYawRad + ctx.cmd.yawVel * ctx.dt);//这里的逻辑可以应用在其它地方
         //ffYawTorque            = 0.0f;
     }
@@ -458,7 +459,7 @@ void MovtionCtrlApp::updateYaw(GimbalMotionCtx& ctx) {
     //底盘运动前馈补偿
     //只有当底盘旋转速度超过 0.5 rad/s（约28.6°/s）时才进行补偿
     if (abs(c2g.msg.chassisYawSpeed) > 0.5f)
-        ffYawTorque += -0.11f * c2g.msg.chassisYawSpeed;
+        ffYawTorque += -0.20f * c2g.msg.chassisYawSpeed;
     
 
 

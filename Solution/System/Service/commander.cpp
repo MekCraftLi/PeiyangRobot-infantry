@@ -228,21 +228,12 @@ void CommanderSrvc::run() {
     GimbalToChassisComm comm{};
     VisionCommand vCmd{};
     ImuState imuState{};
+    VisionTelemetry telem{};
 
 
-    // ── 3. 仲裁控制源 (统一逻辑) ──
-    // 3档开关归一化: -1.0(上) / 0.0(中) / 1.0(下)
-    //   < -0.5 → SAFE_STOP    [-0.5, 0.5] → REMOTE    > 0.5 → VISION
-    ControlSource currentSource = ControlSource::SAFE_STOP;
-    const float swState         = actionCtrlMode.getValue();
 
-    if (swState > TriggerCfg::MODE_SW_VISION_THRESH || actionMouseVision.isTriggered()) {
-        currentSource = ControlSource::VISION;
-    } else if (swState >= TriggerCfg::MODE_SW_STOP_THRESH) {
-        currentSource = ControlSource::REMOTE;
-    }
 
-    // ── 4. 读取黑板历史值 (未修改字段天然保留) ──
+    // ── 3. 读取黑板历史值 (未修改字段天然保留) ──
 
     Blackboard::instance().gimbalCmd.read(gCmd);
     Blackboard::instance().shootCmd.read(sCmd);
@@ -250,6 +241,23 @@ void CommanderSrvc::run() {
     Blackboard::instance().visionCmd.read(vCmd);
 
     sCmd.event               = ShootEvent::NONE;
+
+
+
+    // ── 4. 仲裁控制源 (统一逻辑) ──
+    // 3档开关归一化: -1.0(上) / 0.0(中) / 1.0(下)
+    //   < -0.5 → SAFE_STOP    [-0.5, 0.5] → REMOTE    > 0.5 → VISION
+    ControlSource currentSource = ControlSource::SAFE_STOP;
+    const float swState         = actionCtrlMode.getValue();
+
+    if ((swState > TriggerCfg::MODE_SW_VISION_THRESH || actionMouseVision.isTriggered())&&
+            abs(vCmd.targetYaw)<=M_PI && abs(vCmd.targetPitch)<=M_PI) {
+        currentSource = ControlSource::VISION;
+    } else if (swState >= TriggerCfg::MODE_SW_STOP_THRESH) {
+        currentSource = ControlSource::REMOTE;
+    }
+
+    
 
     // 预计算运动意图 (REMOTE / VISION 共用)
     const bool spinRequested = actionSpinMode.isTriggered() || actionKeySpin.isTriggered();
@@ -290,7 +298,7 @@ void CommanderSrvc::run() {
             }
 
             //if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
-            if (actionShootSingle.isTriggered() ){// actionMouseSingle.isTriggered()) {
+            if (actionShootSingle.isTriggered() || actionMouseSingle.isTriggered()) {
                 sCmd.event = ShootEvent::SINGLE_FIRE;
             }
 
@@ -369,8 +377,9 @@ void CommanderSrvc::run() {
         comm.msg.gimbalReverse = actionGimbalReverse.isTriggered() ? 1 : 0;
         comm.msg.jump          = actionJump.isTriggered() ? 1 : 0;
         comm.msg.fireState     = static_cast<uint8_t>(FireCtrlApp::instance().getFireState());
-        comm.msg.aimMode       = triggers.aimModeCycle.getIndex();
+        comm.msg.aimMode       = triggers.aimModeToggle.isToggledOn() ? 1 : 0;
         comm.msg.resetUI       = actionResetui.isTriggered() ? 1 : 0;
+        telem.robotState      = actionAimMode.isTriggered() ? 2 : 0;
     }
     else 
     {
@@ -380,12 +389,14 @@ void CommanderSrvc::run() {
         comm.msg.legLength     = 0;
         comm.msg.gimbalReverse = 0;
         comm.msg.jump          = 0;
+        telem.robotState       = 0;
         actionCapSwitch.resetTrigger();
         actionTurboMode.resetTrigger();
         actionStepClimb.resetTrigger();
         triggers.legLengthCycle.reset();
         actionGimbalReverse.resetTrigger();
         actionJump.resetTrigger();
+        actionAimMode.resetTrigger();
         comm.msg.resetUI       = actionResetui.isTriggered() ? 1 : 0;
         comm.msg.selfRescue    = actionSelfRescue.isTriggered() ? 1 : 0;
         comm.msg.manualRescue  = actionManualRescue.isTriggered() ? 1 : 0;
@@ -438,6 +449,7 @@ void CommanderSrvc::run() {
     Blackboard::instance().g2cOutput.write(comm);
     Blackboard::instance().gimbalCmd.write(gCmd);
     Blackboard::instance().shootCmd.write(sCmd);
+    Blackboard::instance().visionTelem.write(telem);
 
 #elif defined(CHASSIS)
     // ========================================

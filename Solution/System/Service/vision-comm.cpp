@@ -175,6 +175,7 @@ void VisionCommSrvc::sendTxFrame() {
     VisionTxFrame dmaTxFrame{};
 
 
+    Blackboard::instance().visionTelem.read(telem);
     Blackboard::instance().imuState.read(state);
     Blackboard::instance().c2gComm.read(comm);
     Blackboard::instance().gimbalOut.read(out);
@@ -188,6 +189,7 @@ void VisionCommSrvc::sendTxFrame() {
     telem.enemyColor = comm.msg.robotId > 100;
     telem.initialSpeed = comm.msg.initialSpeedX100 / 100;
     telem.shootDelay   = 66;
+    telem.robotState   =telem.robotState;
 
 
 

@@ -75,11 +75,10 @@ constexpr float FRIC_ADJUST_K                                     = BULLET_SPEED
 // 摩擦轮半径
 constexpr float FRIC_RADIUS                                       = 0.03f;
 
-// 发射速度 (发/秒)
-constexpr float SHOOT_SPEED                                       = 10.0f;
+
 
 // 拨弹盘速度
-constexpr float TRIGGER_SPEED                                     = SHOOT_SPEED / 8 * 2 * M_PI * 36;
+constexpr float TRIGGER_SPEED        = Algorithm::Gimbal::SHOOT_SPEED / 8 * 2 * M_PI * 36;
 
 constexpr float FRIC_TARGET_SPEED = PROJECTILE_TARGET_MUZZLE_VELOCITY / FRIC_RADIUS * FRIC_ADJUST_K;
 

@@ -46,7 +46,8 @@ void MovtionCtrlApp::StateAlign::enter(GimbalMotionCtx& ctx) {
     instance()._alignSpdPid.clear();
     ctx.output.pitchEn    = true;
     ctx.output.yawVoltage = 0.0f;
-    MotActSrvc::instance().pitch.enable();
+    MotActSrvc::instance().set_pitchstate(ctx.output.pitchEn);
+
 }
 
 void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
@@ -73,11 +74,11 @@ void MovtionCtrlApp::StateAlign::execute(GimbalMotionCtx& ctx) {
     float errorRad = (float)ecdShortestError(ALIGN_TARGET_ECD, curEcd)
                      / (float)ECD_PER_REV * 2.0f * M_PI;
 
-    if(ctx.state.pitch.pos<PITCH_LIMIT_MIN-0.4f)
+    if(ctx.state.pitch.pos<PITCH_LIMIT_MIN-0.3f)
     {
         
         //检测yaw轴是否发生堵转，如果发生堵转，选择另外一个方向转到目标位置
-        static uint32_t yawblockStartTick = 0;
+        //static uint32_t yawblockStartTick = 0;
         bool is_back = false;
         // if (std::abs(errorRad) > (float)M_PI / 16.0f && std::abs(ctx.imu.gyro[2]) < 2.0f) 
         // {
