@@ -43,7 +43,7 @@
 void FireCtrlApp::StateCaliForward::enter(FireCtrlCtx& ctx) {
     // --- 切回位置环, 目标为固定偏移量 ---
     ctx.useTriggerSpeedLoopOnly = false;//位置环模式
-    ctx.targetTriggerEcd        = 73728;//8192 * 36 / 8 (两发跨度)
+    ctx.targetTriggerEcd        = Config::Algorithm::Gimbal::TRIGGER_ECD_PER_BULLET * 2;
     ctx.state                   = FireState::CaliForward;//校准: 正转回到零点
 }
 
@@ -60,8 +60,9 @@ void FireCtrlApp::StateCaliForward::execute(FireCtrlCtx& ctx) {
     }
 
     // --- 计算当前角度误差 ---
-    float targetAngle = (float)(ctx.targetTriggerEcd) / (float)(8192 * 36) * 2.0f * (float)M_PI;
-    float realAngle   = (float)(ctx.currentTriggerEcd) / (float)(8192 * 36) * 2.0f * (float)M_PI;
+    constexpr int32_t triggerEcdCircle = Config::Algorithm::Gimbal::TRIGGER_ECD_CIRCLE;
+    float targetAngle = (float)(ctx.targetTriggerEcd) / (float)triggerEcdCircle * 2.0f * (float)M_PI;
+    float realAngle   = (float)(ctx.currentTriggerEcd) / (float)triggerEcdCircle * 2.0f * (float)M_PI;
 
     float err = targetAngle - realAngle;
     while (err >  (float)M_PI) err -= 2.0f * (float)M_PI;

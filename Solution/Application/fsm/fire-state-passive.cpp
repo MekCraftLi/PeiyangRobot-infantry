@@ -47,9 +47,10 @@ void FireCtrlApp::StatePassive::enter(FireCtrlCtx& ctx) {
     // --- 初始化状态 ---
     ctx.isCalibrated            = false;
     ctx.targetFricSpeed         = 0.0f;
-    ctx.useTriggerSpeedLoopOnly = false;
     ctx.speedCompensator.reset();
     ctx.state                   = FireState::Passive;
+    ctx.useTriggerSpeedLoopOnly = true;
+    ctx.targetTriggerSpeed = 0;
 }
 
 /**
@@ -57,8 +58,6 @@ void FireCtrlApp::StatePassive::enter(FireCtrlCtx& ctx) {
  * @param ctx FSM 上下文引用
  */
 void FireCtrlApp::StatePassive::execute(FireCtrlCtx& ctx) {
-    // --- 位置环锁位: 每拍跟踪当前编码器, 防止断电滑转 ---
-    ctx.targetTriggerEcd = ctx.fdb.triggerEcd + ctx.fdb.triggerRound * 8192 - ctx.triggerOffset;
 
     // --- 转移条件 ---
     if (ctx.transientEvent == ShootEvent::FRIC_TOGGLE) {

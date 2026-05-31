@@ -97,7 +97,6 @@ void FireCtrlApp::init() {
 } 
 
 /* ------- 主循环 ----------------------------------------------------------------------------------------------------*/
-
 void FireCtrlApp::run() {
     static uint32_t dwtCnt = 0;
     float dt = pyro::dwt_drv_t::get_delta_t(&dwtCnt);
@@ -109,7 +108,7 @@ void FireCtrlApp::run() {
     Blackboard::instance().boosterState.read(_ctx.fdb);
     Blackboard::instance().c2gComm.read(c2gData);
     Blackboard::instance().visionCmd.read(viscmd);
-    
+
     uint32_t nowMs = xTaskGetTickCount();
 
     // ── 2a. 同步裁判系统 → 热量控制器 ──
@@ -124,10 +123,16 @@ void FireCtrlApp::run() {
     _ctx.heatController.tickCooling(dt);
 
     // ── 2d. 物理发弹检测 (编码器跨越一发跨度 → 注册热量) ──
-    const int32_t ECD_PER_BULLET = 8192 * 36 / 8; // M2006 单发编码器跨度 (36864)
 
-    _ctx.rawTriggerEcd = _ctx.fdb.triggerEcd + _ctx.fdb.triggerRound * 8192;
-    _ctx.currentTriggerEcd = (_ctx.rawTriggerEcd - _ctx.triggerOffset + 8192 * 36) % (8192 * 36);
+
+    constexpr int32_t triggerEcdCircle = Config::Algorithm::Gimbal::TRIGGER_ECD_CIRCLE;
+    constexpr int32_t ecdPerBullet     = Config::Algorithm::Gimbal::TRIGGER_ECD_PER_BULLET;
+
+    _ctx.rawTriggerEcd     = _ctx.fdb.triggerEcd + _ctx.fdb.triggerRound * 8192;
+    _ctx.currentTriggerEcd = (_ctx.rawTriggerEcd - static_cast<int32_t>(_ctx.triggerOffset)) % triggerEcdCircle;
+    if (_ctx.currentTriggerEcd < 0) {
+        _ctx.currentTriggerEcd += triggerEcdCircle;
+    }
 
     static int32_t lastShotContinuousEcd = _ctx.rawTriggerEcd;
 
@@ -136,7 +141,7 @@ void FireCtrlApp::run() {
     debug_trigger.state           = (uint8_t)_ctx.state;
     debug_trigger.offset          = _ctx.triggerOffset;
 
-    // 防抖: 差距过大 (如刚开机 / 校准后) → 直接对齐//避免刚开机时误判为连续发射了多发子弹//
+    // 防抖: 差距过大 (如刚开机 / 校准后) → 重置检测基准, 避免误判为连续发射了多发子弹。
     /* 问题场景分析
     场景1: 系统刚启动
     _ctx.rawTriggerEcd = 100000（拨弹盘当前位置）
@@ -150,13 +155,13 @@ void FireCtrlApp::run() {
     校准后: _ctx.rawTriggerEcd = 200000
     差值 = 150000，会误判为发射了4发子弹
     */
-    if (std::abs(_ctx.rawTriggerEcd - lastShotContinuousEcd) > ECD_PER_BULLET * 10) {
+    if (std::abs(_ctx.rawTriggerEcd - lastShotContinuousEcd) > ecdPerBullet * 10) {
         lastShotContinuousEcd = _ctx.rawTriggerEcd;
     }
 
-    if (_ctx.rawTriggerEcd - lastShotContinuousEcd >= ECD_PER_BULLET) {//检测到发弹
+    if (_ctx.rawTriggerEcd - lastShotContinuousEcd >= ecdPerBullet) {//检测到发弹
         _ctx.heatController.recordBulletShot(nowMs);//向热量控制器注册一次发弹事件
-        lastShotContinuousEcd += ECD_PER_BULLET;//发弹检测的基准向前移动一发跨度
+        lastShotContinuousEcd += ecdPerBullet;//发弹检测的基准向前移动一发跨度
         g_heat_debug.physical_shot  = 50;//调试信号: 在Ozone示波器上产生一个50的脉冲信号，用于可视化发弹时刻
         g_speed_debug.physical_shot = 50;
     } else {
@@ -180,6 +185,8 @@ void FireCtrlApp::run() {
     g_heat_debug.heat_limit       = c2gData.msg.heatLimit;
     g_heat_debug.safe_margin_line = c2gData.msg.heatLimit - HeatController::SAFE_MARGIN;
     g_heat_debug.target_rpm       = _ctx.targetTriggerSpeed;
+
+
     g_speed_debug.ref_bullet_speed    = c2gData.msg.initialSpeedX100 / 100.0f;
     g_speed_debug.target_bullet_speed = 23.5f;
     g_speed_debug.base_fric_target    = _ctx.targetFricSpeed;
@@ -265,8 +272,9 @@ void FireCtrlApp::calculateCurrents(BoosterOutput& out) {
         spdTarget = _ctx.targetTriggerSpeed;
     } else {
         // 位置外环 → 速度内环 (单发 / 就绪锁位)
-        float targetTriggerAngle = (float)(_ctx.targetTriggerEcd) / (float)(8192 * 36) * 2.0f * (float)M_PI;
-        float realTriggerAngle   = (float)(_ctx.currentTriggerEcd) / (float)(8192 * 36) * 2.0f * (float)M_PI;
+        constexpr int32_t triggerEcdCircle = Config::Algorithm::Gimbal::TRIGGER_ECD_CIRCLE;
+        float targetTriggerAngle = (float)(_ctx.targetTriggerEcd) / (float)triggerEcdCircle * 2.0f * (float)M_PI;
+        float realTriggerAngle   = (float)(_ctx.currentTriggerEcd) / (float)triggerEcdCircle * 2.0f * (float)M_PI;
 
         float err = targetTriggerAngle - realTriggerAngle;
         while (err >  (float)M_PI) err -= 2.0f * (float)M_PI;

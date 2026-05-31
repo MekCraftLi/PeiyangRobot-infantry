@@ -41,7 +41,6 @@
 class HeatController {
   public:
     static constexpr float HEAT_PER_BULLET     = 10.0f;
-    static constexpr float BULLETS_PER_CIRCLE  = 8.0f;
     static constexpr float SAFE_MARGIN         = 40.0f;
 
     // 裁判系统最大延迟容忍时间 (毫秒)。通常 10Hz 更新对应 100ms，这里给 200ms 绝对安全
@@ -94,6 +93,7 @@ class HeatController {
         _lastShotTimeMs = current_time_ms; // 刷新最后一次开火的时间
     }
 
+
     [[nodiscard]] bool canShootSingle() const {
         if (noHeatLimitSystem()) return true;
         static uint8_t canShootSingle;
@@ -104,6 +104,13 @@ class HeatController {
         (void)(canShootSingle);
         return canShootSingle;
     }
+
+    [[nodiscard]] bool canShootBurst() const {
+        if (noHeatLimitSystem()) return true;
+        // 连发模式要求至少能容忍4发，以提供更好的续杯体验
+        return (_localHeat + 4 * HEAT_PER_BULLET) <= (_heatLimit - SAFE_MARGIN);
+    }
+
     // 【新增】连发模式是否处于高热量警戒区
     [[nodiscard]] bool isApproachingHeatLimit() const {
         if (noHeatLimitSystem()) return false;
@@ -111,20 +118,6 @@ class HeatController {
         return _localHeat > (_heatLimit - SAFE_MARGIN);
     }
 
-    [[nodiscard]] float getSafeBurstRpm(float maxMechRpm, float gearRatio) const {
-        if (noHeatLimitSystem()) return maxMechRpm;//当热量上限为零 或 开关关闭时，视为无热量限制
-        if (_localHeat + HEAT_PER_BULLET > _heatLimit - SAFE_MARGIN)//单发都不安全了，直接禁止射击
-            return 0.0f;
-        if (_localHeat < _heatLimit - SAFE_MARGIN)//热量充足，允许全速射击
-            return maxMechRpm;
-
-        // 计算在当前热量水平下，系统能够持续支持的射速 (考虑安全边际)，单位为子弹/秒
-        float sustainBulletsPerSec = (_coolingRate / HEAT_PER_BULLET) * 0.95f;
-        // 转换为机械转速 (RPM)，考虑齿轮比和每圈子弹数
-        float sustainRpm           = (sustainBulletsPerSec / BULLETS_PER_CIRCLE) * 60.0f;
-
-        return std::min(sustainRpm, maxMechRpm);
-    }
 
     [[nodiscard]] float getLocalHeat() const { return _localHeat; }
 

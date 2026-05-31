@@ -15,7 +15,7 @@
  *   - 切换到纯速度环模式
  *
  * Exit actions:
- *   - 对齐编码器到最近的槽位
+ *   - 将位置环目标锁定到当前位置
  *   - 清除校准标志
  *   - 切回位置环模式
  *
@@ -46,8 +46,6 @@
 
 #include "../fire-ctrl-app.h"
 
-constexpr float ANGLE_PER_BULLET = 45.0f; // 拨弹盘单发角度 (8发/圈)
-
 /**
  * @brief 进入 JamClear 状态
  * @param ctx FSM 上下文引用
@@ -74,7 +72,7 @@ void FireCtrlApp::StateJamClear::execute(FireCtrlCtx& ctx) {
  * @param ctx FSM 上下文引用
  */
 void FireCtrlApp::StateJamClear::exit(FireCtrlCtx& ctx) {
-    ctx.targetTriggerEcd        = std::round(ctx.fdb.trigger.pos / ANGLE_PER_BULLET) * ANGLE_PER_BULLET;
+    ctx.targetTriggerEcd        = ctx.currentTriggerEcd;
     ctx.isCalibrated            = false;
     ctx.useTriggerSpeedLoopOnly = false;
 }

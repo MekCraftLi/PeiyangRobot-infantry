@@ -8,7 +8,6 @@
  *
  * Entry actions:
  *   - 拨弹盘切回位置环
- *   - 将当前编码器位置四舍五入对齐到最近的物理槽位 (防止半发偏移)
  *
  * Exit condition (transitions OUT):
  *   - FRIC_TOGGLE / EMERGENCY_STOP -> Passive
@@ -22,7 +21,7 @@
  *******************************************************************************
  * @attention
  *
- * 进入 Ready 时会进行槽位对齐, 确保拨弹盘停在物理槽位上而非半发位置。
+ * 进入 Ready 时不主动推进拨弹盘, 只切回位置环锁位。
  *
  *******************************************************************************
  * @note
@@ -44,9 +43,11 @@
  */
 void FireCtrlApp::StateReady::enter(FireCtrlCtx& ctx) {
     // --- 切回位置环, 提供物理刚性防止溜弹 ---
-    ctx.useTriggerSpeedLoopOnly = false;
-
     ctx.state            = FireState::Ready;
+
+    ctx.useTriggerSpeedLoopOnly = true;
+    ctx.targetTriggerSpeed = 0;
+
 }
 
 /**
@@ -64,8 +65,13 @@ void FireCtrlApp::StateReady::execute(FireCtrlCtx& ctx) {
     // --- 单发指令 ---
     if (ctx.transientEvent == ShootEvent::SINGLE_FIRE) {
         if (!ctx.isCalibrated) {
-            // 未校准 → 先进入校准流程
-            request_switch(&instance()._stateCaliReverse);
+            // 未校准 → 先进入校准流程, 校准完成后继续执行本次单发
+            if (ctx.heatController.canShootSingle()) {
+                ctx.jamSourceState       = FireState::Passive;
+                ctx.targetStateAfterCali = FireState::SingleFire;
+                ctx.reversePurpose       = ReversePurpose::SingleFireCalibration;
+                request_switch(&instance()._stateCaliReverse);
+            }
         } else if (ctx.heatController.canShootSingle()) {
             // 已校准 + 热量允许 → 进入单发
             request_switch(&instance()._stateSingleFire);
@@ -76,7 +82,10 @@ void FireCtrlApp::StateReady::execute(FireCtrlCtx& ctx) {
 
     // --- 连发指令 (持续按住) ---
     if (ctx.cmd.state.burstShot) {
-        ctx.isCalibrated = false;
         request_switch(&instance()._stateBurstFire);
     }
+
+
+
+
 }

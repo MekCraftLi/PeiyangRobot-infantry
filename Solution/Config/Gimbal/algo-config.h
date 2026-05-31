@@ -31,6 +31,8 @@
 
 //#include "../config.h"
 
+#include <cstdint>
+
 
 
 
@@ -77,6 +79,9 @@ constexpr float YAW_INERTIA_K = 2.3f;
 
 constexpr float PITCH_K_GRAVITY_COS = -0.8f; // 水平方向质心补偿
 constexpr float PITCH_K_GRAVITY_SIN = -0.5f; // 垂直方向质心补偿
+
+constexpr int32_t TRIGGER_ECD_CIRCLE     = 8192 * 36;
+constexpr int32_t TRIGGER_ECD_PER_BULLET = TRIGGER_ECD_CIRCLE / 8;
 
 
 enum aim_target

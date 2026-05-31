@@ -9,12 +9,12 @@
  *       ^                                                                    |
  *       |                    +---[FRIC_TOGGLE / EMERGENCY_STOP]-------------+
  *       |                    |
- *       |              Ready +--[!calibrated + SINGLE_FIRE]--> CaliReverse
+ *       |              Ready +--[!calibrated + SINGLE_FIRE]--> CaliReverse --> CaliForward --> SingleFire
  *       |              Ready +--[calibrated + SINGLE_FIRE]---> SingleFire --> Ready
  *       |              Ready +--[burstShot]--> BurstFire --> Ready
  *       |              Ready +--[burstShot + heat warn]--> SafeBurst --> Ready
  *       |                    |
- *       |             CaliReverse ──[hard stop]──> CaliForward ──[zero]──> Ready/...
+ *       |             Jam in fire states ──> CaliReverse ──[reverse done]──> Ready/BurstFire/SafeBurst
  *       |                    ^
  *       |                    +---[jam from SingleFire/BurstFire/SafeBurst]
  *       |
@@ -97,15 +97,20 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
      * @brief FSM 状态枚举
      */
     enum class FireState {
-        Passive,       ///< 休眠: 摩擦轮停, 拨弹锁位
-        SpinUp,        ///< 摩擦轮启动中
-        Ready,         ///< 就绪: 摩擦轮已达速, 等待开火指令
-        CaliReverse,   ///< 校准: 反转寻找机械死区
-        CaliForward,   ///< 校准: 正转回到零点
-        SingleFire,    ///< 单发: 拨弹盘推进一发
-        BurstFire,     ///< 连发: 速度环全速连发
-        JamClear,      ///< (废弃) 堵转清除
-        SafeBurst,     ///< 安全连发: 位置环逐发受控连发
+        Passive,       ///< 0 休眠: 摩擦轮停, 拨弹锁位
+        SpinUp,        ///< 1 摩擦轮启动中
+        Ready,         ///< 2 就绪: 摩擦轮已达速, 等待开火指令
+        CaliReverse,   ///< 3 校准: 反转寻找机械死区
+        CaliForward,   ///< 4 校准: 正转回到零点
+        SingleFire,    ///< 5 单发: 拨弹盘推进一发
+        BurstFire,     ///< 6 连发: 速度环全速连发
+        JamClear,      ///< 7 (废弃) 堵转清除
+        SafeBurst,     ///< 8 安全连发: 位置环逐发受控连发
+    };
+
+    enum class ReversePurpose {
+        JamClear,              ///< 堵转清除: 倒转结束后直接退出
+        SingleFireCalibration, ///< 单发校准: 倒转找零点后进入 CaliForward
     };
 
     /**
@@ -137,14 +142,15 @@ class FireCtrlApp final : public PeriodicApp, public Singleton<FireCtrlApp> {
 
         // --- 编码器计算 ---
         int32_t rawTriggerEcd;              ///< 原始编码器值 (含圈数)
-        int32_t currentTriggerEcd;          ///< 处理后的当前编码器位置 (减偏移, 模36周)
+        int32_t currentTriggerEcd;          ///< 处理后的当前循环编码器位置 (减偏移, 模36周)
 
         // --- 校准 & 堵转 ---
         bool isCalibrated              = false;  ///< 是否已完成拨弹盘校准
         TickType_t stateStartTick      = 0;      ///< 状态进入时刻 (FreeRTOS tick)
         TickType_t blockStartTick      = 0;      ///< 堵转检测起始时刻 (0=未堵转)
-        FireState jamSourceState       = FireState::Passive; ///< 堵转来源状态 (校准后恢复)
+        FireState jamSourceState       = FireState::Passive; ///< 堵转来源状态
         FireState targetStateAfterCali = FireState::Ready;   ///< 校准完成后目标状态
+        ReversePurpose reversePurpose  = ReversePurpose::JamClear; ///< 当前倒转状态用途
     };
 
     // ==========================================

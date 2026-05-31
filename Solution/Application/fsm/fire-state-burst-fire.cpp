@@ -4,37 +4,37 @@
  * @brief   火控 FSM — BurstFire 状态实现
  *
  * 状态角色:
- *   连发态 — 拨弹盘纯速度环全速连发, 由 HeatController 动态调节安全射频
+ *   连发态 — 拨弹盘纯速度环连发, 热量不足时停止拨弹
  *
  * Entry actions:
- *   - 清除校准标志 (下次单发前需重新校准)
  *   - 清零堵转计时器
  *   - 切换到纯速度环模式
  *
  * Exit actions:
  *   - 清空速度环积分项
- *   - 向上取整对齐到最近的拨弹槽位 (targetTriggerEcd)
+ *   - 将位置环目标锁定到当前位置
  *   - 切回位置环模式
  *
  * Exit condition (transitions OUT):
- *   - BURST_STOP / SINGLE_FIRE / burstShot==0 -> Ready
+ *   - SINGLE_FIRE -> SingleFire / CaliReverse (未校准时先校准)
+ *   - BURST_STOP / burstShot==0 -> Ready
  *   - FRIC_TOGGLE / EMERGENCY_STOP -> Passive
  *   - 堵转超时 2000 ms -> CaliReverse (记录来源为 BurstFire)
  *
  * Context modifications:
- *   - Writes: isCalibrated, blockStartTick, useTriggerSpeedLoopOnly,
+ *   - Writes: blockStartTick, useTriggerSpeedLoopOnly,
  *             targetTriggerSpeed, targetTriggerEcd, jamSourceState, state
  *   - Clears: _triggerSpdPid (in exit)
  *
  *******************************************************************************
  * @attention
  *
- * 连发使用纯速度环, HeatController 根据热量余量动态调节射频。
+ * 连发使用纯速度环, 每 tick 根据热量余量决定全速拨弹或停止拨弹。
  *
  *******************************************************************************
  * @note
  *
- * 退出时向上取整对齐槽位, 确保正在出膛的半颗子弹能完整打出。
+ * 退出时不再主动推进目标, 避免停火后继续拨弹。
  *
  *******************************************************************************
  * @author  MekLi
@@ -52,9 +52,8 @@
  */
 void FireCtrlApp::StateBurstFire::enter(FireCtrlCtx& ctx) {
     // --- 初始化 ---
-    ctx.isCalibrated            = false;//取消拨弹盘校准
-    ctx.blockStartTick          = 0;//堵转检测起始时刻 (0=未堵转)
-    ctx.useTriggerSpeedLoopOnly = true;//绕过位置环, 仅速度环 (连发/校准)
+    ctx.blockStartTick          = 0;    // 堵转检测起始时刻 (0=未堵转)
+    ctx.useTriggerSpeedLoopOnly = true; // 绕过位置环, 仅速度环 (连发/校准)
     ctx.state                   = FireState::BurstFire;
 }
 
@@ -63,36 +62,41 @@ void FireCtrlApp::StateBurstFire::enter(FireCtrlCtx& ctx) {
  * @param ctx FSM 上下文引用
  */
 void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
-    // --- 停止条件 ---
-    if (ctx.transientEvent == ShootEvent::BURST_STOP ||
-        ctx.transientEvent == ShootEvent::SINGLE_FIRE ||
-        ctx.cmd.state.burstShot == 0) {
-        request_switch(&instance()._stateReady);
-        return;
-    }
+
 
     // --- 紧急退出 ---
-    if (ctx.transientEvent == ShootEvent::FRIC_TOGGLE ||
-        ctx.transientEvent == ShootEvent::EMERGENCY_STOP) {
+    if (ctx.transientEvent == ShootEvent::FRIC_TOGGLE || ctx.transientEvent == ShootEvent::EMERGENCY_STOP) {
         request_switch(&instance()._statePassive);
         return;
     }
 
-    // --- 热控器动态调节安全射频 ---
-    /*返回值范围:
-    热量充足: 返回最大转速（高速连发）
-    热量紧张: 返回降低的转速（降速连发）
-    热量超限: 直接停转*/
-    ctx.targetTriggerSpeed = ctx.heatController.getSafeBurstRpm(Config::Hardware::MotorTopo::TRIGGER_SPEED, 36.0f);
-    //targetTriggerSpeed会在calculateCurrents() 中应用
+    if (ctx.cmd.state.burstShot == 0) {
+        request_switch(&instance()._stateReady);
+        return;
+    }
+
+
+    // --- 热控判断: 单发安全则全速连发, 否则停转等待冷却 ---
+    if (ctx.heatController.canShootSingle()) {
+        ctx.targetTriggerSpeed = Config::Hardware::MotorTopo::TRIGGER_SPEED;
+    } else {
+        // request_switch(&instance()._stateSingleFire);
+        ctx.targetTriggerSpeed = 0;
+        return;
+    }
+
+
+
+    // targetTriggerSpeed 会在 calculateCurrents() 中应用
     // --- 堵转检测: 目标速度大但实际极低 ---
     float speedErr = std::abs(ctx.targetTriggerSpeed) - std::abs(ctx.fdb.trigger.vel);
-    //功能: 检测拨弹盘是否发生机械卡死
+    // 功能: 检测拨弹盘是否发生机械卡死
     if (speedErr > 50.0f && std::abs(ctx.fdb.trigger.vel) < 10.0f) {
         if (ctx.blockStartTick == 0) {
             ctx.blockStartTick = xTaskGetTickCount();
         } else if (xTaskGetTickCount() - ctx.blockStartTick >= pdMS_TO_TICKS(800)) {
             ctx.jamSourceState = FireState::BurstFire;
+            ctx.reversePurpose = ReversePurpose::JamClear;
             request_switch(&instance()._stateCaliReverse);
             return;
         }
@@ -115,11 +119,6 @@ void FireCtrlApp::StateBurstFire::execute(FireCtrlCtx& ctx) {
 void FireCtrlApp::StateBurstFire::exit(FireCtrlCtx& ctx) {
     // --- 清空速度环积分 ---
     instance()._triggerSpdPid.clear();
-
-    // --- 对齐到前方最近的槽位, 为位置环锁位做准备 ---
-    int32_t currentEcd   = ctx.fdb.triggerEcd + ctx.fdb.triggerRound * 8192 - ctx.triggerOffset;
-    int32_t ecdPerBullet = 8192 * 36 / 8;
-    ctx.targetTriggerEcd = ((currentEcd + ecdPerBullet - 1) / ecdPerBullet) * ecdPerBullet;
-
-    ctx.useTriggerSpeedLoopOnly = false;
+    ctx.targetTriggerSpeed = 0;
+    ctx.useTriggerSpeedLoopOnly = false; // 回到角度环控制
 }
